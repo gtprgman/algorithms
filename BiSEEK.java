@@ -214,7 +214,7 @@ private static int bSeek(String cStr, Contacts[] set)
             ct.print();
        
        System.out.println();
-       System.out.println("<< search data: Hendry >>");
+       System.out.println("<< search data: " + searchStr + " >>");
        
        int seekFound = bSeek(searchStr,iSort(phone));
        boolean dataFound = false;
