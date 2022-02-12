@@ -5,3 +5,4 @@ BiSEEK.java : a refactored version from TestBinSearch.java ( no indexing & no dy
 TestBinSearch.java : demonstrates binary search function acting over dynamically shrinking buffer.
 BooksCat.java : demonstrates insertion sort algorithm sorting on a set/collection.
 JMerges.java : demonstrates Merge Sort Algorithm.
+CJMerges folder : contains equivalent implementations of JMerges in the Modern C++.
