@@ -38,36 +38,6 @@ int main(int argc, char* args[])
 
 
 
-
-
-	
-
-	
-
-
-
-
-	
-
-
-
-
-	
-	
-
-	
-
-	
-	
-
-
-
-
-
-
-
-
-
 	system("PAUSE");
 	return -1;
 }
