@@ -9,9 +9,9 @@ using namespace std;
 
 int main(int argc, char* args[])
 {
-    int set1[3] = { 75,62,55 };
+    int* set1 = new int[3] { 75,62,55 };
 	
-    int set2[23] = { 458,895,625,150,478,
+    int* set2 = new int[23] { 458,895,625,150,478,
 		     325,287,605,715,950,
 		     110,98,75,69,43,
 		     62,55,80,95,114,
