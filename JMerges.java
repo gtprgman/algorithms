@@ -144,7 +144,7 @@ if(mid0 > 0) mid0 = (int)Math.ceil((mid0*0.25));
     public static void main(String[] args) {
         // TODO code application logic here
            
-       int[] set = {75,62,55};
+       int[] set = new int[] {75,62,55};
        
        for(int n : mergeSort(set))
            System.out.print(n + ",");
@@ -153,7 +153,7 @@ if(mid0 > 0) mid0 = (int)Math.ceil((mid0*0.25));
        System.out.print("\n\n");
        
        
-       int[] setOne = {458,895,625,150,478,
+       int[] setOne = new int[] {458,895,625,150,478,
                        325,287,605,715,950,
                        110,98,75,69,43,
                        62,55,80,95,114,
