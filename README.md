@@ -7,3 +7,4 @@ BooksCat.java : demonstrates insertion sort algorithm sorting on a set/collectio
 JMerges.java : demonstrates Merge Sort Algorithm.
 CJMerges folder : contains equivalent implementations of JMerges in the Modern C++.
 mixutil.h : a modern c++ common utilities
+TEST_MIXTURES.cpp : a demonstration tester of mixutil.h
