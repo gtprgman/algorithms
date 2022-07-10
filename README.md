@@ -6,3 +6,4 @@ TestBinSearch.java : demonstrates binary search function acting over dynamically
 BooksCat.java : demonstrates insertion sort algorithm sorting on a set/collection.
 JMerges.java : demonstrates Merge Sort Algorithm.
 CJMerges folder : contains equivalent implementations of JMerges in the Modern C++.
+mixutil.h : a modern c++ common utilities
