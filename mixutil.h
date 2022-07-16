@@ -30,8 +30,8 @@ void FOR_EACH(PTR begin, PTR end, fnIter const& fnt)
 template <class Ty>
 struct Alloc_Share
 {
-	Alloc_Share() {};
-	Alloc_Share(std::size_t const SZ) : shr( new Ty[SZ]() ) {}
+	constexpr Alloc_Share() {};
+	constexpr Alloc_Share(std::size_t const SZ) : shr( new Ty[SZ]() ) {}
 	SHARED_ARRAY_TYPE<Ty>& get_shared() { return shr; }
 
 	SHARED_ARRAY_TYPE<Ty>& operator()(std::size_t const){
@@ -46,14 +46,14 @@ private:
 
 
 template <class Ty>
-constexpr Alloc_Share<Ty>&& SHARED_CREATE(std::size_t SZ) {
+constexpr Alloc_Share<Ty>&& SHARED_CREATE(std::size_t const SZ) {
 	return std::move(Alloc_Share<Ty>(SZ));
 }
 
 
 
 template <std::size_t SZ = 1, typename Ty>
-constexpr void SHARED_INIT(SHARED_ARRAY_TYPE<int>& shrP, std::size_t init, ...)
+constexpr void SHARED_INIT(SHARED_ARRAY_TYPE<int>& shrP, std::size_t const init, ...)
 {
 	va_list vl;
 	va_start(vl, init);
