@@ -55,7 +55,7 @@ constexpr Alloc_Share<Ty>&& SHARED_CREATE(std::size_t const SZ) {
 
 
 
-template <std::size_t SZ = 1, typename Ty>
+template <typename Ty, std::size_t SZ = 1>
 constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::size_t const init, ...)
 {
 	va_list vl;
