@@ -3,6 +3,9 @@
 	#include <iostream>
 	#include <memory>
 	#include <cstdarg>
+	
+	#include <initializer_list>
+	#include <forward_list>
 #endif
 
 /* Common Creative License's Properties */
@@ -13,7 +16,7 @@
    queue of to be implemented in any time of the future. */
 
 template <class Ty>
-using SHARED_ARRAY_TYPE = std::shared_ptr<Ty[]>;
+using SHARED_ARRAY = std::shared_ptr<Ty[]>;
 
 
 
@@ -32,14 +35,14 @@ struct Alloc_Share
 {
 	constexpr Alloc_Share() {};
 	constexpr Alloc_Share(std::size_t const SZ) : shr( new Ty[SZ]() ) {}
-	SHARED_ARRAY_TYPE<Ty>& get_shared() { return shr; }
+	SHARED_ARRAY<Ty>& get_shared() { return shr; }
 
-	SHARED_ARRAY_TYPE<Ty>& operator()(std::size_t const){
+	SHARED_ARRAY<Ty>& operator()(std::size_t const){
 		return get_shared();
 	}
 
 private:
-	SHARED_ARRAY_TYPE<Ty> shr;
+	SHARED_ARRAY<Ty> shr;
 };
 
 
@@ -53,7 +56,7 @@ constexpr Alloc_Share<Ty>&& SHARED_CREATE(std::size_t const SZ) {
 
 
 template <std::size_t SZ = 1, typename Ty>
-constexpr void SHARED_INIT(SHARED_ARRAY_TYPE<int>& shrP, std::size_t const init, ...)
+constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::size_t const init, ...)
 {
 	va_list vl;
 	va_start(vl, init);
@@ -65,6 +68,26 @@ constexpr void SHARED_INIT(SHARED_ARRAY_TYPE<int>& shrP, std::size_t const init,
 }
 
 
+// overloaded SHARED_INIT with std::initializer_list<T> argument
+template <typename Ty>
+constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::initializer_list<Ty>& lst)
+{
+	std::size_t i = 0; 
+
+	for (auto const& v : lst)
+		shrP[i++] = v;
+
+}
+
+
+template <class PTR>
+constexpr void smart_print(PTR const& begin, PTR const& end)
+{
+	FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
+		std::cout << _dataP << ", ";
+	}
+	);
+}
 
 
 
