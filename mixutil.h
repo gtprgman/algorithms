@@ -38,7 +38,7 @@ public:
 		return std::move(_mpUnique);
 	}
 
-	UNIQUE_ARRAY<Ty>&& initialize(std::initializer_list<Ty> const& ls)
+	constexpr UNIQUE_ARRAY<Ty>&& initialize(std::initializer_list<Ty> const& ls)
 	{
 		std::size_t k = 0;
 		UNIQUE_ARRAY<Ty>&& unp = create(_msize);
