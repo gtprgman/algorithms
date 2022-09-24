@@ -108,7 +108,7 @@ constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::size_t const init, ...)
 }
 
 
-// overloaded SHARED_INIT with std::initializer_list<Ty> argument
+// overloaded SHARED_INIT with ' const std::initializer_list<Ty>& ' parameter
 template <typename Ty>
 constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::initializer_list<Ty> const& lst)
 {
