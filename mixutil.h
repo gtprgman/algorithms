@@ -124,7 +124,7 @@ template <class PTR>
 constexpr void smart_print(PTR const& begin, PTR const& end)
 {
 	FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
-		std::cout << _dataP << ", ";
+		std::cout << (_dataP) << ", ";
 	}
 	);
 }
