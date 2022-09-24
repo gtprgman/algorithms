@@ -3,23 +3,35 @@
 
 int main()
 {
-	Alloc_Share<int> baseShr = SHARED_CREATE<int>(3);
-	SHARED_ARRAY<int> pshr = baseShr(3); // calls the functor
+	// TESTING UNIQUE_ARRAY<int> ...
 
-	std::initializer_list<int> lsn{ 150,250,350 };
+	std::cout << "Testing UNIQUE_ARRAY<int> ... " << std::endl;
 
-	SHARED_INIT<int,3>(pshr, 0, 100, 200, 300);
+	unique_array_ptr<int> uArrayFactory;
 
-	smart_print(&pshr[0], &pshr[3]);
-	
-	SHARED_INIT<int>(pshr, lsn);
+	UNIQUE_ARRAY<int>&& upArray = uArrayFactory.create(3);
 
-	std::cout << "\n";
+	upArray = uArrayFactory.initialize({ 100,200,300 });
 
+	smart_print(upArray.get(), upArray.get() + 3);
 
-	smart_print(&pshr[0], &pshr[3]);
+	std::cout << "\n\n";
+
+	// TESTING SHARED_ARRAY<int> ...
+
+	std::cout << "Testing SHARED_ARRAY<int> ... " << std::endl;
+
+	Alloc_Share<int> sharedFactory(3);
+
+	SHARED_ARRAY<int> shr = sharedFactory.get_shared();
+
+	SHARED_INIT(shr, { 200,450,650 });
+
+	smart_print(shr.get(), shr.get() + 3);
+
 
 	system("PAUSE");
 	return 0;
+	
 }
 
