@@ -10,13 +10,52 @@
 
 /* Common Creative License's Properties */
 
-/* The header 'mixutil.h' is designed and prepared to be added any features functionality that could mostly help in reducing
-   the complexities of any programming tasks that would mostly engaged with frequently issuing of overwhelming statement syntaxis
-   such as the issuing of std::shared_ptr<T[]> and std::unique_ptr<T[]>, and many others more .. which features are in the pending
-   queue of to be implemented in any time of the future. */
+/* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could mostly add help in reducing
+   the complexities of any programming keywords or overwhelming statement syntaxis such as any call to std::shared_ptr<T[]> and 
+   std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waited to be implemented 
+   in the any times of the future. 
+ */
 
 template <class Ty>
 using SHARED_ARRAY = std::shared_ptr<Ty[]>;
+
+template <class Ty>
+using UNIQUE_ARRAY = std::unique_ptr<Ty[]>;
+
+
+// unique array factory
+template < class Ty, std::size_t SZ = 1 >
+class unique_array_ptr
+{
+public:
+	constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
+
+	constexpr UNIQUE_ARRAY<Ty>&& create(std::size_t const SIZE = SZ) {
+		_msize = SIZE;
+		Ty* _ptr = new Ty[SIZE];
+		_mpUnique.reset(_ptr);
+		_ptr = nullptr;
+		return std::move(_mpUnique);
+	}
+
+	UNIQUE_ARRAY<Ty>&& initialize(std::initializer_list<Ty> const& ls)
+	{
+		std::size_t k = 0;
+		UNIQUE_ARRAY<Ty>&& unp = create(_msize);
+
+		for (auto const& v : ls) {
+			unp[k++] = v;
+			if (k > _msize) break;
+		}
+
+		return std::move(unp);
+	}
+
+private:
+	std::size_t _msize;
+	UNIQUE_ARRAY<Ty> _mpUnique;
+};
+
 
 
 
@@ -68,8 +107,10 @@ constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::size_t const init, ...)
 }
 
 
+
+// overloaded SHARED_INIT with ' const std::initializer_list<Ty>&'  parameter
 template <typename Ty>
-constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::initializer_list<Ty>& lst)
+constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::initializer_list<Ty> const& lst)
 {
 	std::size_t i = 0; 
 
