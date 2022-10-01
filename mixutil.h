@@ -16,11 +16,31 @@
    in the any times of the future. 
  */
 
+template < class Ty >
+struct unique_array_del
+{
+
+};
+
+
+template < class Ty > 
+struct unique_array_del<Ty*>  // Ty = Ty*
+{
+	bool operator()(Ty* _uty) {
+		static_assert(sizeof(_uty) > 0, "unknown parameter type 'uty' ");
+		delete[] _uty;
+		return(nullptr == _uty);
+	}
+};
+
+
+
+
 template <class Ty>
 using SHARED_ARRAY = std::shared_ptr<Ty[]>;
 
-template <class Ty>
-using UNIQUE_ARRAY = std::unique_ptr<Ty[]>;
+template <class Ty, class DelX = unique_array_del<Ty*> >
+using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
 
 
 // unique array factory
