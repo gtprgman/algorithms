@@ -1,15 +1,38 @@
 #include "mixutil.h"
 
 
+
+template < class Ty >
+struct unique_del {
+
+};
+
+template < class Ty >
+struct unique_del<Ty*>
+{
+	bool operator()(Ty* _pty) {
+		static_assert(sizeof(_pty) > 0, "invalid pointer argument '_pty' ");
+		delete[] _pty;
+		return(nullptr == _pty);
+	}
+};
+
+
+
+
+
+
+
+
 int main()
 {
 	// TESTING UNIQUE_ARRAY<int> ...
 
 	std::cout << "Testing UNIQUE_ARRAY<int> ... " << std::endl;
 
-	unique_array_ptr<int> uArrayFactory;
+	unique_array_ptr<int, unique_del<int*>> uArrayFactory;
 
-	UNIQUE_ARRAY<int>&& upArray = uArrayFactory.create(3);
+	UNIQUE_ARRAY<int, unique_del<int*>>&& upArray = uArrayFactory.create(3);
 
 	upArray = uArrayFactory.initialize({ 100,200,300 });
 
