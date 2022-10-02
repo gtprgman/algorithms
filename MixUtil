@@ -45,13 +45,13 @@ using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
 
 
 // unique array factory
-template < class Ty, std::size_t SZ = 1 >
+template < class Ty, class DelX = unique_array_del<Ty*>, std::size_t SZ = 1 >
 class unique_array_ptr
 {
 public:
 	constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
 
-	constexpr UNIQUE_ARRAY<Ty>&& create(std::size_t const SIZE = SZ) {
+	constexpr UNIQUE_ARRAY<Ty, DelX>&& create(std::size_t const SIZE = SZ) {
 		_msize = SIZE;
 		Ty* _ptr = new Ty[SIZE];
 		_mpUnique.reset(_ptr);
@@ -59,10 +59,10 @@ public:
 		return std::move(_mpUnique);
 	}
 
-	constexpr UNIQUE_ARRAY<Ty>&& initialize(std::initializer_list<Ty> const& ls)
+	constexpr UNIQUE_ARRAY<Ty,DelX>&& initialize(std::initializer_list<Ty> const& ls)
 	{
 		std::size_t k = 0;
-		UNIQUE_ARRAY<Ty>&& unp = create(_msize);
+		UNIQUE_ARRAY<Ty, DelX>&& unp = create(_msize);
 
 		for (auto const& v : ls) {
 			unp[k++] = v;
@@ -74,7 +74,7 @@ public:
 
 private:
 	std::size_t _msize;
-	UNIQUE_ARRAY<Ty> _mpUnique;
+	UNIQUE_ARRAY<Ty, DelX> _mpUnique;
 };
 
 
