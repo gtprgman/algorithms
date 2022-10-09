@@ -16,141 +16,157 @@
    in the any times of the future. 
  */
 
-template < class Ty >
-struct unique_array_del
-{
+namespace mix {
 
-};
+	namespace ptr_type {
+		// Deleter Object for UNIQUE_ARRAY<Ty>
+		template < class Ty >
+		struct unique_array_del
+		{
 
-
-template < class Ty > 
-struct unique_array_del<Ty*>  // Ty = Ty*
-{
-	bool operator()(Ty* _uty) {
-		static_assert(sizeof(_uty) > 0, "unknown parameter type 'uty' ");
-		delete[] _uty;
-		return(nullptr == _uty);
-	}
-};
+		};
 
 
+		template < class Ty >
+		struct unique_array_del<Ty*>  // Ty = Ty*
+		{
+			bool operator()(Ty* _uty) {
+				static_assert(sizeof(_uty) > 0, "unknown parameter type for '_uty' ");
+				delete[] _uty;
+				return(nullptr == _uty);
+			}
+		};
 
 
-template <class Ty>
-using SHARED_ARRAY = std::shared_ptr<Ty[]>;
+		//Deleter Object for SHARED_ARRAY<Ty>
 
-template <class Ty, class DelX = unique_array_del<Ty*> >
-using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
+		template < class Ty >
+		struct shared_array_del {};
+
+		template < class Ty >
+		struct shared_array_del<Ty*> {
+			bool operator()(Ty* _uty) {
+				static_assert(sizeof(_uty) > 0, "invalid parameter type for '_uty' ");
+				delete[] _uty;
+				return(nullptr == _uty);
+			}
+		};
+
+		template < class Ty >
+		using fnShareDel = bool(*)(Ty*);
 
 
-// unique array factory
-template < class Ty, class DelX = unique_array_del<Ty*>, std::size_t SZ = 1 >
-class unique_array_ptr
-{
-public:
-	constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
+		template <class Ty >
+		using SHARED_ARRAY = std::shared_ptr<Ty[]>;
 
-	constexpr UNIQUE_ARRAY<Ty, DelX>&& create(std::size_t const SIZE = SZ) {
-		_msize = SIZE;
-		Ty* _ptr = new Ty[SIZE];
-		_mpUnique.reset(_ptr);
-		_ptr = nullptr;
-		return std::move(_mpUnique);
-	}
+		template <class Ty, class DelX = unique_array_del<Ty*> >
+		using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
+	} // end of ptr_type namespace
 
-	constexpr UNIQUE_ARRAY<Ty, DelX>&& initialize(std::initializer_list<Ty> const& ls)
+	namespace smart_ptr {
+
+		// unique array factory
+		template < class Ty, class DelX = ptr_type::unique_array_del<Ty*>, std::size_t SZ = 1 >
+		class unique_array_ptr
+		{
+		public:
+			constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
+
+			constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& create(std::size_t const SIZE = SZ) {
+				_msize = SIZE;
+				Ty* _ptr = new Ty[SIZE];
+				_mpUnique.reset(_ptr);
+				_ptr = nullptr;
+				return std::move(_mpUnique);
+			}
+
+			constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& initialize(std::initializer_list<Ty> const& ls)
+			{
+				std::size_t k = 0;
+				ptr_type::UNIQUE_ARRAY<Ty, DelX>&& unp = create(_msize);
+
+				for (auto const& v : ls) {
+					unp[k++] = v;
+					if (k > _msize) break;
+				}
+
+				return std::move(unp);
+			}
+
+		private:
+			std::size_t _msize;
+			ptr_type::UNIQUE_ARRAY<Ty, DelX> _mpUnique;
+		};
+
+
+		// shared array factory
+		template <class Ty, class DelY = ptr_type::shared_array_del<Ty*> >
+		struct Alloc_Share
+		{
+			constexpr Alloc_Share() {};
+			constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ](), DelY() ) {}
+
+			constexpr Alloc_Share<Ty>&& shared_create(std::size_t const SZ) {
+				return std::forward<Alloc_Share<Ty>&&>(Alloc_Share<Ty>(SZ));
+			}
+
+			template < std::size_t SZ >
+			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
+			{
+				va_list vl;
+				va_start(vl, init);
+
+				for (std::size_t i = init; i < SZ; i++)
+					shr[i] = va_arg(vl, Ty);
+
+				va_end(vl);
+
+				return shr;
+			}
+
+			// overloaded ' Alloc_Share<Ty>::initialize() ' by std::initializer_list<Ty> parameter type.
+			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
+			{
+				std::size_t i = 0;
+
+				for (auto const& v : lst)
+					shr[i++] = v;
+
+				return shr;
+			};
+
+			ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
+
+			ptr_type::SHARED_ARRAY<Ty>& operator()(std::size_t const) {
+				return get_shared();
+			}
+
+		private:
+			ptr_type::SHARED_ARRAY<Ty> shr;
+		};
+
+		
+
+	} // end of smart_ptr namespace
+
+
+	template <class PTR, class fnIter>
+	void FOR_EACH(PTR begin, PTR end, fnIter const& fnt)
 	{
-		std::size_t k = 0;
-		UNIQUE_ARRAY<Ty, DelX>&& unp = create(_msize);
-
-		for (auto const& v : ls) {
-			unp[k++] = v;
-			if (k > _msize) break;
-		}
-
-		return std::move(unp);
+		for (; begin != end; begin++)
+			fnt(*begin);
 	}
 
-private:
-	std::size_t _msize;
-	UNIQUE_ARRAY<Ty, DelX> _mpUnique;
+
+
+
+	template <class PTR>
+	constexpr void smart_print(PTR const& begin, PTR const& end)
+	{
+		FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
+			std::cout << (_dataP) << ", ";
+			}
+		);
+	}
+
 };
-
-
-
-
-template <class PTR, class fnIter>
-void FOR_EACH(PTR begin, PTR end, fnIter const& fnt)
-{
-	for (; begin != end; begin++)
-		fnt(*begin);
-}
-
-
-
-
-template <class Ty>
-struct Alloc_Share
-{
-	constexpr Alloc_Share() {};
-	constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ]()) {}
-	SHARED_ARRAY<Ty>& get_shared() { return shr; }
-
-	SHARED_ARRAY<Ty>& operator()(std::size_t const) {
-		return get_shared();
-	}
-
-private:
-	SHARED_ARRAY<Ty> shr;
-};
-
-
-
-
-template <class Ty>
-constexpr Alloc_Share<Ty>&& SHARED_CREATE(std::size_t const SZ) {
-	return std::move(Alloc_Share<Ty>(SZ));
-}
-
-
-
-template <typename Ty, std::size_t SZ = 1>
-constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::size_t const init, ...)
-{
-	va_list vl;
-	va_start(vl, init);
-
-	for (std::size_t i = init; i < SZ; i++)
-		shrP[i] = va_arg(vl, Ty);
-
-	va_end(vl);
-}
-
-
-
-// overloaded SHARED_INIT with ' const std::initializer_list<Ty>&'  parameter
-template <typename Ty>
-constexpr void SHARED_INIT(SHARED_ARRAY<Ty>& shrP, std::initializer_list<Ty> const& lst)
-{
-	std::size_t i = 0; 
-
-	for (auto const& v : lst)
-		shrP[i++] = v;
-
-}
-
-
-template <class PTR>
-constexpr void smart_print(PTR const& begin, PTR const& end)
-{
-	FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
-		std::cout << (_dataP) << ", ";
-	}
-	);
-}
-
-
-	
-
-
-
