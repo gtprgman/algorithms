@@ -3,7 +3,7 @@
 	#include <iostream>
 	#include <memory>
 	#include <cstdarg>
-	#include <cstdlib>
+	
 	#include <initializer_list>
 	#include <forward_list>
 #endif
@@ -12,7 +12,7 @@
 
 /* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
 the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and 
-std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue which features are waited to 
+std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waited to 
 be implemented in the any time of the future. 
 */
 
@@ -112,7 +112,7 @@ namespace mix {
 			}
 
 			template < std::size_t SZ >
-			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
+			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
 			{
 				va_list vl;
 				va_start(vl, init);
@@ -126,7 +126,7 @@ namespace mix {
 			}
 
 			// overloaded ' Alloc_Share<Ty>::initialize() ' by std::initializer_list<Ty> parameter type.
-			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
+			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
 			{
 				std::size_t i = 0;
 
@@ -136,9 +136,9 @@ namespace mix {
 				return shr;
 			};
 
-			ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
+			const ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
 
-			ptr_type::SHARED_ARRAY<Ty>& operator()(std::size_t const) {
+			const ptr_type::SHARED_ARRAY<Ty>& operator()() {
 				return get_shared();
 			}
 
