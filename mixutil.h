@@ -111,7 +111,7 @@ namespace mix {
 			}
 
 			template < std::size_t SZ >
-			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
+			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
 			{
 				va_list vl;
 				va_start(vl, init);
@@ -125,7 +125,7 @@ namespace mix {
 			}
 
 			// overloaded ' Alloc_Share<Ty>::initialize() ' by std::initializer_list<Ty> parameter type.
-			constexpr ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
+			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
 			{
 				std::size_t i = 0;
 
@@ -135,9 +135,9 @@ namespace mix {
 				return shr;
 			};
 
-			ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
+			const ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
 
-			ptr_type::SHARED_ARRAY<Ty>& operator()(std::size_t const) {
+			const ptr_type::SHARED_ARRAY<Ty>& operator()() {
 				return get_shared();
 			}
 
