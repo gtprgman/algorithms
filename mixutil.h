@@ -1,12 +1,22 @@
 #ifndef REQUIRE_H
 #define REQUIRE_H
 	#include <iostream>
+	#include <string>
 	#include <memory>
 	#include <cstdarg>
 
 	#include <initializer_list>
 	#include <forward_list>
 #endif
+
+
+#ifndef MACROS_X
+#define MACORS_X
+
+
+	#define up_create(_Ty) ( std::make_unique<_Ty>() ) 
+#endif
+
 
 /* Common Creative License's Properties */
 
@@ -54,6 +64,14 @@ namespace mix {
 
 		template < class Ty >
 		using fnShareDel = bool(*)(Ty*);
+		
+		// a singe unique pointer type
+		template < class Ty >
+		using uniqueP = std::unique_ptr<Ty>;
+
+		// a single shared pointer type
+		template < class Ty >
+		using shareP = std::shared_ptr<Ty>;
 
 
 		template <class Ty >
@@ -168,5 +186,43 @@ namespace mix {
 			}
 		);
 	}
+	
+	
+	
+	namespace data {
+		class Bucket {
+		public:
+			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
+			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
+
+			};
+
+			// overloaded copy-ctor
+			Bucket(Bucket const& rBuck) {
+				if (this == &rBuck) return;
+				*this = rBuck;
+			}
+
+			// assignment operator
+			const Bucket& operator= (const Bucket& rBuck) {
+				if (this == &rBuck) return *this;
+
+				this->_data = rBuck._data;
+				this->_msize = sizeof(Bucket);
+
+				return *this;
+			}
+
+			void set(std::string const& uStr) { _data = uStr; }
+			std::size_t const& size(void) const { return _msize; }
+			std::string const& data(void) const { return _data; }
+
+		private:
+			std::size_t _msize;
+			std::string _data;
+		};
+
+
+	}; // end of data namespace
 
 };
