@@ -9,12 +9,6 @@
 	#include <forward_list>
 #endif
 
-#ifndef MACROS_X
-#define MACORS_X
-
-
-	#define up_create(_Ty) ( std::make_unique<_Ty>() ) 
-#endif
 
 
 
@@ -82,7 +76,16 @@ namespace mix {
 	} // end of ptr_type namespace
 
 	namespace smart_ptr {
+		
+		// a single unique factory
 
+		template < class Ty, class delTy = std::default_delete<Ty> >
+		constexpr ptr_type::uniqueP<Ty, delTy> up_create(void) {
+			std::unique_ptr<Ty, delTy> _up;
+			return (_up);
+		}
+
+		
 		// unique array factory
 		template < class Ty, class DelX = ptr_type::unique_array_del<Ty*>, std::size_t SZ = 1 >
 		class unique_array_ptr
@@ -206,7 +209,7 @@ namespace mix {
 				if (this == &rBuck) return *this;
 
 				this->_data = rBuck._data;
-				this->_msize = sizeof(Bucket);
+				this->_msize = sizeof(rBuck);
 
 				return *this;
 			}
