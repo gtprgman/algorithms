@@ -85,6 +85,18 @@ namespace mix {
 			return (_up);
 		}
 
+		// a single shared factory with default deleter
+		template < class Ty >
+		constexpr const ptr_type::shareP<Ty> sp_create(void) {
+			return std::make_shared<Ty>();
+		}
+
+		// overloaded of a single shared factory with user custom deleter
+		template < class Ty, class TyDel = std::default_delete<Ty> >
+		constexpr const ptr_type::shareP<Ty> sp_create(int) {
+			return std::shared_ptr<Ty>(new Ty(), TyDel());
+		}
+		
 		
 		// unique array factory
 		template < class Ty, class DelX = ptr_type::unique_array_del<Ty*>, std::size_t SZ = 1 >
