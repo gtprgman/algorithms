@@ -1,4 +1,4 @@
-#pragma once
+
 #include "mixutil.h"
 
 
@@ -9,9 +9,9 @@ using namespace mix::data;
 
 
 
-// custom deleter for single unique pointer
+// custom deleter for single shared pointer
 template < class TP >
-struct del_unique
+struct del_shared
 {
 	bool operator()(TP* _tp) {
 		std::cout << "user custom deleter called .. " << std::endl;
@@ -25,46 +25,34 @@ struct del_unique
 
 int main(void)
 {
-	
-	Bucket b1("b1"), b2("b2");
-	Bucket cpyB2 = b2;
-	
-	// with custom deleter
-	uniqueP<Bucket, del_unique<Bucket>>&& upb = up_create<Bucket,del_unique<Bucket>>();
+	// uses default deleter
+	shareP<Bucket> spb = sp_create<Bucket>();
 
-	upb.reset(new Bucket()); // allocate space for the Bucket
+	std::cout << "a new share bucket just created on the heap \n";
+	std::cout << "data for the new shared bucket: " << spb->data() << "\n\n";
 
-	std::cout << "a new bucket just created on the heap, \n";
-	std::cout << "and be uniquely owned by 'upb'. \n";
-	std::cout << "data for 'upb': " << upb->data() << std::endl;
+	*spb = Bucket("b1");
 
-	std::cout << "\n\n";
+	std::cout << "a copy of Bucket object 'b1' is stored \n";
+	std::cout << "on the created shared space owned by 'spb '.\n";
+	std::cout << "data for the shared bucket: " << spb->data() << "\n\n";
 
-	std::cout << "Exclusively owns the bucket object 'b1' " << std::endl;
-	std::cout << " ' *upb = b1; ' \n";
-	*upb = b1;
+	// added custom deleter
+	shareP<Bucket> spb2 = sp_create<Bucket, del_shared<Bucket> >(2);
 
-	std::cout << "data for the acquired Bucket: " << upb->data() << std::endl;
+	std::cout << "a new share bucket is created on the heap \n";
+	std::cout << "data for the new shared bucket: " << spb2->data() << "\n\n";
 
-	std::cout << "\n\n";
+	*spb2 = Bucket("b2");
 
-	// uses the default deleter
-	uniqueP<Bucket>&& ub2 = up_create<Bucket>();
+	std::cout << "a copy of a new created Bucket 'b2 ' \n";
+	std::cout << "just stored on the shared space owned by 'spb2' \n";
+	std::cout << "data for 'spb2' : " << spb2->data() << "\n\n";
 
-	ub2.reset(new Bucket());
-
-	std::cout << "a new Bucket just created on the heap, \n";
-	std::cout << "and be uniquely owned by 'ub2' . \n";
-	std::cout << "data for 'ub2': " << ub2->data() << std::endl;
-	
-	std::cout << "\n Exclusively owns the 'b2' object. \n";
-	std::cout << " ' *ub2 = b2; ' \n";
-	*ub2 = b2;
-
-	std::cout << "data for 'ub2:' " << ub2->data() << std::endl;
 
 
 	std::cout << "\n\n";
+	
 	system("PAUSE");
 	return 0;
 	
