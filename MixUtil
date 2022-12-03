@@ -1,13 +1,16 @@
+#pragma once
+
 #ifndef REQUIRE_H
 #define REQUIRE_H
-	#include <iostream>
-	#include <string>
-	#include <memory>
-	#include <cstdarg>
-	
-	#include <initializer_list>
-	#include <forward_list>
+		#include <iostream>
+		#include <string>
+		#include <memory>
+		#include <cstdarg>
+		
+		#include <initializer_list>
+		#include <forward_list>
 #endif
+
 
 
 
@@ -15,15 +18,120 @@
 /* Common Creative License's Properties */
 
 /* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
-the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and 
-std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waited to 
-be implemented in the any time of the future. 
+the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
+std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waited to
+be implemented in the any time of the future.
 */
-
-
 namespace mix {
 
+	
+	template < class Ty >
+	using iList = std::initializer_list<Ty>;
+
+
+
+	namespace data {
+
+		
+		class Bucket  {
+		public:
+			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
+
+			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
+
+			};
+
+			// overloaded copy-ctor
+			Bucket(Bucket const& rBuck) {
+				if (this == &rBuck) return;
+				*this = rBuck;
+			}
+
+			~Bucket() {}
+
+			// assignment operator
+			const Bucket& operator= (const Bucket& rBuck) {
+				if (this == &rBuck) return *this;
+
+				this->_data = rBuck._data;
+				this->_msize = sizeof(rBuck);
+
+				return *this;
+			}
+
+			void set(std::string const& uStr) { _data = uStr; }
+
+			std::size_t const& size(void) const { return _msize; }
+			std::string const& data(void) const { return _data; }
+
+
+		private:
+			std::size_t _msize;
+			std::string _data;
+		};
+
+
+	}; // end of data namespace
+
+	
+	
+	template < class Ty >
+	struct isPrimitive {
+	private:
+		typedef typename Ty type_;
+
+	public:
+		static const bool Result = (sizeof(type_) != sizeof(mix::data::Bucket));
+	};
+	
+
+	template < class P >
+	struct removePtr {};
+
+	template < class P >
+	struct removePtr<P*> {
+		typedef typename P resultType;
+	};
+
+
+
+	template < class P >
+	struct addPtr {};
+
+	template < class P >
+	struct addPtr<P&> {
+	private:
+		typedef typename P resultType;
+
+	public:
+		typedef typename resultType* ptrType;
+	};
+
+	
+	template < class R >
+	struct removeRef {};
+
+	template < class R >
+	struct removeRef<R&> {
+		typedef typename R type;
+	};
+	
+
+
+	template < class R >
+	struct addRef {};
+
+	template < class R >
+	struct addRef<R&&> {
+		typedef typename R& refType;
+	};
+
+
+	
+
 	namespace ptr_type {
+
+
 		// Deleter Object for UNIQUE_ARRAY<Ty>
 		template < class Ty >
 		struct unique_array_del
@@ -57,26 +165,31 @@ namespace mix {
 			}
 		};
 
-		template < class Ty >
-		using fnShareDel = bool(*)(Ty*);
+
 		
-		// a singe unique pointer type
-		template < class Ty >
-		using uniqueP = std::unique_ptr<Ty>;
+
+		// a single unique pointer type
+		template < class Ty, class Del1X = std::default_delete<Ty> >
+		using uniqueP = std::unique_ptr<Ty, Del1X>;
 
 		// a single shared pointer type
 		template < class Ty >
 		using shareP = std::shared_ptr<Ty>;
 
+		// a shared pointer to array
 		template <class Ty >
 		using SHARED_ARRAY = std::shared_ptr<Ty[]>;
 
+		// a unique pointer to array
 		template <class Ty, class DelX = unique_array_del<Ty*> >
 		using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
 	} // end of ptr_type namespace
 
+
+
+
 	namespace smart_ptr {
-		
+
 		// a single unique factory
 
 		template < class Ty, class delTy = std::default_delete<Ty> >
@@ -96,9 +209,7 @@ namespace mix {
 		constexpr const ptr_type::shareP<Ty> sp_create(int) {
 			return std::shared_ptr<Ty>(new Ty(), TyDel());
 		}
-		
-		
-		
+
 		// unique array factory
 		template < class Ty, class DelX = ptr_type::unique_array_del<Ty*>, std::size_t SZ = 1 >
 		class unique_array_ptr
@@ -137,12 +248,14 @@ namespace mix {
 		template <class Ty, class DelY = ptr_type::shared_array_del<Ty*> >
 		struct Alloc_Share
 		{
-			constexpr Alloc_Share() {};
-			constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ](), DelY() ) {}
+			constexpr Alloc_Share() : shr(nullptr) {};
+
+			constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ](), DelY()) {}
 
 			constexpr Alloc_Share<Ty>&& shared_create(std::size_t const SZ) {
 				return std::forward<Alloc_Share<Ty>&&>(Alloc_Share<Ty>(SZ));
 			}
+
 
 			template < std::size_t SZ >
 			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
@@ -177,13 +290,15 @@ namespace mix {
 
 		private:
 			ptr_type::SHARED_ARRAY<Ty> shr;
+
 		};
 
-		
+
 
 	} // end of smart_ptr namespace
 
 
+	// an iterator for the printer function of any primitive types.
 	template <class PTR, class fnIter>
 	void FOR_EACH(PTR begin, PTR end, fnIter const& fnt)
 	{
@@ -193,8 +308,17 @@ namespace mix {
 
 
 
+	// an iterator for the Bucket's Printing Device
+	template < class P >
+	void FOR_EACH_PRINT(P begin, P end) {
+			for (; begin != end; begin++)
+				std::cout << begin->data() << ", ";
+		
+	};
 
-	template <class PTR>
+
+	// a printer function for any standard primitive types
+	template <class PTR >
 	constexpr void smart_print(PTR const& begin, PTR const& end)
 	{
 		FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
@@ -202,41 +326,21 @@ namespace mix {
 			}
 		);
 	}
+
+	 
+	// a printer device designed specifically for any Bucket objects
+		template < class P  >
+		struct iPrinter {};
+
+		template <>
+		struct iPrinter<mix::data::Bucket*> {
 	
-	namespace data {
-		class Bucket {
-		public:
-			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
-			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
-
-			};
-
-			// overloaded copy-ctor
-			Bucket(Bucket const& rBuck) {
-				if (this == &rBuck) return;
-				*this = rBuck;
+			static void _print_(mix::data::Bucket* const& begin, mix::data::Bucket* const& end) {
+				FOR_EACH_PRINT(begin, end);
 			}
-
-			// assignment operator
-			const Bucket& operator= (const Bucket& rBuck) {
-				if (this == &rBuck) return *this;
-
-				this->_data = rBuck._data;
-				this->_msize = sizeof(rBuck);
-
-				return *this;
-			}
-
-			void set(std::string const& uStr) { _data = uStr; }
-			std::size_t const& size(void) const { return _msize; }
-			std::string const& data(void) const { return _data; }
-
-		private:
-			std::size_t _msize;
-			std::string _data;
+			
 		};
+	
 
-
-	}; // end of data namespace
-
+	
 };
