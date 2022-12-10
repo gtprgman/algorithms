@@ -74,6 +74,20 @@ namespace mix {
 	}; // end of data namespace
 
 	
+	constexpr bool isRange(int const _C, std::initializer_list<int const> const& _vals) {
+		bool isElem = false;
+
+		for (auto& _c : _vals) {
+			if (_C == _c) {
+				isElem = true; break;
+			}
+
+		};
+		return isElem;
+	}
+
+	
+	
 	
 	template < class Ty >
 	struct isPrimitive {
@@ -297,49 +311,38 @@ namespace mix {
 
 	} // end of smart_ptr namespace
 
-
-	// an iterator for the printer function of any primitive types.
-	template <class PTR, class fnIter>
-	void FOR_EACH(PTR begin, PTR end, fnIter const& fnt)
-	{
-		for (; begin != end; begin++)
-			fnt(*begin);
-	}
-
-
-
-	// an iterator for the Bucket's Printing Device
+	// an iterator for the print function of any primitive types.
 	template < class P >
 	void FOR_EACH_PRINT(P begin, P end) {
-			for (; begin != end; begin++)
-				std::cout << begin->data() << ", ";
+	   for (; begin != end; begin++)
+		std::cout << *begin << ", ";
 		
 	};
+
+	// an iterator for print function of any Buckets' types.
+	template <>
+	void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket* begin, mix::data::Bucket* end) {
+		for (; begin != end; begin++)
+			std::cout << begin->data() << ", ";
+	}
+
 
 
 	// a printer function for any standard primitive types
 	template <class PTR >
 	constexpr void smart_print(PTR const& begin, PTR const& end)
 	{
-		FOR_EACH(begin, end, [](auto const& _dataP)->decltype(void()) {
-			std::cout << (_dataP) << ", ";
-			}
-		);
+		FOR_EACH_PRINT(begin, end);
 	}
 
 	 
-	// a printer device designed specifically for any Bucket objects
-		template < class P  >
-		struct iPrinter {};
+	// an overloaded printer function for any Buckets' types
+	template <mix::data::Bucket*>
+	constexpr void smart_print(mix::data::Bucket* const begin, mix::data::Bucket* const end)
+	{
+		FOR_EACH_PRINT(begin, end);
+	}
 
-		template <>
-		struct iPrinter<mix::data::Bucket*> {
-	
-			static void _print_(mix::data::Bucket* const& begin, mix::data::Bucket* const& end) {
-				FOR_EACH_PRINT(begin, end);
-			}
-			
-		};
 	
 
 	
