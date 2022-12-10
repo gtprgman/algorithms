@@ -6,37 +6,28 @@
 
 int main() {
 
-	
-	// codes demo for unique pointers.
-	unique_array_ptr<Bucket> ubFactory;
-
-	UNIQUE_ARRAY<Bucket> upb = ubFactory.create(2);
-
-	upb = ubFactory.initialize({ Bucket("u1"), Bucket("u2") });
-
-	iPrinter<Bucket*>::_print_(upb.get(), upb.get() + 2);
-
-	iList<Bucket> bList{ Bucket("b1"), Bucket("b2")};
-
-	upb = ubFactory.initialize(bList);
-
-	iPrinter<Bucket*>::_print_(upb.get(), upb.get() + 2);
+	unique_array_ptr<int> uIntFact;
+	Alloc_Share<Bucket> allocBuckets(3);
 
 
-	// codes demo for shared pointers.
+	UNIQUE_ARRAY<int> uaInt = uIntFact.create(3);
+	uaInt = uIntFact.initialize({ 275, 345, 780 });
+
+	SHARED_ARRAY<Bucket> saBucket = allocBuckets.get_shared();
+	saBucket = allocBuckets.initialize({ Bucket("b0"), Bucket("b1"), Bucket("b2") });
+
 
 	std::cout << "\n\n";
 
-	Alloc_Share<Bucket> shrFactory(2);
+	smart_print(uaInt.get(), uaInt.get() + 3);
 
-	SHARED_ARRAY<Bucket> spb = shrFactory.get_shared();
+	std::cout << "\n\n";
 
-	iPrinter<Bucket*>::_print_(spb.get(), spb.get() + 2);
 
-	spb = shrFactory.initialize(bList);
+	smart_print(saBucket.get(), saBucket.get() + 3);
 
-	iPrinter<Bucket*>::_print_(spb.get(), spb.get() + 2);
-
+	std::cout << "\n\n";
+	
 
 
 	system("PAUSE");
