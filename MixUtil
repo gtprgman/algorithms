@@ -19,9 +19,12 @@
 
 /* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
 the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
-std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waited to
+std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waiting to
 be implemented in the any time of the future.
 */
+
+
+
 namespace mix {
 
 	
@@ -75,10 +78,10 @@ namespace mix {
 	
 	
 
-	constexpr bool isRange(int const _C, std::initializer_list<int const> const& _vals) {
+	constexpr const bool isRange(int const _C, std::initializer_list<int const> const& _vals) {
 	  bool isElem = false;
 
-		for (auto& _c : _vals) {
+		for (auto const& _c : _vals) {
 			if (_C == _c) {
 				isElem = true; break;
 			}
@@ -95,52 +98,65 @@ namespace mix {
 		typedef typename Ty type_;
 
 	public:
-		static const bool Result = (sizeof(type_) != sizeof(mix::data::Bucket));
+		static const bool Result = std::is_fundamental<type_>::value;
 	};
 	
 
+	
+	template < class LV >
+	struct add_lvalue {
+		using type = typename LV;
+	};
+
+
+
+
+	template < class R >
+	struct addRef {
+		using refType = typename std::add_lvalue_reference<R>::type;
+	};
+
+
+
+	template < class R >
+	struct removeRef {
+		using type = typename add_lvalue<R>::type;
+	};
+
+
+
 	template < class P >
-	struct removePtr {};
+	struct addPtr {
+		using ptrType = typename std::add_pointer<P>::type;
+	};
+
+	
+	template < class P  >
+	struct removePtr;
+
 
 	template < class P >
 	struct removePtr<P*> {
-		typedef typename P resultType;
+		using type = typename std::remove_pointer<P*>::type;
 	};
 
 
 
-	template < class P >
-	struct addPtr {};
-
-	template < class P >
-	struct addPtr<P&> {
-	private:
-		typedef typename P resultType;
-
-	public:
-		typedef typename resultType* ptrType;
+	template < class RR >
+	struct add_rvalue {
+		using type = typename std::add_rvalue_reference<RR>::type;
 	};
 
-	
-	template < class R >
-	struct removeRef {};
 
-	template < class R >
-	struct removeRef<R&> {
-		typedef typename R type;
+
+	template < class RR >
+	struct remove_rvalue {
+		using type = typename std::remove_reference<RR>::type;
 	};
 	
-
-
-	template < class R >
-	struct addRef {};
-
-	template < class R >
-	struct addRef<R&&> {
-		typedef typename R& refType;
-	};
-
-
+	
+	
+	
 	
 
 	namespace ptr_type {
