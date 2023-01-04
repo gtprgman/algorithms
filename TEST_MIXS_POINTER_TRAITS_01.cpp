@@ -4,6 +4,34 @@
 
 
 
+struct Car {
+	int initEngine() {
+		std::cout << "Engine started.. \n";
+		return -1;
+	}
+
+	int moveForward(...) {
+		std::cout << "propelling forward .. \n";
+		return -1;
+	}
+} myCar;
+
+
+
+void sayHello() { std::cout << "Hello World..\n"; }
+
+
+void sayNumbers(...) { std::cout << "One, Two, Three, Four and Five \n "; }
+
+using funcPtr = void(*)();
+
+using funcPtrN = void(*)(...);
+
+
+
+
+
+
 int main() {
 	int n = 0;
 	Bucket b = std::string("b0");
@@ -16,13 +44,7 @@ int main() {
 	int* pN = arr;
 	int** pNN = &pN;
 
-	struct Car {
-		int initEngine() {
-			std::cout << "Engine started.. \n";
-			return -1;
-		}
-	};
-	
+
 	std::cout << "isPointer('int arr[3]' )		: " << ptrTraits<_TYPE(arr)>::isPointer << "\n";
 	std::cout << "isPointer('int (*pArr)[3]' )	: " << ptrTraits<_TYPE(pArr)>::isPointer << "\n";
 
@@ -42,17 +64,46 @@ int main() {
 	std::cout << "arr array size : " << ptrTraits<_TYPE(arr)>::size << "\n";
 
 	
-	Car myCar;
 
 	int (Car::* pToMbr)();
 	pToMbr = &Car::initEngine;
 
+	int (Car::* pToMbr01)(...);
+	pToMbr01 = &Car::moveForward;
+
+	
 
 	std::cout << "\n Is Pointer to Member ? 'Car::*pToMbr ' : " << 
 		ptrTraits<_TYPE(pToMbr)>::isPointerToMember << "\n";
 
 	ptrTraits<_TYPE(pToMbr)>::type mc = pToMbr;
 
+	ptrTraits<_TYPE(nullptr)>::type pNull = nullptr;
+
+
+	(myCar.*pToMbr)();
+
+	(myCar.*pToMbr01)(25, 50, 32, 15, 2);
+
+
+
+	funcPtr fp = sayHello;
+
+
+	std::cout << "IsFunctionPointer 'void(*)(); ' ?"
+		<< ptrTraits<_TYPE(fp)>::isFunctionPointer << "\n\n";
+
+	
+	
+	
+	funcPtrN fpn = sayNumbers;
+
+
 
 	system("PAUSE");
 }
+
+
+
+
+
