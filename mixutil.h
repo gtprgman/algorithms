@@ -110,8 +110,9 @@ namespace mix {
 	
 	
 	template < class ret, class entity >
-	struct ptrTraits<ret entity::* > {
-		using type = typename entity;
+	struct ptrTraits<ret (entity::*)() > {
+		using type = typename ret (entity::*)();
+		using rootType = typename entity;
 		enum {isPointerToMember = true};
 	};
 	
