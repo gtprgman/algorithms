@@ -14,6 +14,9 @@
 
 
 
+#define _TYPE(_ty) decltype(_ty)
+
+
 
 /* Common Creative License's Properties */
 
@@ -24,12 +27,97 @@ be implemented in the any time of the future.
 */
 namespace mix {
 
+	struct nullType {
+		nullType(std::nullptr_t) {}
+	};
+	
+	
 	
 	template < class Ty >
 	using iList = std::initializer_list<Ty>;
 
+	
+	
+	template < class P >
+	struct ptrTraits;
 
+	
+	
+	template <>
+	struct ptrTraits<std::nullptr_t> {
+		using type = nullType;
+	};
 
+	
+	
+	
+	template < class P >
+	struct ptrTraits<P*> {
+		using type = typename P*;
+		using rootType = typename P;
+		enum { isPointer = true, isConstant = false, isArray = false};
+	};
+
+	
+	
+	template < class P , std::size_t Nx >
+	struct ptrTraits<P[Nx]> {
+		using type = typename P[Nx];
+		using rootType = typename P;
+		enum { isPointer = true, isConstant = false, isArray = true,
+			   count = Nx, size = (std::size_t)(Nx * sizeof(P)) };
+	};
+	
+	
+	
+	
+	template < class P >
+	struct ptrTraits<P[]> {
+		using type = typename P[];
+		using rootType = typename P;
+		enum { isPointer = true, isConstant = false, isArray = true};
+	};
+	
+	
+	
+	
+	template < class P >
+	struct ptrTraits<const P*> {
+		using type = const typename P*;
+		using rootType = const typename P;
+		enum { isPointer = true, isConstant = true, isArray = false};
+	};
+	
+	
+	
+	
+	template < class P >
+	struct ptrTraits<P* const> {
+		using type = typename P* const;
+		using rootType = typename P;
+		enum { isPointer = true, isConstantPointer = true, isArray = false};
+	};
+	
+	
+	
+	template < class P >
+	struct ptrTraits<const P* const> {
+		using type = const typename P* const;
+		using rootType = const typename P;
+		enum {isPointer = true, isConstant = true, isConstantPointer = true, isArray = false};
+	};
+	
+	
+	
+	template < class ret, class entity >
+	struct ptrTraits<ret entity::* > {
+		using type = typename entity;
+		enum {isPointerToMember = true};
+	};
+	
+	
+	
+	
 	namespace data {
 
 		
@@ -161,18 +249,14 @@ namespace mix {
 	
 	
 	
-	
-	
+
 
 	namespace ptr_type {
 
 
 		// Deleter Object for UNIQUE_ARRAY<Ty>
 		template < class Ty >
-		struct unique_array_del
-		{
-
-		};
+		struct unique_array_del;
 
 
 		template < class Ty >
@@ -340,7 +424,7 @@ namespace mix {
 		
 	};
 
-	// an iterator for print function of any Buckets' types.
+	// an iterator for the print function of any Buckets' types.
 	template <>
 	void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket* begin, mix::data::Bucket* end) {
 		for (; begin != end; begin++)
