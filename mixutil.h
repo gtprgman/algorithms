@@ -13,8 +13,10 @@
 
 
 
-
 #define _TYPE(_ty) decltype(_ty)
+
+
+
 
 
 
@@ -25,11 +27,20 @@ the complexities of any programming keywords or overwhelming statement syntaxis 
 std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waiting to
 be implemented in the any time of the future.
 */
+
+
+
 namespace mix {
 
+	
+	
+	
 	struct nullType {
-		nullType(std::nullptr_t) {}
+		nullType(std::nullptr_t):_mNullValue(0) {   }
+	private:
+		std::nullptr_t _mNullValue;
 	};
+	
 	
 	
 	
