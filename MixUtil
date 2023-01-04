@@ -127,7 +127,7 @@ namespace mix {
 	struct ptrTraits< ret(*)(void) > {
 		using type = typename ret(*)(void);
 		using resultType = typename ret;
-		enum { isFunctionPointer = true; }
+		enum { isFunctionPointer = true; };
 	};
 	
 	
