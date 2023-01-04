@@ -112,9 +112,21 @@ namespace mix {
 	template < class ret, class entity >
 	struct ptrTraits<ret (entity::*)() > {
 		using type = typename ret (entity::*)();
+		using resultType = typename ret;
 		using rootType = typename entity;
 		enum {isPointerToMember = true};
 	};
+	
+	
+	
+	
+	template < class ret >
+	struct ptrTraits<ret(*)(void)> {
+		using type = typename ret(*)(void);
+		using resultType = typename ret;
+		enum {isFunctionPointer = true};
+	};
+	
 	
 	
 	
