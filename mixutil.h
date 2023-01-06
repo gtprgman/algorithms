@@ -14,6 +14,13 @@
 
 
 #define _TYPE(_ty) decltype(_ty)
+#define _MOVE(_ty) std::move(_ty)
+#define _BOOLC(_ty) std::bool_constant<_ty>::value
+
+template <class Ty>
+constexpr Ty&& _FORWRD(Ty const _unrefType) {
+	return std::forward<Ty&&>(_unrefType);
+}
 
 
 
@@ -61,24 +68,28 @@ namespace mix {
 
 	
 	
-	
 	template < class P >
 	struct ptrTraits<P*> {
 		using type = typename P*;
 		using rootType = typename P;
-		enum { isPointer = true, isConstant = false, isArray = false};
+		enum {
+			isPointer = _BOOLC(std::is_pointer_v<type>), 
+			isConstant = _BOOLC(std::is_const_v<rootType>),
+			isArray = _BOOLC(std::is_array_v<type>)
+		};
 	};
 
 	
 	
-	template < class P , std::size_t Nx >
+	template < class P , unsigned int Nx >
 	struct ptrTraits<P[Nx]> {
 		using type = typename P[Nx];
 		using rootType = typename P;
-		enum { isPointer = true, isConstant = false, isArray = true,
-			   count = Nx, size = (std::size_t)(Nx * sizeof(P)) };
+		enum { isPointer = _BOOLC(std::is_pointer_v<type>), 
+		       isConstant = _BOOLC(std::is_const_v<rootType>), 			 
+		       isArray = _BOOLC(std::is_array_v<type> ), count = Nx, 
+		       size = (unsigned int)(Nx * sizeof(P)) };
 	};
-	
 	
 	
 	
@@ -86,27 +97,30 @@ namespace mix {
 	struct ptrTraits<P[]> {
 		using type = typename P[];
 		using rootType = typename P;
-		enum { isPointer = true, isConstant = false, isArray = true};
+		enum { isPointer = _BOOLC(std::is_pointer_v<type>), 
+		       isConstant = _BOOLC(std::is_const_v<rootType> ), 
+		       isArray = _BOOLC(std::is_array_v<type>) };
 	};
-	
-	
+
 	
 	
 	template < class P >
 	struct ptrTraits<const P*> {
 		using type = const typename P*;
 		using rootType = const typename P;
-		enum { isPointer = true, isConstant = true, isArray = false};
+		enum { isPointer = _BOOLC(std::is_pointer_v<type> ), 
+		       isConstant = _BOOLC(std::is_const_v<rootType> ), 
+		       isArray = _BOOLC(std::is_array_v<type> ) };
 	};
-	
-	
+
 	
 	
 	template < class P >
 	struct ptrTraits<P* const> {
 		using type = typename P* const;
 		using rootType = typename P;
-		enum { isPointer = true, isConstantPointer = true, isArray = false};
+		enum { isPointer = _BOOLC(std::is_pointer_v<type> ), 
+		       isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type> ) };
 	};
 	
 	
@@ -115,28 +129,43 @@ namespace mix {
 	struct ptrTraits<const P* const> {
 		using type = const typename P* const;
 		using rootType = const typename P;
-		enum {isPointer = true, isConstant = true, isConstantPointer = true, isArray = false};
+		enum {isPointer = _BOOLC(std::is_pointer_v<type> ), 
+		      isConstant = _BOOLC(std::is_const_v<rootType> ), 
+		      isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type> ) };
 	};
 	
 	
 	
+	
 	template < class ret, class entity >
-	struct ptrTraits<ret (entity::*)() > {
-		using type = typename ret (entity::*)();
+	struct ptrTraits<ret(entity::*)()> {
+		using type = typename ret(entity::*)();
 		using resultType = typename ret;
 		using rootType = typename entity;
-		enum {isPointerToMember = true};
+		enum {isPointerToMember = _BOOLC(std::is_member_pointer_v<type> ) };
+	};
+	
+	
+	
+	
+	template < class ret, class entity >
+	struct ptrTraits < ret(_cdecl entity::*)(...) > {
+		using type = typename ret(_cdecl entity::*)(...);
+		using resultType = typename ret;
+		using rootType = typename entity;
+		enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type> ) };
 	};
 	
 	
 	
 	
 	template < class ret >
-	struct ptrTraits<ret(*)(void)> {
-		using type = typename ret(*)(void);
+	struct ptrTraits<ret(_cdecl *)()> {
+		using type = typename ret(_cdecl *)();
 		using resultType = typename ret;
-		enum {isFunctionPointer = true};
+		enum { isFunctionPointer = _BOOLC(true) };
 	};
+	
 	
 	
 	
@@ -144,7 +173,6 @@ namespace mix {
 	
 	namespace data {
 
-		
 		class Bucket  {
 		public:
 			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
