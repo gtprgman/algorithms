@@ -44,7 +44,12 @@ int main() {
 	int* pN = arr;
 	int** pNN = &pN;
 
+	
+	funcPtr fp = sayHello;
 
+	funcPtrN fpn = sayNumbers;
+	
+	
 	std::cout << "isPointer('int arr[3]' )		: " << ptrTraits<_TYPE(arr)>::isPointer << "\n";
 	std::cout << "isPointer('int (*pArr)[3]' )	: " << ptrTraits<_TYPE(pArr)>::isPointer << "\n";
 
@@ -74,8 +79,18 @@ int main() {
 	
 
 	std::cout << "\n Is Pointer to Member ? 'Car::*pToMbr ' : " << 
-		ptrTraits<_TYPE(pToMbr)>::isPointerToMember << "\n";
+		ptrTraits<_TYPE(pToMbr)>::isPointerToMember << "\n\n";
+	
+	
+	std::cout << "\n Is Pointer to Member ? '(Car::*pToMbr01)(...)' : "
+		<< ptrTraits<_TYPE(pToMbr01)>::isPointerToMember << "\n\n;
+	
 
+	std::cout << "IsFunctionPointer 'void(*)(); ' ?"
+		<< ptrTraits<_TYPE(fp)>::isFunctionPointer << "\n\n";	
+	
+	
+	
 	ptrTraits<_TYPE(pToMbr)>::type mc = pToMbr;
 
 	ptrTraits<_TYPE(nullptr)>::type pNull = nullptr;
@@ -87,18 +102,7 @@ int main() {
 
 
 
-	funcPtr fp = sayHello;
-
-
-	std::cout << "IsFunctionPointer 'void(*)(); ' ?"
-		<< ptrTraits<_TYPE(fp)>::isFunctionPointer << "\n\n";
-
 	
-	
-	
-	funcPtrN fpn = sayNumbers;
-
-
 
 	system("PAUSE");
 }
