@@ -17,10 +17,13 @@
 #define _MOVE(_ty) std::move(_ty)
 #define _BOOLC(_ty) std::bool_constant<_ty>::value
 
+
+
+/*
 template <class Ty>
 constexpr Ty&& _FORWRD(Ty const _unrefType) {
 	return std::forward<Ty&&>(_unrefType);
-}
+} */
 
 
 
