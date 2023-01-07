@@ -19,12 +19,11 @@
 
 
 
-/*
-template <class Ty>
-constexpr Ty&& _FORWRD(Ty const _unrefType) {
-	return std::forward<Ty&&>(_unrefType);
-} */
 
+template < class Ty >
+constexpr Ty&& _FORWRD(typename std::remove_reference<Ty>::type _unrefType) {
+	return std::forward<Ty&&>(_unrefType);
+}
 
 
 
@@ -42,9 +41,6 @@ be implemented in the any time of the future.
 
 namespace mix {
 
-	
-	
-	
 	struct nullType {
 		nullType(std::nullptr_t):_mNullValue(0) {   }
 	private:
@@ -168,7 +164,6 @@ namespace mix {
 		using resultType = typename ret;
 		enum { isFunctionPointer = _BOOLC(true) };
 	};
-	
 	
 	
 	
@@ -304,8 +299,6 @@ namespace mix {
 	
 	
 	
-
-
 	namespace ptr_type {
 
 
@@ -507,3 +500,5 @@ namespace mix {
 
 	
 };
+
+
