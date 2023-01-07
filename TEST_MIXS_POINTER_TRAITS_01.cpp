@@ -50,6 +50,31 @@ int main() {
 	funcPtrN fpn = sayNumbers;
 	
 	
+	
+	// Codes block demonstrating '_MOVE( ) ' and  ' _FORWRD( ) '
+	{	
+		int&& rval = _MOVE(100);
+
+		Bucket b02 = _MOVE(Bucket("b02"));
+
+		Bucket&& mvb02 = _MOVE(b02);
+
+		Bucket&& mvb01 = _MOVE(Bucket("mvb01"));
+
+		Bucket&& bck = _FORWRD<Bucket&&>(Bucket("c1"));
+
+		Bucket& rBck = _FORWRD<Bucket&>(bck);
+
+		Bucket b00 = _FORWRD<Bucket&&>(Bucket("b000"));
+
+		Bucket b01 = _FORWRD<Bucket>(b00);
+
+		Bucket b03 = _FORWRD<Bucket&&>(b01);
+		std::cout << rval << "\n";
+	}
+	
+	
+	
 	std::cout << "isPointer('int arr[3]' )		: " << ptrTraits<_TYPE(arr)>::isPointer << "\n";
 	std::cout << "isPointer('int (*pArr)[3]' )	: " << ptrTraits<_TYPE(pArr)>::isPointer << "\n";
 
