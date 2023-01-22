@@ -1,5 +1,15 @@
 #pragma once
 
+/* Common Creative License's Properties */
+
+/* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
+the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
+std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waiting to
+be implemented in the any time of the future.
+*/
+
+
+
 #ifndef REQUIRE_H
 #define REQUIRE_H
 		#include <iostream>
@@ -18,6 +28,10 @@
 #define _BOOLC(_ty) std::bool_constant<_ty>::value
 
 
+template < class Ty >
+struct UnRef {
+	using type = typename std::remove_reference<Ty>::type;
+};
 
 
 template < class Ty >
@@ -28,14 +42,102 @@ constexpr Ty&& _FORWRD(typename std::remove_reference<Ty>::type _unrefType) {
 
 
 
+template < class Ty, Ty _val >
+struct _NUMC {
+	using numType = typename std::integral_constant<Ty, _val>;
+	using value_type = typename std::integral_constant<Ty, _val>::value_type;
 
-/* Common Creative License's Properties */
+	// type cast operator
+	constexpr operator value_type() const {
+		return _val;
+	}
+	// function object operator
+	_NODISCARD constexpr value_type operator()() const {
+		return _val;
+	}
+};
 
-/* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
-the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
-std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waiting to
-be implemented in the any time of the future.
-*/
+
+
+template <bool _t, class Ty1, class Ty2 >
+struct typeSelect;
+
+
+template <class Ty1, class Ty2>
+struct typeSelect<true, Ty1, Ty2> {
+	using type = typename Ty1;
+};
+
+template <class Ty1,class Ty2>
+struct typeSelect<false,Ty1, Ty2> {
+	using type = typename Ty2;
+};
+
+
+
+	template < class Ty >
+	struct isPrimitive {
+	private:
+		typedef typename Ty type_;
+
+	public:
+		static const bool Result = std::is_fundamental<type_>::value;
+	};
+	
+
+	
+	template < class LV >
+	struct add_lvalue {
+		using type = typename LV;
+	};
+
+
+
+	template < class R >
+	struct addRef {
+		using refType = typename std::add_lvalue_reference<R>::type;
+	};
+
+
+	
+	template < class R >
+	struct removeRef {
+		using type = typename add_lvalue<R>::type;
+	};
+
+
+	
+	template < class P >
+	struct addPtr {
+		using ptrType = typename std::add_pointer<P>::type;
+	};
+
+	
+	
+	template < class P  >
+	struct removePtr;
+
+
+	
+	template < class P >
+	struct removePtr<P*> {
+		using type = typename std::remove_pointer<P*>::type;
+	};
+
+
+
+	template < class RR >
+	struct add_rvalue {
+		using type = typename std::add_rvalue_reference<RR>::type;
+	};
+
+
+
+	template < class RR >
+	struct remove_rvalue {
+		using type = typename std::remove_reference<RR>::type;
+	};
+	
 
 
 
@@ -46,7 +148,6 @@ namespace mix {
 	private:
 		std::nullptr_t _mNullValue;
 	};
-	
 	
 	
 	
@@ -224,78 +325,6 @@ namespace mix {
 		return isElem;
 	}
 
-	
-	
-	
-	
-	template < class Ty >
-	struct isPrimitive {
-	private:
-		typedef typename Ty type_;
-
-	public:
-		static const bool Result = std::is_fundamental<type_>::value;
-	};
-	
-
-	
-	
-	template < class LV >
-	struct add_lvalue {
-		using type = typename LV;
-	};
-
-
-
-	template < class R >
-	struct addRef {
-		using refType = typename std::add_lvalue_reference<R>::type;
-	};
-
-
-	
-	template < class R >
-	struct removeRef {
-		using type = typename add_lvalue<R>::type;
-	};
-
-
-	
-	
-	template < class P >
-	struct addPtr {
-		using ptrType = typename std::add_pointer<P>::type;
-	};
-
-	
-	
-	template < class P  >
-	struct removePtr;
-
-
-	
-	template < class P >
-	struct removePtr<P*> {
-		using type = typename std::remove_pointer<P*>::type;
-	};
-
-
-
-	
-	
-	template < class RR >
-	struct add_rvalue {
-		using type = typename std::add_rvalue_reference<RR>::type;
-	};
-
-
-
-	
-	template < class RR >
-	struct remove_rvalue {
-		using type = typename std::remove_reference<RR>::type;
-	};
-	
 	
 	
 	
@@ -497,7 +526,6 @@ namespace mix {
 	}
 
 	
-
 	
 };
 
