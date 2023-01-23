@@ -1,5 +1,7 @@
 #pragma once
 
+/* Using GPL v 3.0 License */
+
 namespace CMERGES {
 	static class RANGE {
 	public:
