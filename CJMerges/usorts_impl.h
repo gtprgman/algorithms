@@ -23,7 +23,7 @@ constexpr RANGE::RANGE() {
 }
 
 
-constexpr RANGE::RANGE(double lv, double hv) {
+constexpr RANGE::RANGE(const double lv, const double hv) {
 	_lower = lv;
 	_upper = hv;
 	_mid = (int)((_lower + _upper) > 0) ? 0.5 * (_lower + _upper) : -1;
