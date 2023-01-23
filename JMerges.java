@@ -1,9 +1,8 @@
 /*
- * This is a Creative Common License that permits the using of codes by the 
- * global communities worldwide. If you've ever viewed or downloaded it via the 
- * internet then you were automatically granted the license with all of the Creative
- * Common License's Attributes and Properties.
- */
+    Using GPL v 3.0 License
+*/
+
+
 package jmerges;
 import java.util.*;
 import java.math.*;
