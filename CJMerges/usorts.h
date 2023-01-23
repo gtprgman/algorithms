@@ -6,7 +6,7 @@ namespace CMERGES {
 	static class RANGE {
 	public:
 		constexpr RANGE();
-		constexpr RANGE(double, double);
+		constexpr RANGE(const double, const double);
 
 		static int Mid();
 		static int low();
@@ -23,3 +23,5 @@ namespace CMERGES {
 double CMERGES::RANGE::_lower = -1.00;
 double CMERGES::RANGE::_mid = -1.00;
 double CMERGES::RANGE::_upper = -1.00;
+
+
