@@ -1,6 +1,6 @@
 #pragma once
 
-/* Common Creative License's Properties */
+/* Using GPL v 3.0 License */
 
 /* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
 the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
@@ -144,9 +144,27 @@ struct typeSelect<false,Ty1, Ty2> {
 namespace mix {
 
 	struct nullType {
-		nullType(std::nullptr_t):_mNullValue(0) {   }
+		using value_type = std::nullptr_t;
+
+		constexpr nullType() {};
+		
+		constexpr nullType(std::nullptr_t const) :_null_t_val(0U) {};
+
+
+		constexpr operator value_type() const { 
+			return _null_t_val;
+		}
+
+		constexpr operator nullType() const {
+			return _null_t_val;
+		}
+
+		constexpr value_type operator()() const {
+			return _null_t_val;
+		}
+
 	private:
-		std::nullptr_t _mNullValue;
+		value_type _null_t_val = 0U;
 	};
 	
 	
