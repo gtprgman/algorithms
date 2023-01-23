@@ -1,8 +1,4 @@
-/*
- * This is a Common Creative License that permits the using of codes by the global
- * communities in the world. That is, for any of you who had viewed or received by
- * downloading it from the internet were automatically granted the so called license
- * as mentioned before. /
+/* Using GPL v 3.0 License */
 
 import java.util.*;
         
@@ -15,6 +11,7 @@ import java.util.*;
    the search range within a specific interval [{lower},{upper}] when applied 
    a binary search function on a data set of a particular collection.
 */
+
 class RANGE {
     public RANGE() { }
     
