@@ -252,8 +252,8 @@ namespace mix {
 	
 	
 	template < class ret, class entity >
-	struct ptrTraits<ret(entity::*)()> {
-		using type = typename ret(entity::*)();
+	struct ptrTraits< ret(_cdecl entity::*)()> {
+		using type = ret(_cdecl entity::*)();
 		using resultType = typename ret;
 		using rootType = typename entity;
 		enum {isPointerToMember = _BOOLC(std::is_member_pointer_v<type> ) };
@@ -264,7 +264,16 @@ namespace mix {
 	
 	template < class ret, class entity >
 	struct ptrTraits < ret(_cdecl entity::*)(...) > {
-		using type = typename ret(_cdecl entity::*)(...);
+		using type = ret(_cdecl entity::*)(...);
+		using resultType = typename ret;
+		using rootType = typename entity;
+		enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type> ) };
+	};
+	
+	
+	template< class ret, class entity, class... argsT >
+	struct ptrTraits < ret (_cdecl entity::*)(argsT&&...) > {
+		using type = ret (_cdecl entity::* )(argsT&&...);
 		using resultType = typename ret;
 		using rootType = typename entity;
 		enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type> ) };
@@ -274,14 +283,30 @@ namespace mix {
 	
 	
 	template < class ret >
-	struct ptrTraits<ret(_cdecl *)()> {
-		using type = typename ret(_cdecl *)();
+	struct ptrTraits< ret(_cdecl *)() > {
+		using type = ret(_cdecl *)();
 		using resultType = typename ret;
 		enum { isFunctionPointer = _BOOLC(true) };
 	};
 	
 
+
+	template < class ret >
+	struct ptrTraits< ret(_cdecl*)(...) > {
+		using type = ret(_cdecl*)(...);
+		using resultType = typename ret;
+		enum { isFunctionPointer = _BOOLC(true) };
+	};
 	
+	
+	
+	template < class ret, class... ArgsT >
+	struct ptrTraits< ret(_cdecl*)(ArgsT&&...) > {
+		using type = ret(_cdecl*)(ArgsT&&...);
+		using resultType = typename ret;
+		enum { isFunctionPointer = _BOOLC(true) };
+	};
+
 
 
 	namespace data {
