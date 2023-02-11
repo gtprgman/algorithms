@@ -2,7 +2,7 @@
 
 /* Using GPL v 3.0 License */
 
-/* The header 'mixutil.h' is designed and prepared to be added any feature functionalities that could add help in reducing
+/* The header 'mixutil.h' is being designed and prepared to be added any feature functionalities that could add help in reducing
 the complexities of any programming keywords or overwhelming statement syntaxis such as the call to std::shared_ptr<T[]> and
 std::unique_ptr<T[]>, and many others more .. which features are in the list of pending queue that are waiting to
 be implemented in the any time of the future.
@@ -26,6 +26,83 @@ be implemented in the any time of the future.
 #define _TYPE(_ty) decltype(_ty)
 #define _MOVE(_ty) std::move(_ty)
 #define _BOOLC(_ty) std::bool_constant<_ty>::value
+
+
+template < class Ty >
+using iList = std::initializer_list<Ty>;
+
+
+
+template < class tElem >
+struct iList2 {
+	using value_type = tElem;
+	using reference_const = const tElem&;
+	using pointer_const = const tElem*;
+	using iterator = pointer_const;
+
+	constexpr iList2() noexcept :_mFirst(nullptr), _mLast(nullptr)
+	{};
+
+	constexpr iList2(pointer_const _begin, pointer_const _end) noexcept : _mFirst(_begin), _mLast(_end)
+	{};
+
+
+	// move ctor
+	constexpr iList2( iList2<tElem>&& rList2 ) {
+		if (this == &rList2) return;
+		*this = rList2;
+	}
+
+	// overloaded parameterized ctor, not a copy ctor
+	constexpr iList2( std::initializer_list<tElem>& rList ) noexcept {
+		*this = rList;
+
+	}
+
+	_NODISCARD constexpr iterator begin() const noexcept { return _mFirst;  }
+
+	_NODISCARD constexpr iterator end() const noexcept { return _mLast;  }
+
+	_NODISCARD constexpr std::size_t size() const noexcept {
+		return static_cast<std::size_t>(_mLast - _mFirst);
+	}
+
+
+	// overloaded assignment operator
+	constexpr const iList2<tElem>& operator=( std::initializer_list<tElem>& rList ) noexcept {
+		_mFirst = rList.begin();  
+		_mLast = rList.end();
+
+		return *this;
+	}
+
+
+	// move assignment
+	constexpr iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
+		if (this == &rList2) return *this;
+
+		_mFirst = nullptr; 
+		_mLast = nullptr;
+
+		*this = std::move(rList2);
+
+		return *this;
+	}
+
+	_NODISCARD constexpr const value_type operator[](const unsigned int _idx) noexcept {
+		return *(_mFirst + _idx);
+	}
+
+	// disable copy
+	iList2( iList2<tElem>& ) = delete;
+	constexpr iList2( const iList2<tElem>& ) = delete;
+
+private:
+	pointer_const _mFirst, _mLast;
+	
+};
+
+
 
 
 template < class Ty >
@@ -168,10 +245,6 @@ namespace mix {
 	};
 	
 	
-	
-	template < class Ty >
-	using iList = std::initializer_list<Ty>;
-
 	
 	
 	template < class P >
