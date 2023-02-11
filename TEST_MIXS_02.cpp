@@ -6,30 +6,34 @@
 
 int main() {
 
-	unique_array_ptr<int> uIntFact;
-	Alloc_Share<Bucket> allocBuckets(3);
+	std::initializer_list<int> il = { 250, 300, 350 };
+
+	iList2<int> l2st = il;
+
+	iList2<int>&& l3st = std::move(l2st);
 
 
-	UNIQUE_ARRAY<int> uaInt = uIntFact.create(3);
-	uaInt = uIntFact.initialize({ 275, 345, 780 });
+	for (auto const& t : l2st)
+		std::cout << t << " , ";
+	
+	std::cout << "\n";
+	std::cout << "verifying content in l2st.. \n ";
+	std::cout << l2st[0] << "," <<  l2st[1] << "," << l2st[2] << " \n";
 
-	SHARED_ARRAY<Bucket> saBucket = allocBuckets.get_shared();
-	saBucket = allocBuckets.initialize({ Bucket("b0"), Bucket("b1"), Bucket("b2") });
+	std::cout << "\n";
+	std::cout << "verifying content in l3st.. \n";
+	std::cout << l3st[0] << "," << l3st[1] << "," << l3st[2] << "\n";
+	
 
+	std::cout << "\n\n printing l3st values .. \n\n";
 
-	std::cout << "\n\n";
-
-	smart_print(uaInt.get(), uaInt.get() + 3);
-
-	std::cout << "\n\n";
-
-
-	smart_print(saBucket.get(), saBucket.get() + 3);
-
-	std::cout << "\n\n";
+	for (auto const& k : l3st)
+		std::cout << k << ", ";
 	
 
 
 	system("PAUSE");
 	return 0;
 }
+
+
