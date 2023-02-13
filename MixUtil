@@ -78,10 +78,14 @@ struct iList2 {
 	constexpr iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
 		if (this == &rList2) return *this;
 
-		_mFirst = nullptr; 
-		_mLast = nullptr;
+		_mFirst = rList2._mFirst;
+		_mLast = rList2._mLast;
 
-		*this = std::move(rList2);
+		delete[] rList2._mFirst;
+		delete[] rList2._mLast;
+
+		rList2._mFirst = nullptr;
+		rList2._mLast = nullptr;
 
 		return *this;
 	}
@@ -230,7 +234,7 @@ namespace mix {
 			return _null_t_val;
 		}
 
-		constexpr value_type operator()() const {
+		_NODISCARD constexpr value_type operator()() const {
 			return _null_t_val;
 		}
 
