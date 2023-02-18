@@ -33,7 +33,7 @@ using iList = std::initializer_list<Ty>;
 
 
 
-template < class tElem >
+template < class tElem , unsigned int Nx = 1 >
 struct iList2 {
 	using value_type = tElem;
 	using reference_const = const tElem&;
@@ -59,6 +59,19 @@ struct iList2 {
 
 	}
 
+	constexpr iList2(const std::array<tElem,Nx>& _arry) {
+		_mFirst = _arry.data();
+		_mLast = (_arry.data() + Nx);
+	};
+	
+	
+	constexpr iList2(tElem const (&_arr)[Nx]) {
+		_mFirst = _arr;
+		_mLast = (_arr + Nx);
+	}
+	
+	
+	
 	_NODISCARD constexpr iterator begin() const noexcept { return _mFirst;  }
 
 	_NODISCARD constexpr iterator end() const noexcept { return _mLast;  }
@@ -83,9 +96,6 @@ struct iList2 {
 
 		_mFirst = rList2._mFirst;
 		_mLast = rList2._mLast;
-
-		delete[] rList2._mFirst;
-		delete[] rList2._mLast;
 
 		rList2._mFirst = nullptr;
 		rList2._mLast = nullptr;
