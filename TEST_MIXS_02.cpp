@@ -6,31 +6,36 @@
 
 int main() {
 
-	std::initializer_list<int> il = { 250, 300, 350 };
-
-	iList2<int> l2st = il;
-
-	iList2<int>&& l3st = std::move(l2st);
-
-
-	for (auto const& t : l2st)
-		std::cout << t << " , ";
+	std::array<int, 3> arr = { 229, 365, 710 };
 	
-	std::cout << "\n";
-	std::cout << "verifying content in l2st.. \n ";
-	std::cout << l2st[0] << "," <<  l2st[1] << "," << l2st[2] << " \n";
-
-	std::cout << "\n";
-	std::cout << "verifying content in l3st.. \n";
-	std::cout << l3st[0] << "," << l3st[1] << "," << l3st[2] << "\n";
+	iList2<int, 3> ls = arr;
 	
+	std::cout << "\n\n";
 
-	std::cout << "\n\n printing l3st values .. \n\n";
-
-	for (auto const& k : l3st)
+	for (auto const& k : ls)
 		std::cout << k << ", ";
-	
 
+	iList2<int, 3>&& ls2 = _MOVE(ls);
+
+	std::cout << "\n\n";
+
+	for (auto const& j : ls2)
+		std::cout << j << ", ";
+
+	std::cout << "\n\n";
+
+	
+	int nums[] = { 519, 625, 901 };
+	ls2 = nums;
+
+
+	std::cout << "\n\n";
+	
+	for (auto const& t : ls2)
+		std::cout << t << " ,";
+
+
+	std::cout << "\n\n";
 
 	system("PAUSE");
 	return 0;
