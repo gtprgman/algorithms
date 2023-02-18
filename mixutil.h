@@ -91,7 +91,7 @@ struct iList2 {
 
 
 	// move assignment
-	constexpr iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
+	constexpr const iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
 		if (this == &rList2) return *this;
 
 		_mFirst = rList2._mFirst;
