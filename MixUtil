@@ -12,8 +12,7 @@ be implemented in the any time of the future.
 #ifndef REQUIRE_H
 #define REQUIRE_H
 		#include <iostream>
-		#include <string>
-		#include <memory>
+		#include <array>
 		#include <cstdarg>
 		
 		#include <initializer_list>
