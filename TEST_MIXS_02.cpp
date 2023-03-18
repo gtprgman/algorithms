@@ -6,38 +6,29 @@
 
 int main() {
 
-	std::array<int, 3> arr = { 229, 365, 710 };
+	int Value = 55;
 	
-	iList2<int, 3> ls = arr;
-	
-	std::cout << "\n\n";
+	_Instantiator<int,int> nInit;
 
-	for (auto const& k : ls)
-		std::cout << k << ", ";
+	Value = nInit.Construct(250);
 
-	iList2<int, 3>&& ls2 = _MOVE(ls);
-
-	std::cout << "\n\n";
-
-	for (auto const& j : ls2)
-		std::cout << j << ", ";
-
-	std::cout << "\n\n";
+	std::cout << Value << "\n\n";
 
 	
-	int nums[] = { 519, 625, 901 };
-	ls2 = nums;
+	uniqueP<int>&& uNum = _MAKE_U<int>(330);
+
+	uniqueP<double> uFloat = _MAKE_U<double>(3.25);
+
+	std::cout << *uNum << "\n\n";
+
+	std::cout << *uFloat << "\n\n";
+
+	uniqueP<Bucket> uBcket = _MAKE_U<Bucket>("Hello World..");
+
+	std::cout << uBcket->data() << "\n\n";
 
 
-	std::cout << "\n\n";
 	
-	for (auto const& t : ls2)
-		std::cout << t << " ,";
-
-
-	std::cout << "\n\n";
-
-	system("PAUSE");
 	return 0;
 }
 
