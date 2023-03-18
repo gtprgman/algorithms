@@ -25,6 +25,21 @@ be implemented in the any time of the future.
 #define _BOOLC(_ty) std::bool_constant<_ty>::value
 
 
+
+template < class Ty >
+constexpr Ty&& _FORWRD(typename std::remove_reference<Ty>::type _unrefType) {
+	return std::forward<Ty&&>(_unrefType);
+}
+
+
+template < class Ty, class... Types>
+struct _Instantiator {
+	Ty&& Construct(Types&&... aArgs) {
+		return _FORWRD<Ty&&>(Ty(_FORWRD<Types&&>(aArgs)...));
+	}
+};
+
+
 template < class Ty >
 using iList = std::initializer_list<Ty>;
 
@@ -230,21 +245,19 @@ namespace mix {
 	struct nullType {
 		using value_type = std::nullptr_t;
 
-		constexpr nullType() {};
+		constexpr nullType() { value_type(); };
 		
 		constexpr nullType(std::nullptr_t const) :_null_t_val(0U) {};
 
 
 		constexpr operator value_type() const { 
-			return _null_t_val;
+			return 0u;
 		}
 
-		constexpr operator nullType() const {
-			return _null_t_val;
-		}
+		
 
 		_NODISCARD constexpr value_type operator()() const {
-			return _null_t_val;
+			return 0u;
 		}
 
 	private:
@@ -506,6 +519,12 @@ namespace mix {
 		// a unique pointer to array
 		template <class Ty, class DelX = unique_array_del<Ty*> >
 		using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
+		
+		template < class _Ty, class... _Types >
+		constexpr mix::ptr_type::uniqueP<_Ty> _MAKE_U(_Types&&... aArgs) {
+			return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types&&>(aArgs)...));
+		}
+		
 	} // end of ptr_type namespace
 
 
