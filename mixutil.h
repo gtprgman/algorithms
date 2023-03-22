@@ -34,12 +34,33 @@ constexpr Ty&& _FORWRD(typename std::remove_reference<Ty>::type _unrefType) {
 }
 
 
-template < class Ty, class... Types>
+template < class _Ty >
+struct _Instantiator;
+
+
+template < class Ty >
 struct _Instantiator {
-	Ty&& Construct(Types&&... aArgs) {
-		return _FORWRD<Ty&&>(Ty(_FORWRD<Types&&>(aArgs)...));
+	
+	 _Instantiator() {};
+
+	template < class... Types >
+	static Ty&& _Construct(Types&&... aArgs) {
+		return std::forward<Ty&&>(
+			std::remove_reference<Ty>::type(std::forward<Types&&>(aArgs)...) );
+	}
+
+};
+
+
+template < class _Ty >
+struct _frWard {
+	template< class... _Types >
+	static _Ty&& _construct(_Types&&... aArgs) {
+		return std::forward<_Ty&&>(
+			std::remove_reference<_Ty>::type(std::forward<_Types&&>(aArgs)...));
 	}
 };
+
 
 
 
@@ -519,6 +540,11 @@ namespace mix {
 			return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types&&>(aArgs)...));
 		}
 		
+		
+		template < class _Ty, class... _Types >
+		constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
+			return std::shared_ptr<_Ty>(new _Ty(std::forward<_Types&&>(aArgs)...));
+		}
 		
 	} // end of ptr_type namespace
 
