@@ -6,26 +6,29 @@
 
 int main() {
 
-	int Value = 55;
+	shareP<int> sp = _MAKE_S<int>(100);
+
+	std::cout << *sp << "\n\n";
+
+	shareP<Bucket> bp = _MAKE_S<Bucket>();
+
+	std::cout << bp->data() << "\n\n";
+
+
+	shareP<Bucket> bpa = _MAKE_S<Bucket>("Hello World..");
+
+	std::cout << bpa->data() << "\n\n";
+
+	int n = _Instantiator<int>::_Construct(100);
 	
-	_Instantiator<int,int> nInit;
+	std::cout << n << "\n\n";
 
-	Value = nInit.Construct(250);
+	 
+	n = _FORWRD<int>(100);
 
-	std::cout << Value << "\n\n";
+	int kn = _frWard<int>::_construct(250);
 
-	
-	uniqueP<int>&& uNum = _MAKE_U<int>(330);
-
-	uniqueP<double> uFloat = _MAKE_U<double>(3.25);
-
-	std::cout << *uNum << "\n\n";
-
-	std::cout << *uFloat << "\n\n";
-
-	uniqueP<Bucket> uBcket = _MAKE_U<Bucket>("Hello World..");
-
-	std::cout << uBcket->data() << "\n\n";
+	std::cout << kn << "\n\n";
 
 
 	
