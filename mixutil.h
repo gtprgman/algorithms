@@ -23,15 +23,28 @@ be implemented in the any time of the future.
 
 
 #define _TYPE(_ty) decltype(_ty)
-#define _MOVE(_ty) std::move(_ty)
 #define _BOOLC(_ty) std::bool_constant<_ty>::value
 
 
 
 template < class Ty >
-constexpr Ty&& _FORWRD(typename std::remove_reference<Ty>::type _unrefType) {
-	return std::forward<Ty&&>(_unrefType);
+_NODISCARD constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>& _fwArgs) noexcept {
+	return static_cast<Ty&&>(_fwArgs);
 }
+
+
+template < class Ty >
+_NODISCARD constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>&& _fwArgs) noexcept {
+	static_assert(!std::is_lvalue_reference_v<Ty>, " can't forward object of a type specified by 'Ty' ");
+	return static_cast<Ty&&>(_fwArgs);
+}
+
+
+template < class Ty >
+_NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept {
+	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
+}
+
 
 
 template < class _Ty >
@@ -45,21 +58,12 @@ struct _Instantiator {
 
 	template < class... Types >
 	static Ty&& _Construct(Types&&... aArgs) {
-		return std::forward<Ty&&>(
-			std::remove_reference<Ty>::type(std::forward<Types&&>(aArgs)...) );
+		static_assert(std::is_constructible<Ty, Types...>(), "could not instantiate from a class specified by 'Ty' ");
+		return _FORWRD<Ty&&>(Ty(_FORWRD<Types&&>(aArgs)...));
 	}
 
 };
 
-
-template < class _Ty >
-struct _frWard {
-	template< class... _Types >
-	static _Ty&& _construct(_Types&&... aArgs) {
-		return std::forward<_Ty&&>(
-			std::remove_reference<_Ty>::type(std::forward<_Types&&>(aArgs)...));
-	}
-};
 
 
 
@@ -143,10 +147,11 @@ struct iList2 {
 		return *(_mFirst + _idx);
 	}
 
-	// disable copy
+	// disable copy & copy assignment
 	iList2( iList2<tElem>& ) = delete;
 	constexpr iList2( const iList2<tElem>& ) = delete;
-
+	const iList2<tElem>& operator= (iList2<tElem> const&) = delete;
+	
 private:
 	pointer_const _mFirst, _mLast;
 	
@@ -532,19 +537,28 @@ namespace mix {
 		using SHARED_ARRAY = std::shared_ptr<Ty[]>;
 
 		// a unique pointer to array
-		template <class Ty, class DelX = unique_array_del<Ty*> >
+		template <class Ty, class DelX = std::default_delete<Ty[]> >
 		using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
 		
+		template < class _Ty >
+		using S_ARRAY = std::shared_ptr<_Ty[]>;
+
+		template< class _Ty, class _Dx = std::default_delete<_Ty[]> >
+		using U_ARRAY = std::unique_ptr<_Ty[], std::default_delete<_Ty[]> >;
+		
+		// wrapper of std::make_unique<Ty>
 		template < class _Ty, class... _Types >
 		constexpr mix::ptr_type::uniqueP<_Ty> _MAKE_U(_Types&&... aArgs) {
-			return std::unique_ptr<_Ty>(new _Ty(std::forward<_Types&&>(aArgs)...));
+			return std::make_unique<_Ty>(aArgs...);
 		}
-		
-		
+
+		// wrapper of std::make_shared<Ty>
 		template < class _Ty, class... _Types >
 		constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
-			return std::shared_ptr<_Ty>(new _Ty(std::forward<_Types&&>(aArgs)...));
+			return std::make_shared<_Ty>(aArgs...);
 		}
+
+		
 		
 	} // end of ptr_type namespace
 
@@ -574,7 +588,7 @@ namespace mix {
 		}
 
 		// unique array factory
-		template < class Ty, class DelX = ptr_type::unique_array_del<Ty*>, std::size_t SZ = 1 >
+		template < class Ty, class DelX = std::default_delete<Ty[]>, std::size_t SZ = 1 >
 		class unique_array_ptr
 		{
 		public:
@@ -608,7 +622,7 @@ namespace mix {
 
 
 		// shared array factory
-		template <class Ty, class DelY = ptr_type::shared_array_del<Ty*> >
+		template <class Ty, class DelY = std::default_delete<Ty[]> >
 		struct Alloc_Share
 		{
 			constexpr Alloc_Share() : shr(nullptr) {};
