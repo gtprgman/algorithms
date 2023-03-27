@@ -73,7 +73,7 @@ using iList = std::initializer_list<Ty>;
 
 
 
-template < class tElem , unsigned int Nx = 1 >
+template < class tElem  >
 struct iList2 {
 	using value_type = tElem;
 	using reference_const = const tElem&;
@@ -83,10 +83,7 @@ struct iList2 {
 	constexpr iList2() noexcept :_mFirst(nullptr), _mLast(nullptr)
 	{};
 
-	constexpr iList2(pointer_const _begin, pointer_const _end) noexcept : _mFirst(_begin), _mLast(_end)
-	{};
-
-
+	
 	// move ctor
 	constexpr iList2( iList2<tElem>&& rList2 ) {
 		if (this == &rList2) return;
@@ -99,12 +96,14 @@ struct iList2 {
 
 	}
 
+	template < unsigned int Nx >
 	constexpr iList2(const std::array<tElem,Nx>& _arry) {
 		_mFirst = _arry.data();
 		_mLast = (_arry.data() + Nx);
 	};
 	
 	
+	template < unsigned int Nx >
 	constexpr iList2(tElem const (&_arr)[Nx]) {
 		_mFirst = _arr;
 		_mLast = (_arr + Nx);
@@ -544,7 +543,7 @@ namespace mix {
 		using S_ARRAY = std::shared_ptr<_Ty[]>;
 
 		template< class _Ty, class _Dx = std::default_delete<_Ty[]> >
-		using U_ARRAY = std::unique_ptr<_Ty[], std::default_delete<_Ty[]> >;
+		using U_ARRAY = std::unique_ptr<_Ty[], decltype(_Dx()) >;
 		
 		// wrapper of std::make_unique<Ty>
 		template < class _Ty, class... _Types >
