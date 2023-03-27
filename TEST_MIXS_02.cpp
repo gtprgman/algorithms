@@ -29,6 +29,22 @@ int main() {
 
 	std::cout << "\n\n";
 
+	iList2<int> ln = std::array<int, 2>{1290, 3059};
+	
+	std::cout << "\n\n";
+
+	for (auto const& kn : ln) std::cout << kn << ",";
+
+	std::cout << "\n\n";
+	
+	double ffArr[] = {3.19, 0.998, 69.05};
+	iList2<double> ffLs = ffArr;
+
+	for (auto const& f : ffLs) std::cout << f << ", ";
+
+	std::cout << "\n\n";
+
+	
 	
 	return 0;
 }
