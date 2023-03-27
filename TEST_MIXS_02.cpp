@@ -6,30 +6,28 @@
 
 int main() {
 
-	shareP<int> sp = _MAKE_S<int>(100);
-
-	std::cout << *sp << "\n\n";
-
-	shareP<Bucket> bp = _MAKE_S<Bucket>();
-
-	std::cout << bp->data() << "\n\n";
-
-
-	shareP<Bucket> bpa = _MAKE_S<Bucket>("Hello World..");
-
-	std::cout << bpa->data() << "\n\n";
-
-	int n = _Instantiator<int>::_Construct(100);
+	/*  ls2 is constructed by move, whereas argument to _MOVE is a rvalue of iList2
+	created by its parameterized ctor */
+	iList2<int> ls2 = _MOVE( iList2<int>( { 2,4,6,8 } ) );
 	
-	std::cout << n << "\n\n";
+	for (auto const& k : ls2) std::cout << k << ", ";
 
-	 
-	n = _FORWRD<int>(100);
+	std::cout << "\n\n";
 
-	int kn = _frWard<int>::_construct(250);
+	iList2<double> lsf = _MOVE(iList2<double>({ 3.14,2.78,11.15 }));
 
-	std::cout << kn << "\n\n";
+	for (auto const& l : lsf) std::cout << l << ", ";
 
+	std::cout << "\n\n";
+
+	iList<Bucket> lc{ Bucket("One"), Bucket("2"), Bucket() };
+
+	// lb is instantiated by its parameterized ctor.
+	iList2<Bucket> lb = lc;
+
+	for (auto const& b : lb) std::cout << b.data() << " ,";
+
+	std::cout << "\n\n";
 
 	
 	return 0;
