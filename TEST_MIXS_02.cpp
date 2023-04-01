@@ -5,47 +5,48 @@
 
 
 int main() {
-
-	/*  ls2 is constructed by move, whereas argument to _MOVE is a rvalue of iList2
-	created by its parameterized ctor */
-	iList2<int> ls2 = _MOVE( iList2<int>( { 2,4,6,8 } ) );
 	
-	for (auto const& k : ls2) std::cout << k << ", ";
+	U_ARRAY<int> upn = MK_U_ARRAY<int>(3);
+	
+	upn[0] = 190; upn[1] = 209; upn[2] = 315;
 
-	std::cout << "\n\n";
-
-	iList2<double> lsf = _MOVE(iList2<double>({ 3.14,2.78,11.15 }));
-
-	for (auto const& l : lsf) std::cout << l << ", ";
-
-	std::cout << "\n\n";
-
-	iList<Bucket> lc{ Bucket("One"), Bucket("2"), Bucket() };
-
-	// lb is instantiated by its parameterized ctor.
-	iList2<Bucket> lb = lc;
-
-	for (auto const& b : lb) std::cout << b.data() << " ,";
-
-	std::cout << "\n\n";
-
-	iList2<int> ln = std::array<int, 2>{1290, 3059};
+	smart_print(upn.get(), upn.get() + 3);
 	
 	std::cout << "\n\n";
 
-	for (auto const& kn : ln) std::cout << kn << ",";
+	S_ARRAY<Bucket> sbc = MK_S_ARRAY<Bucket>(2);
 
-	std::cout << "\n\n";
-	
-	double ffArr[] = {3.19, 0.998, 69.05};
-	iList2<double> ffLs = ffArr;
+	smart_print(sbc.get(), sbc.get() + 2);
 
-	for (auto const& f : ffLs) std::cout << f << ", ";
+	printf("\n\n");
+
+	U_ARRAY<Bucket> ubc = MK_U_ARRAY<Bucket>(3);
+
+	smart_print(ubc.get(), ubc.get() + 3);
 
 	std::cout << "\n\n";
 
 	
+	_init_p<int*>::initialize(upn.get(), {200,400,600});
+
+	smart_print(upn.get(), upn.get() + 3);
+
+	printf("\n\n");
+
+	_init_p<Bucket*>::initialize(ubc.get(), { Bucket("One"),Bucket("2"),Bucket("Three") });
+
+	smart_print(ubc.get(), ubc.get() + 3);
+
+	printf("\n\n");
+
+	_init_p<Bucket*>::initialize(sbc.get(), { Bucket("0"),Bucket("1") });
+
+	smart_print(sbc.get(), sbc.get() + 2);
+
+	printf("\n\n");
 	
+	
+
 	return 0;
 }
 
