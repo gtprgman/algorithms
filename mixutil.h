@@ -65,6 +65,16 @@ struct _Instantiator {
 };
 
 
+template < class Ty >
+std::unique_ptr<Ty[]> MK_U_ARRAY(unsigned int Nx) {
+	return std::make_unique<Ty[]>(Nx);
+}
+
+
+template < class Ty >
+std::shared_ptr<Ty[]> MK_S_ARRAY(unsigned int Nx) {
+	return std::shared_ptr<Ty[]>(new Ty[Nx]());
+}
 
 
 
@@ -87,7 +97,7 @@ struct iList2 {
 	// move ctor
 	constexpr iList2( iList2<tElem>&& rList2 ) {
 		if (this == &rList2) return;
-		*this = rList2;
+		*this = _MOVE(rList2);
 	}
 
 	// overloaded parameterized ctor, not a copy ctor
@@ -161,7 +171,7 @@ private:
 
 template < class Ty >
 struct UnRef {
-	using type = typename std::remove_reference<Ty>::type;
+	using type = typename std::remove_reference_t<Ty>;
 };
 
 
@@ -213,28 +223,28 @@ struct typeSelect<false,Ty1, Ty2> {
 	
 	template < class LV >
 	struct add_lvalue {
-		using type = typename LV;
+		using type = typename std::remove_extent_t<LV>;
 	};
 
 
 
 	template < class R >
 	struct addRef {
-		using refType = typename std::add_lvalue_reference<R>::type;
+		using refType = typename R&;
 	};
 
 
 	
 	template < class R >
 	struct removeRef {
-		using type = typename add_lvalue<R>::type;
+		using type = typename std::add_lvalue_reference_t<R>;
 	};
 
 
 	
 	template < class P >
 	struct addPtr {
-		using ptrType = typename std::add_pointer<P>::type;
+		using ptrType = typename std::add_pointer_t<P>;
 	};
 
 	
@@ -246,21 +256,21 @@ struct typeSelect<false,Ty1, Ty2> {
 	
 	template < class P >
 	struct removePtr<P*> {
-		using type = typename std::remove_pointer<P*>::type;
+		using type = typename std::remove_pointer_t<P*>;
 	};
 
 
 
 	template < class RR >
 	struct add_rvalue {
-		using type = typename std::add_rvalue_reference<RR>::type;
+		using type = typename std::add_rvalue_reference_t<RR>;
 	};
 
 
 
 	template < class RR >
 	struct remove_rvalue {
-		using type = typename std::remove_reference<RR>::type;
+		using type = typename std::remove_reference_t<RR>;
 	};
 	
 
@@ -425,6 +435,21 @@ namespace mix {
 		using type = ret(_cdecl*)(ArgsT&&...);
 		using resultType = typename ret;
 		enum { isFunctionPointer = _BOOLC(true) };
+	};
+	
+	
+	template < class P >
+	struct _init_p {
+
+		using value_type = typename std::remove_pointer_t<P>;
+		using list_iterator = typename iList<value_type>::iterator;
+		using LIST = iList<value_type>;
+
+		inline static void initialize(P _p, LIST const& _ls) {
+			for (list_iterator _it = _ls.begin(); _it != _ls.end(); _it++)
+				*_p++ = *_it;
+		}
+
 	};
 	
 	
