@@ -6,46 +6,26 @@
 
 int main() {
 	
-	U_ARRAY<int> upn = MK_U_ARRAY<int>(3);
-	
-	upn[0] = 190; upn[1] = 209; upn[2] = 315;
+	shareP<int> sn0 = sp_create<int>(0);
 
-	smart_print(upn.get(), upn.get() + 3);
-	
-	std::cout << "\n\n";
+	std::cout << *sn0 << "\n\n";
 
-	S_ARRAY<Bucket> sbc = MK_S_ARRAY<Bucket>(2);
+	shareP<int> sn100 = sp_create<int>(100);
 
-	smart_print(sbc.get(), sbc.get() + 2);
+	std::cout << *sn100 << "\n\n";
 
-	printf("\n\n");
+	shareP<Bucket> sb0 = sp_create<Bucket>("One");
 
-	U_ARRAY<Bucket> ubc = MK_U_ARRAY<Bucket>(3);
+	std::cout << sb0->data() << "\n\n";
 
-	smart_print(ubc.get(), ubc.get() + 3);
+	uniqueP<Bucket> ub2 = up_create<Bucket>("Two");
 
-	std::cout << "\n\n";
+	std::cout << ub2->data() << "\n\n";
 
-	
-	_init_p<int*>::initialize(upn.get(), {200,400,600});
+	uniqueP<Bucket> ub0 = up_create<Bucket>("");
 
-	smart_print(upn.get(), upn.get() + 3);
+	std::cout << ub0->data() << "\n\n";
 
-	printf("\n\n");
-
-	_init_p<Bucket*>::initialize(ubc.get(), { Bucket("One"),Bucket("2"),Bucket("Three") });
-
-	smart_print(ubc.get(), ubc.get() + 3);
-
-	printf("\n\n");
-
-	_init_p<Bucket*>::initialize(sbc.get(), { Bucket("0"),Bucket("1") });
-
-	smart_print(sbc.get(), sbc.get() + 2);
-
-	printf("\n\n");
-	
-	
 
 	return 0;
 }
