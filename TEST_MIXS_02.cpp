@@ -6,28 +6,35 @@
 
 int main() {
 	
-	shareP<int> sn0 = sp_create<int>(0);
+	shareP<char> ch97 = sp_create<char>('A');
 
-	std::cout << *sn0 << "\n\n";
+	std::cout << *ch97 << "\n\n";
 
-	shareP<int> sn100 = sp_create<int>(100);
+	shareP<double> d0 = sp_create<double>();
 
-	std::cout << *sn100 << "\n\n";
+	std::cout << *d0 << "\n\n";
+
+	shareP<int> un = sp_create<int>(-1,2);
+
+	std::cout << *un << "\n\n";
+
+	shareP<double> sdb = sp_create<double>(2.93);
+
+	std::cout << *sdb << "\n\n";
 
 	shareP<Bucket> sb0 = sp_create<Bucket>("One");
 
 	std::cout << sb0->data() << "\n\n";
 
-	uniqueP<Bucket> ub2 = up_create<Bucket>("Two");
+	shareP<Bucket> sb2 = sp_create<Bucket>("Two");
 
-	std::cout << ub2->data() << "\n\n";
+	std::cout << sb2->data() << "\n\n";
 
-	uniqueP<Bucket> ub0 = up_create<Bucket>("");
+	shareP<Bucket> sb01 = up_create<Bucket>();
 
-	std::cout << ub0->data() << "\n\n";
+	std::cout << sb01->data() << "\n\n";
 
-
-	return 0;
+	
 }
 
 
