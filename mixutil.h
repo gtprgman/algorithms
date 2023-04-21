@@ -288,7 +288,7 @@ namespace mix {
 			return _nan;
 		}
 
-		_NODISCARD operator nullType() noexcept {
+		_NODISCARD operator nullType() const noexcept {
 			return _nan;
 		}
 
