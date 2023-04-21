@@ -281,22 +281,24 @@ namespace mix {
 	struct nullType {
 		using value_type = std::nullptr_t;
 
-		constexpr nullType() { value_type(); };
+		nullType() {};
+		nullType(nullptr_t const) {}
 		
-		constexpr nullType(std::nullptr_t const) :_null_t_val(0U) {};
-
-
-		constexpr operator value_type() const { 
-			return 0u;
+		_NODISCARD operator value_type() const {
+			return _nan;
 		}
 
-		
-		_NODISCARD constexpr value_type operator()() const {
-			return 0u;
+		_NODISCARD operator nullType() noexcept {
+			return _nan;
 		}
+
+		_NODISCARD std::nullptr_t const operator()() noexcept {
+			return _nan;
+		}
+		
 
 	private:
-		value_type _null_t_val = 0U;
+		value_type _nan = 0;
 	};
 	
 	
