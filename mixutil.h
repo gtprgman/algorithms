@@ -292,7 +292,7 @@ namespace mix {
 			return _nan;
 		}
 
-		_NODISCARD std::nullptr_t const operator()() noexcept {
+		_NODISCARD std::nullptr_t const operator()() const noexcept {
 			return _nan;
 		}
 		
