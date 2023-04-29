@@ -21,9 +21,86 @@ be implemented in the any time of the future.
 #endif
 
 
+#if !defined(TREE_DIRS)
+#define TREE_DIRS
 
-#define _TYPE(_ty) decltype(_ty)
-#define _BOOLC(_ty) std::bool_constant<_ty>::value
+#define P_ASSERT(x) (nullptr != x) 
+#define LEN(x) std::strlen(x)
+
+#define NOD_TYPE(x) (x->_dir)
+#define ISNULL(x) (nullptr == x) 
+
+#define EMPTY_TEXT(x) ( LEN(x) == 0)
+#define NULL_LEFT(x) ( ISNULL(x->_Left) )
+
+#define NULL_RIGHT(x) ( ISNULL(x->_Right) )
+
+#define LEFT_NOD(x) (x->_Left)
+#define RIGHT_NOD(x) (x->_Right)
+
+#define TEXT(x) (x->Text())
+#define CHAR(x) ((unsigned int)x->Text()[0])
+
+
+#define CHAR_T(x) (  std::isalpha(x->Text()[0])? CHAR(x) : \
+					 (unsigned int)std::atoi(x->Text()) \
+) 
+
+#define CHAR_S(s) ( std::isalpha(s[0]) ? s[0] : (unsigned int)std::atoi(s) )
+
+#define LEFT_TEXT(x) ( ISNULL(x->_Left)? "empty" : TEXT(LEFT_NOD(x)) )
+#define RIGHT_TEXT(x) ( ISNULL(x->_Right)? "empty"  : TEXT(RIGHT_NOD(x)) )
+
+#define LESS_THAN(x, n) ( CHAR_T(x) < CHAR_T(n) )
+#define GREATER_THAN(x, n) ( CHAR_T(x) > CHAR_T(n) )
+
+#define LESS_THAN_C(s1,s2) ( CHAR_S(s1) < CHAR_S(s2) )
+#define GREATER_THAN_C(s1,s2) ( CHAR_S(s1) > CHAR_S(s2) )
+
+#define IS_EQUAL(x, n) ( !std::strcmp(x->Text(), n->Text() ) )
+#define TEXT_EQUAL(s1, s2) ( !std::strcmp(s1,s2) )
+
+#define SET_RIGHT(x, _nod_) ( x->_Right = _nod_ )
+#define SET_LEFT(x, _nod_ ) ( x->_Left = _nod_ )
+
+constexpr const std::size_t CHR_SIZE() { return sizeof(char); }
+
+#define TEXT_ALLOC(_txt) new char[LEN(_txt)*CHR_SIZE]
+
+#endif
+
+
+#if !defined(MIX_CTEXT)
+#define MIX_CTEXT
+
+#endif 
+
+
+
+#if !defined(MIX_NOD)
+#define MIX_NOD
+
+#endif
+
+
+#if !defined(PNOD)
+#define PNOD
+
+#endif
+
+
+#if !defined(NDIR)
+#define NDIR
+	enum NOD_DIR { PARENT = -1, RIGHT = 0, LEFT = 1 };
+#endif
+
+
+#if !defined(MIX_C)
+#define MIX_C
+	#define _TYPE(_ty) decltype(_ty)
+	#define _BOOLC(_ty) std::bool_constant<_ty>::value
+#endif
+
 
 
 
@@ -457,7 +534,120 @@ namespace mix {
 	
 	
 	namespace data {
+		
+		#if defined MIX_CTEXT
+		struct CTEXT {
+			CTEXT() :_k("empty") {};
 
+			CTEXT(const char* _st) {
+				if (P_ASSERT(_st)) _k.assign(_st);
+			}
+
+			const char* Text() const {
+				return _k.data();
+
+			}
+
+		private:
+			std::string _k;
+		};
+
+		#endif
+		
+		
+		
+		#if defined MIX_NOD
+		struct BNode {
+			BNode() {};
+
+			BNode(const char* _nodText) {
+				this->Set(_nodText);
+			};
+
+			~BNode() { _Left = nullptr; _Middle = nullptr; _Right = nullptr; }
+
+
+			const char* Text() const {
+				return _data.Text();
+			}
+
+			int Set(const char* _text) {
+				if (P_ASSERT(_text)) _data = _text;
+
+				return P_ASSERT(_text);
+			}
+
+			void Print() {
+				printf("\n root's id: %s ", P_ASSERT(this) ? Text() : "empty");
+				printf("\n left's id: %s ", P_ASSERT(_Left) ? _Left->Text() : "empty");
+				printf("\n right's id: %s ", P_ASSERT(_Right) ? _Right->Text() : "empty");
+			}
+
+			void Add(std::shared_ptr<BNode> _uNod) {
+				if LESS_THAN(this, _uNod) SET_RIGHT(this, _uNod);
+				else SET_LEFT(this, _uNod );
+			}
+
+
+			NOD_DIR _dir;
+
+			std::shared_ptr<BNode> _Left = nullptr;
+			std::shared_ptr<BNode> _Right = nullptr;
+			std::shared_ptr<BNode> _Middle = nullptr;
+
+		private:
+			CTEXT _data;
+		};
+		#endif
+		
+		
+		
+		#if defined PNOD
+		using P_NODE = std::shared_ptr<BNode>;
+
+		static inline P_NODE ALLOC_N(const char* _Str) {
+			return std::make_shared<BNode>(_Str);
+		}
+
+		
+		P_NODE traverseNodes(P_NODE _Root, CTEXT const& _Str) {
+			if (!P_ASSERT(_Root)) return nullptr;
+
+			for (; nullptr != _Root; ) {
+
+				if TEXT_EQUAL(TEXT(_Root), _Str.Text()) return _Root;
+				else if LESS_THAN_C(TEXT(_Root), _Str.Text()) _Root = _Root->_Right;
+					else _Root = _Root->_Left;
+
+				if (!P_ASSERT(_Root)) continue;
+
+			}
+			return _Root;
+		}
+		
+
+		P_NODE treeAdd(P_NODE _Root, CTEXT const& _Str) {
+			
+			P_NODE _tmpRoot = _Root;
+
+			if (!P_ASSERT(_tmpRoot)) return nullptr;
+
+			for (; nullptr != _tmpRoot; ) {
+				if TEXT_EQUAL(TEXT(_tmpRoot), _Str.Text()) break;
+				else if LESS_THAN_C(TEXT(_tmpRoot), _Str.Text()) _tmpRoot = _tmpRoot->_Right;
+					else _tmpRoot = _tmpRoot->_Left;
+
+				if (!P_ASSERT(_tmpRoot)) _tmpRoot = ALLOC_N(_Str.Text());
+				else continue;
+
+			}
+			return _tmpRoot;
+		}
+
+		#endif
+		
+		
+		
 		class Bucket  {
 		public:
 			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
