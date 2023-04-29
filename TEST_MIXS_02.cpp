@@ -6,34 +6,39 @@
 
 int main() {
 	
-	shareP<char> ch97 = sp_create<char>('A');
+	P_NODE nd1 = ALLOC_N("Tom");
 
-	std::cout << *ch97 << "\n\n";
+	nd1->Print();
+	
+	std::cout << "\n";
 
-	shareP<double> d0 = sp_create<double>();
+	nd1->Add(ALLOC_N("Peter"));
+	nd1->Add(ALLOC_N("Vera"));
 
-	std::cout << *d0 << "\n\n";
+	std::cout << "\n";
 
-	shareP<int> un = sp_create<int>(-1,2);
+	nd1->Print();
 
-	std::cout << *un << "\n\n";
+	std::cout << "\n\n";
 
-	shareP<double> sdb = sp_create<double>(2.93);
+	P_NODE nd2 = traverseNodes(nd1->_Left, "Peter");
+	
+	
+	if P_ASSERT(nd2) std::cout << TEXT(nd2) << "\n\n";
+	else std::cout << "empty" << "\n\n"; 
 
-	std::cout << *sdb << "\n\n";
 
-	shareP<Bucket> sb0 = sp_create<Bucket>("One");
+	nd2 = treeAdd(nd1, "Michael");
 
-	std::cout << sb0->data() << "\n\n";
 
-	shareP<Bucket> sb2 = sp_create<Bucket>("Two");
+	if P_ASSERT(nd2) std::cout << TEXT(nd2) << "\n\n";
+	else std::cout << "empty" << "\n\n";
 
-	std::cout << sb2->data() << "\n\n";
+	
+	nd2->Print();
 
-	shareP<Bucket> sb01 = up_create<Bucket>();
-
-	std::cout << sb01->data() << "\n\n";
-
+	std::cout << "\n\n";
+	
 	
 }
 
