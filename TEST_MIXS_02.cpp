@@ -2,43 +2,29 @@
 #include "mixer.h"
 
 
+using P_NODE = BNode*;
 
 
 int main() {
 	
-	P_NODE nd1 = ALLOC_N("Tom");
+	P_NODE nd0 = ALLOC_N("Tom");
 
-	nd1->Print();
+	if P_ASSERT(nd0) nd0->Print();
+
 	
+	P_NODE nd1 = treeAdd(nd0, "Peter");
+
 	std::cout << "\n";
 
-	nd1->Add(ALLOC_N("Peter"));
-	nd1->Add(ALLOC_N("Vera"));
+	nd0->Print();
+
 
 	std::cout << "\n";
 
 	nd1->Print();
 
-	std::cout << "\n\n";
-
-	P_NODE nd2 = traverseNodes(nd1->_Left, "Peter");
-	
-	
-	if P_ASSERT(nd2) std::cout << TEXT(nd2) << "\n\n";
-	else std::cout << "empty" << "\n\n"; 
-
-
-	nd2 = treeAdd(nd1, "Michael");
-
-
-	if P_ASSERT(nd2) std::cout << TEXT(nd2) << "\n\n";
-	else std::cout << "empty" << "\n\n";
-
-	
-	nd2->Print();
 
 	std::cout << "\n\n";
-	
 	
 }
 
