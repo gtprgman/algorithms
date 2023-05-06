@@ -29,12 +29,12 @@ be implemented in the any time of the future.
 #define ISNULL(x) (nullptr == x) 
 
 #define EMPTY_TEXT(x) ( LEN(x) == 0)
-#define NULL_LEFT(x) ( ISNULL(x->_Left) )
+#define NULL_LEFT(x) ( ISNULL(x->links[NOD_DIR::LEFT]) )
 
-#define NULL_RIGHT(x) ( ISNULL(x->_Right) )
+#define NULL_RIGHT(x) ( ISNULL(x->links[NOD_DIR::RIGHT]) )
 
-#define LEFT_NOD(x) (x->_Left)
-#define RIGHT_NOD(x) (x->_Right)
+#define LEFT_NOD(x) (x->links[NOD_DIR::LEFT])
+#define RIGHT_NOD(x) (x->links[NOD_DIR::RIGHT])
 
 #define TEXT(x) (x->Text())
 #define CHAR(x) ((unsigned int)x->Text()[0])
@@ -46,8 +46,8 @@ be implemented in the any time of the future.
 
 #define CHAR_S(s) ( std::isalpha(s[0]) ? s[0] : (unsigned int)std::atoi(s) )
 
-#define LEFT_TEXT(x) ( ISNULL(x->_Left)? "empty" : TEXT(LEFT_NOD(x)) )
-#define RIGHT_TEXT(x) ( ISNULL(x->_Right)? "empty"  : TEXT(RIGHT_NOD(x)) )
+#define LEFT_TEXT(x) ( ISNULL(x->links[NOD_DIR::LEFT])? "empty" : TEXT(LEFT_NOD(x)) )
+#define RIGHT_TEXT(x) ( ISNULL(x->links[NOD_DIR::RIGHT])? "empty"  : TEXT(RIGHT_NOD(x)) )
 
 #define LESS_THAN(x, n) ( CHAR_T(x) < CHAR_T(n) )
 #define GREATER_THAN(x, n) ( CHAR_T(x) > CHAR_T(n) )
@@ -58,13 +58,24 @@ be implemented in the any time of the future.
 #define IS_EQUAL(x, n) ( !std::strcmp(x->Text(), n->Text() ) )
 #define TEXT_EQUAL(s1, s2) ( !std::strcmp(s1,s2) )
 
-#define SET_RIGHT(x, _nod_) ( x->_Right = _nod_ )
-#define SET_LEFT(x, _nod_ ) ( x->_Left = _nod_ )
+#define SET_PARENT(x, _nod_ ) ( _nod_->setParent(x) )
 
-constexpr const std::size_t CHR_SIZE() { return sizeof(char); }
 
-#define TEXT_ALLOC(_txt) new char[LEN(_txt)*CHR_SIZE]
+#define SET_LEFT(x, _nod_) {\
+	x->setLeft(_nod_); \
+	_nod_->setParent(x);\
+}
 
+
+#define SET_RIGHT(x, _nod_) {\
+	x->setRight(_nod_); \
+	_nod_->setParent(x); \
+}
+
+
+constexpr const std::size_t CHRSZ() { return sizeof(char); }
+
+#define TEXT_ALLOC(_txt) new char[LEN(_txt)*CHRSZ]
 #endif
 
 
@@ -88,7 +99,7 @@ constexpr const std::size_t CHR_SIZE() { return sizeof(char); }
 
 #if !defined(NDIR)
 #define NDIR
-	enum NOD_DIR { PARENT = -1, RIGHT = 0, LEFT = 1 };
+	enum NOD_DIR { PARENT = 0, LEFT = 1, MIDDLE = 2, RIGHT = 3 };
 #endif
 
 
@@ -561,92 +572,154 @@ namespace mix {
 
 		#if defined MIX_NOD
 		struct BNode {
-			BNode() {};
+			BNode() { 
+				this->links[0] = nullptr;
+				this->links[1] = nullptr;
+				this->links[2] = nullptr;
+				this->links[3] = nullptr;
+			};
 
-			BNode(const char* _nodText) {
+			BNode(const char* _nodText): BNode() {
 				this->Set(_nodText);
 			};
 
-			~BNode() { _Left = nullptr; _Middle = nullptr; _Right = nullptr; }
+			~BNode() {
+				this->links[0] = nullptr;
+				this->links[1] = nullptr;
+				this->links[2] = nullptr;
+				this->links[3] = nullptr;
+			}
 
 
 			const char* Text() const {
 				return _data.Text();
 			}
 
+			BNode* Left() const {
+				return this->links[NOD_DIR::LEFT];
+			}
+
+			BNode* Middle() const {
+				return this->links[NOD_DIR::MIDDLE];
+			}
+
+			BNode* Right() const{
+				return this->links[NOD_DIR::RIGHT];
+			}
+
+			BNode* Parent() const {
+				return this->links[NOD_DIR::PARENT];
+			}
+
+			
 			int Set(const char* _text) {
 				if (P_ASSERT(_text)) _data = _text;
 
 				return P_ASSERT(_text);
 			}
 
-			void Print() {
-				printf("\n root's id: %s ", P_ASSERT(this) ? Text() : "empty");
-				printf("\n left's id: %s ", P_ASSERT(_Left) ? _Left->Text() : "empty");
-				printf("\n right's id: %s ", P_ASSERT(_Right) ? _Right->Text() : "empty");
+
+			void setLeft(BNode* uNod) {
+				this->links[NOD_DIR::LEFT] = uNod;
 			}
 
-			void Add(std::shared_ptr<BNode> _uNod) {
-				if LESS_THAN(this, _uNod) SET_RIGHT(this, _uNod);
+			void setRight(BNode* uNod) {
+				this->links[NOD_DIR::RIGHT] = uNod;
+			}
+
+			void setParent(BNode* uNod) {
+				this->links[NOD_DIR::PARENT] = uNod;
+			}
+
+			void setMiddle(BNode* uNod) {
+				this->links[NOD_DIR::MIDDLE] = uNod;
+			}
+
+
+			void Print() {
+				printf("\n root's id: %s ", P_ASSERT(this)? this->Text() : "empty");
+				printf("\n left's id: %s ", P_ASSERT(this)? NULL_LEFT(this)? "empty" : TEXT(this->Left()) : "empty");
+				printf("\n right's id: %s ", P_ASSERT(this) ? NULL_RIGHT(this) ? "empty" : TEXT(this->Right()) : "empty");
+			}
+
+			void Add(BNode* _uNod) {
+				if LESS_THAN(this, _uNod) { SET_RIGHT(this, _uNod); }
 				else SET_LEFT(this, _uNod );
 			}
 
 
 			NOD_DIR _dir;
 
-			std::shared_ptr<BNode> _Left = nullptr;
-			std::shared_ptr<BNode> _Right = nullptr;
-			std::shared_ptr<BNode> _Middle = nullptr;
-
 		private:
 			CTEXT _data;
+			
+		protected:
+			struct BNode* links[4];
 		};
 		#endif
 		
 		
 
 		#if defined PNOD
-		using P_NODE = std::shared_ptr<BNode>;
 
-		static inline P_NODE ALLOC_N(const char* _Str) {
-			return std::make_shared<BNode>(_Str);
+		static inline BNode* ALLOC_N(const char* _Str) {
+			return new BNode( BNode(_Str) );
 		}
 
 		
-		P_NODE traverseNodes(P_NODE _Root, CTEXT const& _Str) {
+		BNode* traverseNodes(BNode* _Root, CTEXT const& _Str) {
+			unsigned int kResult = 0;
+
 			if (!P_ASSERT(_Root)) return nullptr;
 
 			for (; nullptr != _Root; ) {
 
 				if TEXT_EQUAL(TEXT(_Root), _Str.Text()) return _Root;
-				else if LESS_THAN_C(TEXT(_Root), _Str.Text()) _Root = _Root->_Right;
-					else _Root = _Root->_Left;
+				else if LESS_THAN_C(TEXT(_Root), _Str.Text()) _Root = _Root->Right();
+					else _Root = _Root->Left();
 
 				if (!P_ASSERT(_Root)) continue;
 
 			}
-			return _Root;
+
+			kResult = P_ASSERT(_Root);
+
+			return kResult? _Root : nullptr;
 		}
 		
 
-		P_NODE treeAdd(P_NODE _Root, CTEXT const& _Str) {
-			
-			P_NODE _tmpRoot = _Root;
 
+		BNode* treeAdd(BNode* _Root, CTEXT const& _Str) {
+			int kResult = 0;
+
+			BNode* _tmpRoot = _Root, *_tmpNew = nullptr;
+			
 			if (!P_ASSERT(_tmpRoot)) return nullptr;
 
 			for (; nullptr != _tmpRoot; ) {
 				if TEXT_EQUAL(TEXT(_tmpRoot), _Str.Text()) break;
-				else if LESS_THAN_C(TEXT(_tmpRoot), _Str.Text()) _tmpRoot = _tmpRoot->_Right;
-					else _tmpRoot = _tmpRoot->_Left;
+				else if LESS_THAN_C(TEXT(_tmpRoot), _Str.Text()) {
+					_tmpNew = _tmpRoot;
+					_tmpRoot = _tmpRoot->Right();
 
-				if (!P_ASSERT(_tmpRoot)) _tmpRoot = ALLOC_N(_Str.Text());
+				}
+				else {
+					_tmpNew = _tmpRoot;
+					_tmpRoot = _tmpRoot->Left();
+				}
+				
+				
+				if (!P_ASSERT(_tmpRoot)) {
+					_tmpRoot = _tmpNew;
+					_tmpRoot->Add(ALLOC_N(_Str.Text())); kResult = -1;
+					_tmpRoot = nullptr;
+				}
 				else continue;
 
 			}
-			return _tmpRoot;
-		}
 
+			return (kResult < 0) ? _tmpNew : nullptr;
+		}
 		#endif
 		
 		
@@ -742,7 +815,6 @@ namespace mix {
 		};
 
 
-		
 
 		// a single unique pointer type
 		template < class Ty, class Del1X = std::default_delete<Ty> >
@@ -920,7 +992,6 @@ namespace mix {
 	}
 
 
-
 	 
 	// an overloaded printer function for any Buckets' types
 	template <mix::data::Bucket*>
@@ -928,7 +999,6 @@ namespace mix {
 	{
 		FOR_EACH_PRINT(begin, end);
 	}
-
 
 };
 
