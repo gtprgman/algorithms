@@ -643,8 +643,17 @@ namespace mix {
 			}
 
 			void Add(BNode* _uNod) {
-				if LESS_THAN(this, _uNod) { SET_RIGHT(this, _uNod); }
-				else SET_LEFT(this, _uNod );
+				BNode* _tmpNod = this;
+
+				if LESS_THAN_C(TEXT(_tmpNod), TEXT(_uNod)) {
+				   if P_ASSERT(_tmpNod->Right()) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
+					else { SET_RIGHT(_tmpNod, _uNod);  }
+				}
+				else 
+				   if P_ASSERT(_tmpNod->Left()) { _tmpNod = _tmpNod->Left(); _tmpNod->Add(_uNod); }
+					else { SET_LEFT(_tmpNod, _uNod); }
+
+				_tmpNod = nullptr;
 			}
 
 
@@ -684,7 +693,7 @@ namespace mix {
 
 			kResult = P_ASSERT(_Root);
 
-			return kResult? _Root : nullptr;
+			return kResult? (_Root) : nullptr;
 		}
 		
 
@@ -718,7 +727,7 @@ namespace mix {
 
 			}
 
-			return (kResult < 0) ? _tmpNew : nullptr;
+			return (kResult < 0) ? (_tmpNew) : nullptr;
 		}
 		#endif
 		
