@@ -575,6 +575,7 @@ namespace mix {
 				this->links[2] = nullptr;
 				this->links[3] = nullptr;
 				this->links[4] = nullptr;
+				this->_dir = NOD_DIR::UNKNOWN;
 			};
 
 			BNode(const char* _nodText): BNode() {
@@ -718,7 +719,6 @@ namespace mix {
 		
 		
 		BNode* traverseNodes(BNode* _Root, CTEXT const& _Str) {
-			unsigned int kResult = 0;
 
 			if (!P_ASSERT(_Root)) return nullptr;
 
@@ -732,16 +732,12 @@ namespace mix {
 
 			}
 
-			kResult = P_ASSERT(_Root);
-
-			return kResult? (_Root) : nullptr;
+			return (_Root);
 		}
 
 		
 
 		BNode* treeAdd(BNode* _Root, CTEXT const& _Str) {
-			int kResult = 0;
-
 			BNode* _tmpRoot = _Root, *_tmpNew = nullptr;
 			
 			if (!P_ASSERT(_tmpRoot)) return nullptr;
@@ -761,14 +757,14 @@ namespace mix {
 				
 				if (!P_ASSERT(_tmpRoot)) {
 					_tmpRoot = _tmpNew;
-					_tmpRoot->Add(ALLOC_N(_Str.Text())); kResult = -1;
+					_tmpRoot->Add(ALLOC_N(_Str.Text()));
 					_tmpRoot = nullptr;
 				}
 				else continue;
 
 			}
 
-			return (kResult < 0) ? (_tmpNew) : nullptr;
+			return (_tmpNew);
 		}
 
 		#endif
