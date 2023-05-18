@@ -102,7 +102,7 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 
 #if !defined(NDIR)
 #define NDIR
-	enum NOD_DIR { PARENT = 0, LEFT = 1, MIDDLE = 2, RIGHT = 3 };
+	enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, MIDDLE = 2, RIGHT = 3 };
 #endif
 
 
@@ -574,6 +574,7 @@ namespace mix {
 				this->links[1] = nullptr;
 				this->links[2] = nullptr;
 				this->links[3] = nullptr;
+				this->links[4] = nullptr;
 			};
 
 			BNode(const char* _nodText): BNode() {
@@ -585,9 +586,10 @@ namespace mix {
 				this->links[1] = nullptr;
 				this->links[2] = nullptr;
 				this->links[3] = nullptr;
+				this->links[4] = nullptr;
 			}
 
-
+			// Accessor Get()...
 			const char* Text() const {
 				return _data.Text();
 			}
@@ -608,28 +610,40 @@ namespace mix {
 				return this->links[NOD_DIR::PARENT];
 			}
 
+			NOD_DIR const& Dir() const {
+				return this->_dir;
+			}
 			
+			static const unsigned int T_LEFT() { return mix::data::BNode::LEFT_T; }
+			static const unsigned int T_RIGHT()  { return mix::data::BNode::RIGHT_T; }
+			static const unsigned int T_MID() { return mix::data::BNode::MID_T; }
+			
+			// Accessor Set()...
 			int Set(const char* _text) {
 				if (P_ASSERT(_text)) _data = _text;
-
+				this->_dir = NOD_DIR::PARENT;
 				return P_ASSERT(_text);
 			}
 
 
 			void setLeft(BNode* uNod) {
 				this->links[NOD_DIR::LEFT] = uNod;
+				this->links[NOD_DIR::LEFT]->_dir = NOD_DIR::LEFT;
 			}
 
 			void setRight(BNode* uNod) {
 				this->links[NOD_DIR::RIGHT] = uNod;
+				this->links[NOD_DIR::RIGHT]->_dir = NOD_DIR::RIGHT;
 			}
 
 			void setParent(BNode* uNod) {
 				this->links[NOD_DIR::PARENT] = uNod;
+				this->links[NOD_DIR::PARENT]->_dir = NOD_DIR::PARENT;
 			}
 
 			void setMiddle(BNode* uNod) {
 				this->links[NOD_DIR::MIDDLE] = uNod;
+				this->links[NOD_DIR::MIDDLE]->_dir = NOD_DIR::MIDDLE;
 			}
 
 
@@ -639,6 +653,8 @@ namespace mix {
 				printf("\n right's id: %s ", P_ASSERT(this) ? NULL_RIGHT(this) ? "empty" : TEXT(this->Right()) : "empty");
 			}
 
+			
+			// Access Manipulation...
 			void Add(BNode* _uNod) {
 				BNode* _tmpNod = this;
 
@@ -654,17 +670,44 @@ namespace mix {
 			}
 
 
-			NOD_DIR _dir;
+			void Insert(BNode* _uNod) {
+				BNode* _tmpNod = this, *_tmpRoot = nullptr;
+
+				// _tmpNod refers to the existing node, _uNod is the new node to be inserted to
+				if (!P_ASSERT(_uNod)) return;
+
+				if P_ASSERT(_tmpNod->Parent()) {
+					_tmpRoot = _tmpNod->Parent();
+					_uNod->setParent(_tmpRoot);
+					_tmpRoot->setLeft(_uNod);
+				}
+					
+				// insert new node into existing node
+				if LESS_THAN_C(TEXT(_tmpNod), TEXT(_uNod)) 
+					if P_ASSERT(_uNod->Left()) { _uNod = _uNod->Left(); _uNod->Add(_tmpNod); }
+					else { SET_LEFT(_uNod, _tmpNod); ++BNode::LEFT_T; }
+				else
+					if P_ASSERT(_uNod->Right()) { _uNod = _uNod->Right(); _uNod->Add(_tmpNod); }
+					else { SET_RIGHT(_uNod, _tmpNod); ++BNode::RIGHT_T;  }
+
+				_tmpNod = nullptr; _tmpRoot = nullptr;
+			}
 
 
 		private:
 			CTEXT _data;
-			
+			static unsigned int LEFT_T;
+			static unsigned int RIGHT_T;
+			static unsigned int MID_T;
 		protected:
-			struct BNode* links[4];
+			NOD_DIR _dir;
+			struct BNode* links[5];
 		};
-		#endif
 		
+		unsigned int mix::data::BNode::LEFT_T = 0;
+		unsigned int mix::data::BNode::RIGHT_T = 0;
+		unsigned int mix::data::BNode::MID_T = 0;
+	#endif
 		
 		
 		#if defined PNOD
