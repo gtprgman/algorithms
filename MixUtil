@@ -17,90 +17,9 @@ be implemented in the any time of the future.
 		
 		#include <initializer_list>
 		#include <forward_list>
+		#include "mixtree.h"
 #endif
 
-#if !defined(TREE_DIRS)
-#define TREE_DIRS
-
-#define P_ASSERT(x) (nullptr != x) 
-#define LEN(x) std::strlen(x)
-
-#define NOD_TYPE(x) (x->_dir)
-#define ISNULL(x) (nullptr == x) 
-
-#define EMPTY_TEXT(x) ( LEN(x) == 0)
-#define NULL_LEFT(x) ( ISNULL(x->links[NOD_DIR::LEFT]) )
-
-#define NULL_RIGHT(x) ( ISNULL(x->links[NOD_DIR::RIGHT]) )
-
-#define LEFT_NOD(x) (x->links[NOD_DIR::LEFT])
-#define RIGHT_NOD(x) (x->links[NOD_DIR::RIGHT])
-
-#define TEXT(x) (x->Text())
-#define CHAR(x) ((unsigned int)x->Text()[0])
-
-
-#define CHAR_T(x) (  std::isalpha(x->Text()[0])? CHAR(x) : \
-		    (unsigned int)std::atoi(x->Text()) \
-) 
-
-#define CHAR_S(s) ( std::isalpha(s[0]) ? s[0] : (unsigned int)std::atoi(s) )
-
-#define LEFT_TEXT(x) ( ISNULL(x->links[NOD_DIR::LEFT])? "empty" : TEXT(LEFT_NOD(x)) )
-#define RIGHT_TEXT(x) ( ISNULL(x->links[NOD_DIR::RIGHT])? "empty"  : TEXT(RIGHT_NOD(x)) )
-
-#define LESS_THAN(x, n) ( CHAR_T(x) < CHAR_T(n) )
-#define GREATER_THAN(x, n) ( CHAR_T(x) > CHAR_T(n) )
-
-#define LESS_THAN_C(s1,s2) ( CHAR_S(s1) < CHAR_S(s2) )
-#define GREATER_THAN_C(s1,s2) ( CHAR_S(s1) > CHAR_S(s2) )
-
-#define IS_EQUAL(x, n) ( !std::strcmp(x->Text(), n->Text() ) )
-#define TEXT_EQUAL(s1, s2) ( !std::strcmp(s1,s2) )
-
-#define SET_PARENT(x, _nod_ ) ( _nod_->setParent(x) )
-
-
-#define SET_LEFT(x, _nod_) {\
-	x->setLeft(_nod_); \
-	_nod_->setParent(x);\
-}
-
-
-#define SET_RIGHT(x, _nod_) {\
-	x->setRight(_nod_); \
-	_nod_->setParent(x); \
-}
-
-
-constexpr const std::size_t CHRSZ() { return sizeof(char); }
-
-#define TEXT_ALLOC(_txt) new char[LEN(_txt)*CHRSZ]
-#endif
-
-
-#if !defined(MIX_CTEXT)
-#define MIX_CTEXT
-
-#endif 
-
-
-#if !defined(MIX_NOD)
-#define MIX_NOD
-
-#endif
-
-
-#if !defined(PNOD)
-#define PNOD
-
-#endif
-
-
-#if !defined(NDIR)
-#define NDIR
-	enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, MIDDLE = 2, RIGHT = 3 };
-#endif
 
 
 #if !defined(MIX_C)
@@ -108,8 +27,6 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 	#define _TYPE(_ty) decltype(_ty)
 	#define _BOOLC(_ty) std::bool_constant<_ty>::value
 #endif
-
-
 
 
 template < class Ty >
@@ -571,6 +488,12 @@ namespace mix {
 
 
 		#if defined MIX_NOD
+		// debugging macros
+		#define RET std::cout << "\n\n"
+
+		#define TALL  std::cout << "L_HEIGHT: " << BNode::T_LEFT() << "\n" ; \
+			      std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
+		
 		struct BNode {
 			BNode() { 
 				this->links[0] = nullptr;
@@ -591,6 +514,11 @@ namespace mix {
 				this->links[2] = nullptr;
 				this->links[3] = nullptr;
 				this->links[4] = nullptr;
+				
+				BNode::_topRoot = nullptr;
+				BNode::_lstNodLeft = nullptr;
+				BNode::_lstNodRight = nullptr;
+				BNode::_recentNod = nullptr;
 			}
 
 
@@ -610,6 +538,14 @@ namespace mix {
 			BNode* Right() const{
 				return this->links[NOD_DIR::RIGHT];
 			}
+			
+			BNode* lastNodLeft() const {
+				return BNode::_lstNodLeft;
+			}
+
+			BNode* lastNodRight() const {
+				return BNode::_lstNodRight;
+			}
 
 			BNode* Parent() const {
 				return this->links[NOD_DIR::PARENT];
@@ -619,6 +555,9 @@ namespace mix {
 				return this->_dir;
 			}
 
+			static BNode* T_ROOT() { return BNode::_topRoot;  }
+			static BNode* recent() { return BNode::_recentNod; }
+			
 			static const unsigned int T_LEFT() { return mix::data::BNode::LEFT_T; }
 			static const unsigned int T_RIGHT()  { return mix::data::BNode::RIGHT_T; }
 			static const unsigned int T_MID() { return mix::data::BNode::MID_T; }
@@ -659,49 +598,77 @@ namespace mix {
 				printf("\n right's id: %s ", P_ASSERT(this) ? NULL_RIGHT(this) ? "empty" : TEXT(this->Right()) : "empty");
 			}
 			
+			static void SET_ROOT(BNode* _uRoot) { _topRoot = _uRoot;  }
+			
 			
 			// Access Manipulation...
 			void Add(BNode* _uNod) {
-				BNode* _tmpNod = this;
+			BNode* _tmpNod = this;
+
+				if (!P_ASSERT(_uNod)) return;
 
 				if LESS_THAN_C(TEXT(_tmpNod), TEXT(_uNod)) {
-				   if P_ASSERT(_tmpNod->Right()) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
-					else { SET_RIGHT(_tmpNod, _uNod);  }
+					if P_ASSERT(_tmpNod->Right()) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
+					else {
+						SET_RIGHT(_tmpNod, _uNod); ++BNode::RIGHT_T; _lstNodRight = _uNod;
+						_recentNod = _lstNodRight;
+					}
 				}
 				else 
-				   if P_ASSERT(_tmpNod->Left()) { _tmpNod = _tmpNod->Left(); _tmpNod->Add(_uNod); }
-					else { SET_LEFT(_tmpNod, _uNod); }
-
-				_tmpNod = nullptr;
+				if P_ASSERT(_tmpNod->Left()) { _tmpNod = _tmpNod->Left(); _tmpNod->Add(_uNod); }
+				  else { SET_LEFT(_tmpNod, _uNod); ++BNode::LEFT_T; _lstNodLeft = _uNod; 
+					_recentNod = _lstNodLeft;
+				}
+				
+				NULLP(_tmpNod);
 			}
 			
 
-			void Insert(BNode* _uNod) {
-				BNode* _tmpNod = this, *_tmpRoot = nullptr;
 
-				// _tmpNod refers to the existing node, _uNod is the new node to be inserted to
+			void Insert(BNode* _uNod) 
+			{
+			BNode* _lastNod = BNode::_lstNodLeft, *_tmpRoot = BNode::_topRoot,
+				*_currNod = this;
+				
+				// _currNod refers to the existing node, 
+				// _uNod is the new node to be inserted to
 				if (!P_ASSERT(_uNod)) return;
 
-				if P_ASSERT(_tmpNod->Parent()) {
-					_tmpRoot = _tmpNod->Parent();
-					_uNod->setParent(_tmpRoot);
-					_tmpRoot->setLeft(_uNod);
-				}
-					
-				// insert new node into existing node
-				if LESS_THAN_C(TEXT(_tmpNod), TEXT(_uNod)) 
-					if P_ASSERT(_uNod->Left()) { _uNod = _uNod->Left(); _uNod->Add(_tmpNod); }
-					else { SET_LEFT(_uNod, _tmpNod); ++BNode::LEFT_T; }
-				else
-					if P_ASSERT(_uNod->Right()) { _uNod = _uNod->Right(); _uNod->Add(_tmpNod); }
-					else { SET_RIGHT(_uNod, _tmpNod); ++BNode::RIGHT_T;  }
+				if P_ASSERT(_currNod->Parent()) 
+					// insert new node into the tree nodes...
+					// since the last leftmost node is supposed to be the lesser in the branches
+					if GREATER_THAN_C(TEXT(_lastNod), TEXT(_uNod)) {
+						_lastNod->Add(_uNod);
+						NULL3P(_lastNod, _tmpRoot, _currNod);
+						return;
+					}
+					else {
+						_tmpRoot->Add(_uNod);
+						NULL3P(_lastNod, _tmpRoot, _currNod);
+						return;
+					}
 
-				_tmpNod = nullptr; _tmpRoot = nullptr;
+				// if the node to be inserted on is the topmost root node.
+				// insert new node to the root node.
+				if LESS_THAN_C(TEXT(_currNod), TEXT(_uNod)) 
+					if P_ASSERT(_uNod->Left()) { _uNod = _uNod->Left(); _uNod->Add(_currNod); }
+					else { SET_LEFT(_uNod, _currNod); ++BNode::LEFT_T; BNode::_topRoot = _uNod;}
+				else
+					if P_ASSERT(_uNod->Right()) { _uNod = _uNod->Right(); _uNod->Add(_currNod); }
+					else { SET_RIGHT(_uNod, _currNod); ++BNode::RIGHT_T; BNode::_topRoot = _uNod;}
+
+				NULL2P(_currNod, _tmpRoot);	
 			}
 
 
 		private:
 			CTEXT _data;
+			
+			static BNode* _topRoot;
+			static BNode* _lstNodLeft;
+			static BNode* _lstNodRight;
+			static BNode* _recentNod;
+			
 			static unsigned int LEFT_T;
 			static unsigned int RIGHT_T;
 			static unsigned int MID_T;
@@ -710,20 +677,27 @@ namespace mix {
 			struct BNode* links[5];
 		};
 		
+		// Static Members Initialization
+		BNode* BNode::_topRoot = nullptr;
+		BNode* BNode::_lstNodLeft = nullptr;
+		BNode* BNode::_lstNodRight = nullptr;
+		BNode* BNode::_recentNod = nullptr;
+		
 		unsigned int mix::data::BNode::LEFT_T = 0;
 		unsigned int mix::data::BNode::RIGHT_T = 0;
 		unsigned int mix::data::BNode::MID_T = 0;
 	
 	#endif
 		
-		
-
 		#if defined PNOD
 
 		static inline BNode* ALLOC_N(const char* _Str) {
-			return new BNode( BNode(_Str) );
+			return new BNode(_Str);
 		}
 
+
+		void setTopRoot(BNode* _uRoot) { BNode::SET_ROOT(_uRoot); }
+		
 		
 		BNode* traverseNodes(BNode* _Root, CTEXT const& _Str) {
 
@@ -764,12 +738,11 @@ namespace mix {
 				if (!P_ASSERT(_tmpRoot)) {
 					_tmpRoot = _tmpNew;
 					_tmpRoot->Add(ALLOC_N(_Str.Text()));
-					_tmpRoot = nullptr;
+					NULLP(_tmpRoot);
 				}
 				else continue;
 
 			}
-
 			return (_tmpNew);
 		}
 		#endif
