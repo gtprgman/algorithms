@@ -10,45 +10,52 @@ int main()
 {
 	P_NODE nd0 = ALLOC_N("Tom");
 
+	setTopRoot(nd0);
 
 	nd0->Add(ALLOC_N("Jade"));
-	nd0->Add(ALLOC_N("Ulfha"));
-
-	nd0->Print(); std::cout << "\n\n";
-
-	P_NODE nd1 = nd0->Left(); // jade
-
-	nd1->Insert(ALLOC_N("Irene"));
+	nd0->Add(ALLOC_N("Kaleen"));
 
 	nd0->Print();
 
-	std::cout << "\n\n";
+	RET;
 
-	std::cout << "Left Height: " << BNode::T_LEFT() << "\n";
-	std::cout << "Right Height: " << BNode::T_RIGHT() << "\n";
+	BNode::recent()->Print();
 
-	std::cout << "\n\n";
+	RET;
 
-	nd1->Print();
+	BNode::recent()->Parent()->Print();
+	
+	RET;
+	TALL;
+	RET;
 
-	P_NODE nd01 = nd1->Parent();
+	P_NODE ndKal = traverseNodes(nd0, "Kaleen");
 
-	std::cout << "\n\n";
+	ndKal->Insert(ALLOC_N("Michael"));
 
-	nd01->Print();
+	BNode::recent()->Print();
 
-	std::cout << "\n\n";
+	RET;
 
-	nd01 = treeAdd(nd0, "Gerry");
 
-	nd01->Print();
+	BNode::recent()->Parent()->Print();
 
-	std::cout << "\n\n";
+	RET;
+	TALL;
+	RET;
 
-	std::cout << "Left Height: " << BNode::T_LEFT() << "\n";
-	std::cout << "Right Height: " << BNode::T_RIGHT() << "\n";
+	NULLP(ndKal);
 
-	std::cout << "\n\n";
+	P_NODE ndNew = treeAdd(nd0, "Gerry");
+
+	ndNew->Print();
+
+	RET;
+
+	BNode::recent()->Print();
+
+	RET;
+	TALL;
+	RET;
 
 }
-
