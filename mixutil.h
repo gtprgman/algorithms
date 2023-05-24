@@ -587,7 +587,8 @@ namespace mix {
 				this->links[NOD_DIR::MIDDLE]->_dir = NOD_DIR::MIDDLE;
 			}
 
-
+			static void SET_ROOT(BNode* _uRoot) { _topRoot = _uRoot;  }
+		
 			void Print() {
 				printf("\n root's id: %s ", P_ASSERT(this)? this->Text() : "empty");
 				printf("\n left's id: %s ", P_ASSERT(this)? NULL_LEFT(this)? "empty" : TEXT(this->Left()) : "empty");
