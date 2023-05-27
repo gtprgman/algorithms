@@ -2,6 +2,7 @@
 #if !defined(TREE_DIRS)
 #define TREE_DIRS
 
+#if !defined NODE_STORES
 #define NODE_STORES
 	#include <map>
 	#include <vector>
