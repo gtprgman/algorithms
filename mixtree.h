@@ -2,6 +2,11 @@
 #if !defined(TREE_DIRS)
 #define TREE_DIRS
 
+#define NODE_STORES
+	#include <map>
+	#include <vector>
+#endif
+
 #define P_ASSERT(x) (nullptr != x) 
 #define LEN(x) std::strlen(x)
 
@@ -21,7 +26,7 @@
 
 
 #define CHAR_T(x) (  std::isalpha(x->Text()[0])? CHAR(x) : \
-					 (unsigned int)std::atoi(x->Text()) \
+		(unsigned int)std::atoi(x->Text()) \
 ) 
 
 #define CHAR_S(s) ( std::isalpha(s[0]) ? s[0] : (unsigned int)std::atoi(s) )
@@ -69,7 +74,6 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #endif 
 
 
-
 #if !defined(MIX_NOD)
 #define MIX_NOD
 
@@ -82,10 +86,18 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #endif
 
 
-
 #if !defined(NDIR)
 #define NDIR
-enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, MIDDLE = 2, RIGHT = 3 };
+enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, RIGHT = 2 };
 #endif
+
+// debugging macros
+#define RET std::cout << "\n\n"
+
+#define TALL  std::cout << "L_HEIGHT: " << BNode::T_LEFT() << "\n" ; \
+	      std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
+
+
+using UINT = unsigned int;
 
 
