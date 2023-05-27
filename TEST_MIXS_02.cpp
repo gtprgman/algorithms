@@ -8,54 +8,41 @@ using P_NODE = BNode*;
 
 int main()
 {
-	P_NODE nd0 = ALLOC_N("Tom");
+	P_NODE ndRoot = ALLOC_N("Wendy");
+	setTopRoot(ndRoot);
 
-	setTopRoot(nd0);
-
-	nd0->Add(ALLOC_N("Jade"));
-	nd0->Add(ALLOC_N("Kaleen"));
-
-	nd0->Print();
-
+	std::cout << "Wendy->Add(Tom)" << "\n";
+	std::cout << "Wendy->Add(Jade)" << "\n";
 	RET;
 
-	BNode::recent()->Print();
+	ndRoot->Add(ALLOC_N("Tom"));
+	ndRoot->Add(ALLOC_N("Jade"));
 
+	std::cout << "Root->Print()" << "\n";
+
+	ndRoot->Print(); RET;  TALL; RET;
+
+	std::cout << "Searching Tom... " << "\n";
 	RET;
 
-	BNode::recent()->Parent()->Print();
+	P_NODE ndTom = traverseNodes(ndRoot, "Tom");
+
+	ndTom->Print(); RET;
+
+	std::cout << "Delete 'Jade' ... " << "\n";
+	RET;
+
+	ndTom->Left()->Remove();
+
+	std::cout << "Try printing the deleted Node..." << "\n";
+	RET;
+
+	ndTom->Left()->Print();
+
+	std::cout << "Wendy->Tom->Print(); " << "\n";
+	RET;
+
+	ndRoot->Left()->Print();
 	
-	RET;
 	TALL;
-	RET;
-
-	P_NODE ndKal = traverseNodes(nd0, "Kaleen");
-
-	ndKal->Insert(ALLOC_N("Michael"));
-
-	BNode::recent()->Print();
-
-	RET;
-
-
-	BNode::recent()->Parent()->Print();
-
-	RET;
-	TALL;
-	RET;
-
-	NULLP(ndKal);
-
-	P_NODE ndNew = treeAdd(nd0, "Gerry");
-
-	ndNew->Print();
-
-	RET;
-
-	BNode::recent()->Print();
-
-	RET;
-	TALL;
-	RET;
-
 }
