@@ -484,19 +484,12 @@ namespace mix {
 		
 		
 		#if defined MIX_NOD
-		// debugging macros
-		#define RET std::cout << "\n\n"
-
-		#define TALL  std::cout << "L_HEIGHT: " << BNode::T_LEFT() << "\n" ; \
-			      std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
 			      
 		struct BNode {
 			BNode() { 
 				this->links[0] = nullptr;
 				this->links[1] = nullptr;
 				this->links[2] = nullptr;
-				this->links[3] = nullptr;
-				this->links[4] = nullptr;
 				this->_dir = NOD_DIR::UNKNOWN;
 			};
 
@@ -508,14 +501,11 @@ namespace mix {
 				this->links[0] = nullptr;
 				this->links[1] = nullptr;
 				this->links[2] = nullptr;
-				this->links[3] = nullptr;
-				this->links[4] = nullptr;
 				
 				BNode::_topRoot = nullptr;
 				BNode::_lstNodLeft = nullptr;
 				BNode::_lstNodRight = nullptr;
 				BNode::_recentNod = nullptr;
-				
 			}
 
 			// Accessor Get()...
@@ -525,10 +515,6 @@ namespace mix {
 
 			BNode* Left() const {
 				return this->links[NOD_DIR::LEFT];
-			}
-
-			BNode* Middle() const {
-				return this->links[NOD_DIR::MIDDLE];
 			}
 
 			BNode* Right() const{
@@ -557,7 +543,6 @@ namespace mix {
 		
 			static const unsigned int T_LEFT() { return mix::data::BNode::LEFT_T; }
 			static const unsigned int T_RIGHT()  { return mix::data::BNode::RIGHT_T; }
-			static const unsigned int T_MID() { return mix::data::BNode::MID_T; }
 			
 			// Accessor Set()...
 			int Set(const char* _text) {
@@ -582,17 +567,14 @@ namespace mix {
 				this->links[NOD_DIR::PARENT]->_dir = NOD_DIR::PARENT;
 			}
 
-			void setMiddle(BNode* uNod) {
-				this->links[NOD_DIR::MIDDLE] = uNod;
-				this->links[NOD_DIR::MIDDLE]->_dir = NOD_DIR::MIDDLE;
-			}
-
+			
 			static void SET_ROOT(BNode* _uRoot) { _topRoot = _uRoot;  }
 		
 			void Print() {
 				printf("\n root's id: %s ", P_ASSERT(this)? this->Text() : "empty");
 				printf("\n left's id: %s ", P_ASSERT(this)? NULL_LEFT(this)? "empty" : TEXT(this->Left()) : "empty");
 				printf("\n right's id: %s ", P_ASSERT(this) ? NULL_RIGHT(this) ? "empty" : TEXT(this->Right()) : "empty");
+				RET;
 			}
 
 			
@@ -654,6 +636,31 @@ namespace mix {
 				NULL2P(_currNod, _tmpRoot);
 			}
 
+			
+			void Remove() {
+				UINT LT = 0, RT = 0;
+
+				if (!P_ASSERT(this)) return;
+				// copy existing node to temporary node
+				BNode* _ndTmp = new BNode(*this);
+
+				LT = BNode::LEFT_T;  RT = BNode::RIGHT_T;
+
+				// Eliminate branches
+				NULL3P(this->links[NOD_DIR::PARENT],this->links[NOD_DIR::LEFT], 
+					   this->links[NOD_DIR::RIGHT]);
+
+				*this = BNode(); // assign empty BNode
+
+				BNode::LEFT_T = (LT > 0)? --LT : LT;
+				BNode::RIGHT_T = (RT > 0) ? --RT : RT;
+
+				// add leftover branches to the top root
+				_topRoot->Add(_ndTmp->Left());
+				_topRoot->Add(_ndTmp->Right());
+
+				NULLP(_ndTmp);
+			}
 
 		private:
 			CTEXT _data;
@@ -665,10 +672,13 @@ namespace mix {
 		
 			static unsigned int LEFT_T;
 			static unsigned int RIGHT_T;
-			static unsigned int MID_T;
+			
 		protected:
 			NOD_DIR _dir;
-			struct BNode* links[5];
+			struct BNode* links[3];
+			
+			static std::map<UINT, BNode> _ndTable;
+			static std::vector<BNode> _ndSame;
 		};
 		
 		// Static Members Initialization
@@ -679,7 +689,6 @@ namespace mix {
 	
 		unsigned int mix::data::BNode::LEFT_T = 0;
 		unsigned int mix::data::BNode::RIGHT_T = 0;
-		unsigned int mix::data::BNode::MID_T = 0;
 	#endif
 		
 		
@@ -729,14 +738,11 @@ namespace mix {
 					_tmpRoot = _tmpRoot->Left();
 				}
 				
-				
 				if (!P_ASSERT(_tmpRoot)) {
 					_tmpRoot = _tmpNew;
 					_tmpRoot->Add(ALLOC_N(_Str.Text()));
 					NULLP(_tmpRoot);
-				}
-				else continue;
-
+				} else continue;
 			}
 
 			return (_tmpNew);
