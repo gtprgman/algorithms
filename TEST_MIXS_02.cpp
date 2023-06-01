@@ -1,4 +1,3 @@
-
 #include "mixutil.h"
 #include "mixer.h"
 
@@ -8,41 +7,73 @@ using P_NODE = BNode*;
 
 int main()
 {
-	P_NODE ndRoot = ALLOC_N("Wendy");
-	setTopRoot(ndRoot);
+	P_NODE nTemp = nullptr;
 
-	std::cout << "Wendy->Add(Tom)" << "\n";
-	std::cout << "Wendy->Add(Jade)" << "\n";
+	P_NODE nRoot = ALLOC_N("Tom");
+
+	setTopRoot(nRoot);
+
+	nRoot->Add(ALLOC_N("Jade"));
+	nRoot->Add(ALLOC_N("Ulfha"));
+
+	nRoot->Print();
+
 	RET;
 
-	ndRoot->Add(ALLOC_N("Tom"));
-	ndRoot->Add(ALLOC_N("Jade"));
+	nTemp = treeAdd(nRoot, "Mitchel");
 
-	std::cout << "Root->Print()" << "\n";
+	nTemp->Print();
 
-	ndRoot->Print(); RET;  TALL; RET;
-
-	std::cout << "Searching Tom... " << "\n";
 	RET;
 
-	P_NODE ndTom = traverseNodes(ndRoot, "Tom");
+	nTemp = treeAdd(nRoot,"Irene");
 
-	ndTom->Print(); RET;
+	nTemp->Print();
 
-	std::cout << "Delete 'Jade' ... " << "\n";
 	RET;
-
-	ndTom->Left()->Remove();
-
-	std::cout << "Try printing the deleted Node..." << "\n";
-	RET;
-
-	ndTom->Left()->Print();
-
-	std::cout << "Wendy->Tom->Print(); " << "\n";
-	RET;
-
-	ndRoot->Left()->Print();
-	
 	TALL;
+	RET;
+
+	nTemp = traverseNodes(nRoot, "Ulfha");
+
+	nTemp->Print();
+	RET;
+
+	nTemp->Insert(ALLOC_N("Wendy"));
+
+	BNode::recent()->Print(); RET;
+
+	BNode::recent()->Parent()->Print(); RET;
+
+	TALL;
+	RET;
+
+	nTemp = traverseNodes(nRoot, "Mitchel");
+	nTemp->Remove();
+
+	nTemp->Print();
+
+	RET;
+	TALL;
+
+	nTemp = traverseNodes(nRoot, "Jade");
+
+	nTemp->Print();
+
+	RET;
+
+	nRoot->Remove();
+
+	nRoot->Print();
+
+	nTemp = nRoot->Left();
+
+	nTemp->Print();
+
+	RET;
+	TALL;
+	RET;
+
+	NULL2P(nRoot, nTemp);
+	
 }
