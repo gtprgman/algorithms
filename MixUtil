@@ -21,7 +21,6 @@ be implemented in the any time of the future.
 #endif
 
 
-
 #if !defined(MIX_C)
 #define MIX_C
 	#define _TYPE(_ty) decltype(_ty)
