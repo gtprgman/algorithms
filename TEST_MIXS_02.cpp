@@ -1,79 +1,35 @@
-#include "mixutil.h"
-#include "mixer.h"
-
+#include <iostream>
+#include <string>
+#include "mixtree.h"
 
 using P_NODE = BNode*;
 
 
 int main()
 {
+	P_NODE nRoot = ALLOC_N(15);
 	P_NODE nTemp = nullptr;
+	
+	setTopRoot(nRoot); // this is a 'must' for BNode::Find()
 
-	P_NODE nRoot = ALLOC_N("Tom");
-
-	setTopRoot(nRoot);
-
-	nRoot->Add(ALLOC_N("Jade"));
-	nRoot->Add(ALLOC_N("Ulfha"));
-
+	nRoot->Add(ALLOC_N(9));
+	nRoot->Add(ALLOC_N(23));
 	nRoot->Print();
 
-	RET;
+	BNode::Find(23)->Print();
 
-	nTemp = treeAdd(nRoot, "Mitchel");
+	nRoot->Add(ALLOC_N(17));
+	nRoot->Add(ALLOC_N(28));
 
-	nTemp->Print();
+	BNode::Find(18)->Print();
 
-	RET;
+	nRoot->Right()->Print();
 
-	nTemp = treeAdd(nRoot,"Irene");
+	nRoot->Add(ALLOC_N(3));
+	nRoot->Add(ALLOC_N(12));
 
-	nTemp->Print();
-
-	RET;
-	TALL;
-	RET;
-
-	nTemp = traverseNodes(nRoot, "Ulfha");
-
-	nTemp->Print();
-	RET;
-
-	nTemp->Insert(ALLOC_N("Wendy"));
-
-	BNode::recent()->Print(); RET;
-
-	BNode::recent()->Parent()->Print(); RET;
-
-	TALL;
-	RET;
-
-	nTemp = traverseNodes(nRoot, "Mitchel");
-	nTemp->Remove();
-
-	nTemp->Print();
-
-	RET;
-	TALL;
-
-	nTemp = traverseNodes(nRoot, "Jade");
-
-	nTemp->Print();
-
-	RET;
-
-	nRoot->Remove();
-
-	nRoot->Print();
-
-	nTemp = nRoot->Left();
-
-	nTemp->Print();
-
-	RET;
-	TALL;
-	RET;
-
-	NULL2P(nRoot, nTemp);
+	nRoot->Left()->Print();
+	
+	NULL2P(nTemp, nRoot);
 	
 }
