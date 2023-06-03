@@ -1,47 +1,37 @@
 #pragma once
+
 #if !defined(TREE_DIRS)
 #define TREE_DIRS
 
-#if !defined(NODE_STORES)
-#define NODE_STORES
-	#include <map>
-#endif
-
 #define P_ASSERT(x) (nullptr != x) 
-#define LEN(x) std::strlen(x)
+
+#define HAS_PARENT(x) (P_ASSERT(x->Parent()))
 
 #define NOD_TYPE(x) (x->_dir)
+
 #define ISNULL(x) (nullptr == x) 
 
-#define EMPTY_TEXT(x) ( LEN(x) == 0)
 #define NULL_LEFT(x) ( ISNULL(x->links[NOD_DIR::LEFT]) )
 
 #define NULL_RIGHT(x) ( ISNULL(x->links[NOD_DIR::RIGHT]) )
 
 #define LEFT_NOD(x) (x->links[NOD_DIR::LEFT])
+
 #define RIGHT_NOD(x) (x->links[NOD_DIR::RIGHT])
 
-#define TEXT(x) (x->Text())
-#define CHAR(x) ((unsigned int)x->Text()[0])
+#define VAL(x) (x->Value())
 
+#define CHAR(x) ((unsigned char)x->Value())
 
-#define CHAR_T(x) (  std::isalpha(x->Text()[0])? CHAR(x) : \
-					 (unsigned int)std::atoi(x->Text()) \
-) 
+#define LEFT_VAL(x) ( ISNULL(x->links[NOD_DIR::LEFT])? -1 : VAL(LEFT_NOD(x)) )
 
-#define CHAR_S(s) ( std::isalpha(s[0]) ? s[0] : (unsigned int)std::atoi(s) )
+#define RIGHT_VAL(x) ( ISNULL(x->links[NOD_DIR::RIGHT])? -1  : VAL(RIGHT_NOD(x)) )
 
-#define LEFT_TEXT(x) ( ISNULL(x->links[NOD_DIR::LEFT])? "empty" : TEXT(LEFT_NOD(x)) )
-#define RIGHT_TEXT(x) ( ISNULL(x->links[NOD_DIR::RIGHT])? "empty"  : TEXT(RIGHT_NOD(x)) )
+#define LESS_THAN(x, n) ( VAL(x) < VAL(n) )
 
-#define LESS_THAN(x, n) ( CHAR_T(x) < CHAR_T(n) )
-#define GREATER_THAN(x, n) ( CHAR_T(x) > CHAR_T(n) )
+#define GREATER_THAN(x, n) ( VAL(x) > VAL(n) )
 
-#define LESS_THAN_C(s1,s2) ( CHAR_S(s1) < CHAR_S(s2) )
-#define GREATER_THAN_C(s1,s2) ( CHAR_S(s1) > CHAR_S(s2) )
-
-#define IS_EQUAL(x, n) ( !std::strcmp(x->Text(), n->Text() ) )
-#define TEXT_EQUAL(s1, s2) ( !std::strcmp(s1,s2) )
+#define IS_EQUAL(x, n) ( VAL(x) == VAL(n) )
 
 #define SET_PARENT(x, _nod_ ) ( _nod_->setParent(x) )
 
@@ -50,16 +40,16 @@
 	x->setLeft(_nod_); \
 	_nod_->setParent(x);\
 	_nod_->_dir = NOD_DIR::LEFT;\
-	_nod_->N_DX = _nod_->Parent()->N_DX + 1; \
 }
+
 
 
 #define SET_RIGHT(x, _nod_) {\
 	x->setRight(_nod_); \
 	_nod_->setParent(x); \
 	_nod_->_dir = NOD_DIR::RIGHT; \
-	_nod_->N_DX = _nod_->Parent()->N_DX + 2; \
 }
+
 
 
 #define NULLP(p) p = nullptr
@@ -68,7 +58,7 @@
 
 constexpr const std::size_t CHRSZ() { return sizeof(char); }
 
-#define TEXT_ALLOC(_txt) new char[LEN(_txt)*CHRSZ]
+#define TEXT_ALLOC(_txt) new char[std::strlen(_txt)*CHRSZ]
 
 #endif
 
@@ -84,14 +74,12 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #if !defined(MIX_NOD)
 #define MIX_NOD
 // BNode definition
-
 #endif
 
 
 #if !defined(PNOD)
 #define PNOD
 // External functions for manipulating BNode
-
 #endif
 
 
@@ -99,7 +87,7 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #if !defined(NDIR)
 #define NDIR
 	enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, RIGHT = 2 };
-	
+
 #endif
 
 
@@ -107,12 +95,11 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #define RET std::cout << "\n\n"
 
 #define TALL  std::cout << "L_HEIGHT: " << BNode::T_LEFT() << "\n" ; \
-			  std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
+	      std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
 
 
 using UINT = unsigned int;
-constexpr const UINT EVT_SIGL = 0x21ff;
-
+constexpr const UINT EVT_BAL = 0x21ff;
 
 
 #if defined MIX_CTEXT
@@ -133,7 +120,6 @@ private:
 
 
 
-
 #if defined MIX_NOD
 
 struct BNode {
@@ -142,11 +128,11 @@ struct BNode {
 		this->links[1] = nullptr;
 		this->links[2] = nullptr;
 		this->_dir = NOD_DIR::UNKNOWN;
-		this->N_DX = 0;
+		this->_value = -1;
 	};
 
-	BNode(const char* _nodText) : BNode() {
-		this->Set(_nodText);
+	BNode(int _nodVal) : BNode() {
+		this->Set(_nodVal);
 	};
 
 	~BNode() {
@@ -161,8 +147,8 @@ struct BNode {
 	}
 
 	// Accessor Get() Methods...
-	const char* Text() const {
-		return _data.Text();
+	const int& Value() const {
+		return _value;
 	}
 
 	BNode* Left() const {
@@ -196,12 +182,10 @@ struct BNode {
 
 
 	// Accessor Set() Methods...
-	const int Set(const char* _text) {
-		if (P_ASSERT(_text)) _data = _text;
-
+	void Set(int _uVal) {
+		this->_value = _uVal;
 		this->_dir = NOD_DIR::PARENT;
 
-		return P_ASSERT(_text);
 	}
 
 
@@ -222,15 +206,15 @@ struct BNode {
 
 
 	void Print() {
-		printf("\n root's id: %s ", P_ASSERT(this) ? this->Text() : "empty");
-		printf("\n left's id: %s ", P_ASSERT(this) ? NULL_LEFT(this) ? "empty" : TEXT(this->Left()) : "empty");
-		printf("\n right's id: %s ", P_ASSERT(this) ? NULL_RIGHT(this) ? "empty" : TEXT(this->Right()) : "empty");
+		printf("\n root's id: %d ", P_ASSERT(this) ? VAL(this) : -1);
+		printf("\n left's id: %d ", P_ASSERT(this) ? NULL_LEFT(this) ? -1 : VAL(this->Left()) : -1);
+		printf("\n right's id: %d ", P_ASSERT(this) ? NULL_RIGHT(this) ? -1 : VAL(this->Right()) : -1);
 		RET;
 	}
 
 	static void SET_ROOT(BNode* _uRoot) { 
-		_topRoot = _uRoot; 
-		_topRoot->_dir = NOD_DIR::PARENT; 
+		BNode::_topRoot = _uRoot; 
+		BNode::_topRoot->_dir = NOD_DIR::PARENT; 
 	}
 
 
@@ -241,16 +225,16 @@ struct BNode {
 
 		if (!P_ASSERT(_uNod)) return;
 
-		if LESS_THAN_C(TEXT(_tmpNod), TEXT(_uNod)) {
+		if (VAL(_tmpNod) < VAL(_uNod)) {
 			if P_ASSERT(_tmpNod->Right()) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
-			else {
+			else {// if right node is null
 				SET_RIGHT(_tmpNod, _uNod); ++BNode::RIGHT_T; _lstNodRight = _uNod;
 				_recentNod = _lstNodRight;
 			}
 		}
 		else
 			if P_ASSERT(_tmpNod->Left()) { _tmpNod = _tmpNod->Left(); _tmpNod->Add(_uNod); }
-			else {
+			else { // if left node is null
 				SET_LEFT(_tmpNod, _uNod); ++BNode::LEFT_T; _lstNodLeft = _uNod;
 				_recentNod = _lstNodLeft;
 			}
@@ -259,89 +243,70 @@ struct BNode {
 		RT = BNode::RIGHT_T;
 		_BAL = (LT > RT) ? LT - RT : RT - LT;
 
-		if (_BAL > 1) T_SIGNAL(EVT_SIGL);
+		if (_BAL > 1) T_SIGNAL(EVT_BAL);
 		
 		NULLP(_tmpNod);
 	}
 
 
 
-	void Insert(BNode* _uNod) {
-		BNode* _lastNod = BNode::_lstNodLeft, * _tmpRoot = BNode::_topRoot,
-			* _currNod = this;
 
-		// _currNod refers to the existing node, 
-		// _uNod is the new node to be inserted to
-		if (!P_ASSERT(_uNod)) return;
+	static BNode* Find(int const uVal) {
+		BNode* nodTmp = nullptr, *nRoot = _topRoot;
 
-		if P_ASSERT(_currNod->Parent())
-			// insert new node into the tree nodes...
-			// since the last leftmost node is supposed to be the lesser in the branches
-			if GREATER_THAN_C(TEXT(_lastNod), TEXT(_uNod)) {
-				_lastNod->Add(_uNod);
-				NULL3P(_lastNod, _tmpRoot, _currNod);
-				return;
-			}
-			else {
-				_tmpRoot->Add(_uNod);
-				NULL3P(_lastNod, _tmpRoot, _currNod);
-				return;
-			}
+		if (nullptr == nRoot) {
+			std::cout << "can't find the root node.." << "\n\n";
+			return nullptr;
+		}
 
-		// if the node to be inserted on is the topmost root node.
-		// insert new node to the root node.
-		if LESS_THAN_C(TEXT(_currNod), TEXT(_uNod))
-			if P_ASSERT(_uNod->Left()) { _uNod = _uNod->Left(); _uNod->Add(_currNod); }
-			else { SET_LEFT(_uNod, _currNod); ++BNode::LEFT_T; BNode::_topRoot = _uNod; }
-		else
-			if P_ASSERT(_uNod->Right()) { _uNod = _uNod->Right(); _uNod->Add(_currNod); }
-			else { SET_RIGHT(_uNod, _currNod); ++BNode::RIGHT_T; BNode::_topRoot = _uNod; }
+		nodTmp = nRoot;
 
-		NULL2P(_currNod, _tmpRoot);
+		for (; nullptr != nodTmp; ) {
+			if (VAL(nodTmp) == uVal) break;
+				else if (VAL(nodTmp) <  uVal) nodTmp = nodTmp->Right();
+					else nodTmp = nodTmp->Left();			
+		}
+
+		NULLP(nRoot);
+		return (nodTmp);
 	}
 
 
+
+
 	void Remove() {
-		UINT LT = 0, RT = 0;
-		NOD_DIR lDir = this->_dir;
+		UINT LT = BNode::LEFT_T, RT = BNode::RIGHT_T;
+		NOD_DIR lDir = this->_dir; BNode* nodLeft = nullptr, 
+		*nodRight = nullptr, *nodParent = nullptr;
 
 		if (!P_ASSERT(this)) return;
-		// copy existing node to temporary node
-		BNode* _ndTmp = new BNode(*this);
-
-		// decrease the nodes ordinal value
-		if P_ASSERT(_ndTmp->Left()) --_ndTmp->Left()->N_DX;
-		if P_ASSERT(_ndTmp->Right()) --_ndTmp->Right()->N_DX;
-
-		LT = BNode::LEFT_T;	
-		RT = BNode::RIGHT_T;
 
 		(NOD_DIR::LEFT == lDir) ? ((LT > 0) ? --LT : LT) : ((RT > 0) ? --RT : RT);
 
 		BNode::LEFT_T = LT;
 		BNode::RIGHT_T = RT;
 
-		// Eliminate branches
-		NULL3P(this->links[NOD_DIR::PARENT], this->links[NOD_DIR::LEFT],
-			this->links[NOD_DIR::RIGHT]);
+		if HAS_PARENT(this) {
+			nodParent = this->Parent();
+			nodLeft = this->Left();
+			nodRight = this->Right();
+		}
+		
+		// discard relation to parent node
+		this->links[NOD_DIR::PARENT] = nullptr;
 
 		*this = BNode(); // assign empty BNode
 
-		if (NOD_DIR::PARENT == lDir)
-			return;
-		else {
-			// add leftover branches to the top root
-			_topRoot->Add(_ndTmp->Left());
-			_topRoot->Add(_ndTmp->Right());
-		}
-
-		NULLP(_ndTmp);
+		// add leftover branches to the top root
+		nodParent->Add(nodLeft);
+		nodParent->Add(nodRight);
+		
+		NULL3P(nodParent,nodLeft, nodRight);
 	}
 
 private:
-	CTEXT _data;
-	unsigned int N_DX;
-
+	int _value;
+	
 	static BNode* _topRoot;
 
 	static BNode* _lstNodLeft;
@@ -357,9 +322,7 @@ protected:
 	NOD_DIR _dir;
 	struct BNode* links[3];
 
-	static std::map<UINT, BNode> _ndTable;
 	
-
 	void R_TURNS() {
 
 	}
@@ -377,14 +340,16 @@ protected:
 		RT = BNode::RIGHT_T;
 
 		if (LT > RT) // Rotate right
-				R_TURNS();
+			R_TURNS();
 		else
 			// rotate left
 			L_TURNS();
+
+
 	}
 
 	void T_SIGNAL(UINT _signal) {
-		if (EVT_SIGL == _signal) Normalize();
+		if (EVT_BAL == _signal) Normalize();
 	}
 };
 
@@ -405,22 +370,24 @@ unsigned int BNode::BAL_T = 0;
 
 #if defined PNOD
 
-static inline BNode* ALLOC_N(const char* _Str) {
-	return new BNode(_Str);
+static inline BNode* ALLOC_N(const int _Value) {
+	return new BNode(_Value);
 }
+
 
 
 void setTopRoot(BNode* _uRoot) { BNode::SET_ROOT(_uRoot); }
 
 
-BNode* traverseNodes(BNode* _Root, CTEXT const& _Str) {
+
+BNode* traverseNodes(BNode* _Root, int const _Val) {
 
 	if (!P_ASSERT(_Root)) return nullptr;
 
 	for (; nullptr != _Root; ) {
 
-		if TEXT_EQUAL(TEXT(_Root), _Str.Text()) return (_Root);
-		else if LESS_THAN_C(TEXT(_Root), _Str.Text()) _Root = _Root->Right();
+		if (VAL(_Root) == _Val) return (_Root);
+		else if (VAL(_Root) < _Val) _Root = _Root->Right();
 		else _Root = _Root->Left();
 
 		if (!P_ASSERT(_Root)) continue;
@@ -432,15 +399,15 @@ BNode* traverseNodes(BNode* _Root, CTEXT const& _Str) {
 
 
 
-BNode* treeAdd(BNode* _Root, CTEXT const& _Str) {
+BNode* treeAdd(BNode* _Root, int const _Val) {
 
 	BNode* _tmpRoot = _Root, * _tmpNew = nullptr;
 
 	if (!P_ASSERT(_tmpRoot)) return nullptr;
 
 	for (; nullptr != _tmpRoot; ) {
-		if TEXT_EQUAL(TEXT(_tmpRoot), _Str.Text()) break;
-		else if LESS_THAN_C(TEXT(_tmpRoot), _Str.Text()) {
+		if (VAL(_tmpRoot) == _Val) break;
+		else if (VAL(_tmpRoot) < _Val) {
 			_tmpNew = _tmpRoot;
 			_tmpRoot = _tmpRoot->Right();
 
@@ -452,7 +419,7 @@ BNode* treeAdd(BNode* _Root, CTEXT const& _Str) {
 
 		if (!P_ASSERT(_tmpRoot)) {
 			_tmpRoot = _tmpNew;
-			_tmpRoot->Add(ALLOC_N(_Str.Text()));
+			_tmpRoot->Add(ALLOC_N(_Val));
 			NULLP(_tmpRoot);
 		}
 		else continue;
@@ -463,4 +430,3 @@ BNode* treeAdd(BNode* _Root, CTEXT const& _Str) {
 }
 
 #endif
-
