@@ -1,4 +1,6 @@
 #pragma once
+struct BNode;
+
 
 #if !defined(TREE_DIRS)
 #define TREE_DIRS
@@ -6,6 +8,8 @@
 #define P_ASSERT(x) (nullptr != x) 
 
 #define HAS_PARENT(x) (P_ASSERT(x->Parent()))
+
+#define HAS_CHILDS(x) ( P_ASSERT(x->Left()) || P_ASSERT(x->Right()) )
 
 #define NOD_TYPE(x) (x->_dir)
 
@@ -20,6 +24,10 @@
 #define RIGHT_NOD(x) (x->links[NOD_DIR::RIGHT])
 
 #define VAL(x) (x->Value())
+
+#define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
+
+#define MIN(n1, n2) ( (n1 < n2)? n1 : n2 )
 
 #define CHAR(x) ((unsigned char)x->Value())
 
@@ -55,6 +63,8 @@
 #define NULLP(p) p = nullptr
 #define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
 #define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr; 
+
+constexpr BNode* BNaN = nullptr;
 
 constexpr const std::size_t CHRSZ() { return sizeof(char); }
 
@@ -95,7 +105,7 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 #define RET std::cout << "\n\n"
 
 #define TALL  std::cout << "L_HEIGHT: " << BNode::T_LEFT() << "\n" ; \
-	      std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
+			  std::cout << "R_HEIGHT: " << BNode::T_RIGHT() << "\n" ;\
 
 
 using UINT = unsigned int;
@@ -175,6 +185,27 @@ struct BNode {
 		return this->_dir;
 	}
 
+
+	const unsigned int Lefts() {
+		BNode* curr = this;
+		unsigned int cnt = 0;
+		for (; nullptr != curr; cnt++) 
+			curr = curr->Left();
+
+		return --cnt;
+	}
+
+
+	const unsigned int Rights() {
+		BNode* curr = this;
+		unsigned int cnt = 0;
+		for (; nullptr != curr; cnt++)
+			curr = curr->Right();
+
+		return --cnt;
+	}
+
+	
 	static BNode* T_ROOT() { return BNode::_topRoot; }
 	static BNode* recent() { return BNode::_recentNod; }
 	static const unsigned int T_LEFT() { return BNode::LEFT_T; }
@@ -275,13 +306,21 @@ struct BNode {
 
 
 	void Remove() {
-		UINT LT = BNode::LEFT_T, RT = BNode::RIGHT_T;
+		UINT LT = BNode::LEFT_T; UINT RT = BNode::RIGHT_T;
+		UINT LN = 0; UINT RN = 0;
 		NOD_DIR lDir = this->_dir; BNode* nodLeft = nullptr, 
 		*nodRight = nullptr, *nodParent = nullptr;
 
 		if (!P_ASSERT(this)) return;
 
-		(NOD_DIR::LEFT == lDir) ? ((LT > 0) ? --LT : LT) : ((RT > 0) ? --RT : RT);
+		// Number of leaves at the left & right of the current node
+		LN = this->Lefts();
+		RN = this->Rights();
+
+		if (LN < RN)
+			RT = RT - RN; // minus RT by a number of leaves at the right side
+		else
+			LT = LT - LN; // minus LT by a number of leaves at the left side
 
 		BNode::LEFT_T = LT;
 		BNode::RIGHT_T = RT;
@@ -293,9 +332,11 @@ struct BNode {
 		}
 		
 		// discard relation to parent node
-		this->links[NOD_DIR::PARENT] = nullptr;
+		this->links[NOD_DIR::PARENT] = BNaN;
 
-		*this = BNode(); // assign empty BNode
+		// discard branches' relations
+		if (NOD_DIR::RIGHT == lDir) nodParent->links[NOD_DIR::RIGHT] = BNaN;
+			else nodParent->links[NOD_DIR::LEFT] = BNaN;
 
 		// add leftover branches to the top root
 		nodParent->Add(nodLeft);
@@ -345,7 +386,6 @@ protected:
 			// rotate left
 			L_TURNS();
 
-
 	}
 
 	void T_SIGNAL(UINT _signal) {
@@ -391,7 +431,6 @@ BNode* traverseNodes(BNode* _Root, int const _Val) {
 		else _Root = _Root->Left();
 
 		if (!P_ASSERT(_Root)) continue;
-
 	}
 
 	return (_Root);
@@ -400,7 +439,6 @@ BNode* traverseNodes(BNode* _Root, int const _Val) {
 
 
 BNode* treeAdd(BNode* _Root, int const _Val) {
-
 	BNode* _tmpRoot = _Root, * _tmpNew = nullptr;
 
 	if (!P_ASSERT(_tmpRoot)) return nullptr;
@@ -410,7 +448,6 @@ BNode* treeAdd(BNode* _Root, int const _Val) {
 		else if (VAL(_tmpRoot) < _Val) {
 			_tmpNew = _tmpRoot;
 			_tmpRoot = _tmpRoot->Right();
-
 		}
 		else {
 			_tmpNew = _tmpRoot;
@@ -425,7 +462,6 @@ BNode* treeAdd(BNode* _Root, int const _Val) {
 		else continue;
 
 	}
-
 	return (_tmpNew);
 }
 
