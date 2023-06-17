@@ -8,7 +8,7 @@ using PNODE = BNode*;
 int main()
 {
 	PNODE nRoot = ALLOC_N(15);
-	setTopRoot(nRoot);
+	nRoot->setTopRoot(nRoot);
 
 
 	nRoot->Add(ALLOC_N(9));
@@ -23,43 +23,44 @@ int main()
 	nRoot->Add(ALLOC_N(3));
 	nRoot->Add(ALLOC_N(8));
 
-	Find(3)->Print();
-	Find(3)->Parent()->Print(); // node 4->Print();
+	nRoot->Find(3)->Print();
+	nRoot->Find(3)->Parent()->Print(); // node 4->Print();
 
-	Find(9)->Print();
+	nRoot->Find(9)->Print();
 
-	
 	// recall that BNode::Remove() is now implied move instead of copy..
 	std::cout << "Removing Node 4.." << "\n\n";
-	Find(4)->Remove()->Print();;
+	nRoot->Find(4)->Remove()->Print();;
 
-	setTopRoot(nRoot);
-
-	// to hinder being bewildered by the extracted error statement of Find()
-	PNODE nx = Find(4);
+	PNODE nx = nRoot->Find(4);
 
 	nx->Print();
 
-	nx = Find(9);
+	nx = nRoot->Find(9);
 
 	nRoot->Print();
 
 	nx->Print();
 
-	nx = Find(28)->Parent();
+	nx = nRoot->Find(28)->Parent();
 
 	nx->Print();
 
-	Find(28)->Print();
+	nRoot->Find(28)->Print();
 
 	std::cout << "Removing Node 28.. " << "\n\n";
 
-	Find(28)->Remove()->Print();
-	setTopRoot(nRoot);
+	nRoot->Find(28)->Remove()->Print();
 
 	nx->Print();
+
+	nRoot->Remove()->Print();
+
+	RET;
+
 
 	NULL2P(nRoot,nx);
 
 	return 0;
 }
+
