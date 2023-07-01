@@ -1,12 +1,14 @@
 #pragma once
 
 struct BNode;
+struct AVL;
 
 using UINT = unsigned int;
+using PNODE = struct BNode*;
 
 constexpr BNode* BNaN = nullptr;
 
-BNode* BRoot = nullptr;
+static BNode* BRoot = nullptr;
 
 constexpr const UINT EVNT_BALANCE = 0x21ff;
 
@@ -14,21 +16,13 @@ constexpr const std::size_t CHRSZ() { return sizeof(char); }
 
 static BNode* const ALLOC_N(const int, const bool);
 
+static BNode* const ALLOC_N(BNode* const, const bool);
+
 BNode* const seek_nd(const BNode*, int const);
 
 BNode* const treeAdd(BNode*, int const);
 
 
-
-struct T_INFO {
-	UINT LL = 0;
-	UINT LR = 0;
-
-	UINT RL = 0;
-	UINT RR = 0;
-	BNode* _Lesser = nullptr;
-	BNode* _Greater = nullptr;
-};
 
 
 #if !defined(TREE_DIRS)
@@ -39,6 +33,17 @@ struct T_INFO {
 #define C_ASSERT(x) (nullptr != x)
 
 #define P_ASSERT(x) ( (nullptr != x) && (-1 != x->Value()) ) 
+
+#define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
+
+#define MIN(n1, n2) ( (n1 < n2)? n1 : n2 )
+
+#define NULLP(p) p = nullptr
+
+#define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
+
+#define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr;
+
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -58,17 +63,13 @@ struct T_INFO {
 
 #define NULL_PARENT(x) ( ISNULL(x->links[NOD_DIR::PARENT]) )
 
-#define LEFT_NOD(x) (x->links[NOD_DIR::LEFT])
+#define LEFT_ND(x) (x->Left())
 
-#define RIGHT_NOD(x) (x->links[NOD_DIR::RIGHT])
+#define RIGHT_ND(x) (x->Right())
 
-#define PARENT_NOD(x) ( x->links[NOD_DIR::PARENT] )
+#define PARENT_ND(x) ( x->Parent() )
 
 #define VAL(x) (x->Value())
-
-#define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
-
-#define MIN(n1, n2) ( (n1 < n2)? n1 : n2 )
 
 #define CHAR(x) ((unsigned char)x->Value())
 
@@ -84,6 +85,8 @@ struct T_INFO {
 
 #define SET_PARENT(x, _nod_ ) ( _nod_->setParent(x) )
 
+#define LCOUNT(x) (x->LCount())
+#define RCOUNT(x) (x->RCount())
 
 
 #define SET_LEFT(x, _nod_) {\
@@ -101,6 +104,7 @@ struct T_INFO {
 }
 
 
+
 #define ADD(x, _nod) { \
  if LESS_THAN(x, _nod) {\
 	if P_ASSERT(x->Right()) SET_RIGHT(x->Right(),_nod) \
@@ -111,9 +115,6 @@ struct T_INFO {
 }
 
 
-#define NULLP(p) p = nullptr
-#define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
-#define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr; 
 
 #define TEXT_ALLOC(_txt) new char[std::strlen(_txt)*CHRSZ]
 
@@ -140,10 +141,13 @@ struct T_INFO {
 #endif
 
 
+
 #if !defined(NDIR)
 #define NDIR
 	enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, RIGHT = 2 };
+
 #endif
+
 
 
 // debugging macros
@@ -197,8 +201,7 @@ struct BNode {
 		_lstNodLeft = BNaN;
 		_lstNodRight = BNaN;
 		_recentNod = BNaN;
-
-		NODINFO = { 0,0,0,0,BNaN,BNaN };
+		_backRoot = nullptr;
 
 		this->links[0] = BNaN;
 		this->links[1] = BNaN;
@@ -267,15 +270,15 @@ struct BNode {
 
 
 	~BNode() {
-		this->_value = -1;
-		this->_dir = NOD_DIR::UNKNOWN;
+		_backRoot = nullptr;
+		if C_ASSERT(_lstNodLeft) free(_lstNodLeft);
+		if C_ASSERT(_lstNodRight) free(_lstNodRight);
+		if C_ASSERT(_recentNod) free(_recentNod);
+		if C_ASSERT(_topRoot) free(_topRoot);
+		
 
-		_lstNodLeft = nullptr ;
-		_lstNodRight = nullptr;
-		_recentNod = nullptr;
-		_topRoot = nullptr;
-
-		NODINFO = { 0,0,0,0,nullptr, nullptr};
+		for (std::size_t i = 0; i < 3; i++)
+			if C_ASSERT(links[i]) free(links[i]);
 
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
@@ -320,10 +323,6 @@ struct BNode {
 	}
 
 	
-	T_INFO const& tree_info() const {
-		return this->NODINFO;
-	}
-
 	const BNode* const T_ROOT() const { return ISNULL(_topRoot)? BNaN : _topRoot; }
 	BNode* recent() const { return ISNULL(_recentNod)? BNaN : _recentNod; }
 	const unsigned int T_LEFT() const { return LEFT_T; }
@@ -371,17 +370,15 @@ struct BNode {
 
 	// Access Manipulation Methods...
 	void setTopRoot() {
-		BRoot = this;
-		_topRoot = (BRoot);
+		BRoot = (BNode* const)this;
+		_topRoot = (BNode* const)BRoot;
+		_backRoot = (BNode** const)&_topRoot;
 	}
 
 
 	void Add(BNode* _uNod) {
-		BNode* _tmpNod = (BNode* const)this, 
-		*nodLeft = nullptr, *nodRight = nullptr;
-
-		UINT LL = 0, RR = 0, DIFF_T = 0;
-
+		BNode* _tmpNod = (BNode* const)this;
+		
 		if ISNULL(_uNod) return;
 
 		if (VAL(_tmpNod) < VAL(_uNod)) {
@@ -396,31 +393,18 @@ struct BNode {
 				SET_LEFT(_tmpNod, _uNod); _recentNod = _tmpNod->Left();
 			} // end if ..
 
-	/*
-		nodLeft = T_ROOT()->Left();
-		nodRight = T_ROOT()->Right();
+		NFO.reset_data();
 
-		NODINFO.LL = ISNULL(nodLeft)? 0 : nodLeft->LCount();
-		NODINFO.LR = ISNULL(nodLeft)? 0 : nodLeft->RCount();
+		NFO.set_LT_Count(BRoot->LCount());
+		NFO.set_RT_Count(BRoot->RCount());
+		NFO.compute_balance();
 
-		LL = MAX(NODINFO.LL, NODINFO.LR);
+		if (NFO.balance_value() > 1) {
+			NFO.make_balance();
+			setNewRoot(NFO.get_new_root());
+		}
 
-		NODINFO.RL = ISNULL(nodRight)? 0 : nodRight->LCount();
-		NODINFO.RR = ISNULL(nodRight)? 0 : nodRight->RCount();
-
-		RR = MAX(NODINFO.RL, NODINFO.RR);
-		
-		LEFT_T = LL;
-		RIGHT_T = RR;
-
-		DIFF_T = (LL > RR)? LL - RR : RR - LL;
-
-		if (DIFF_T > 1 )
-			T_SIGNAL(EVNT_BALANCE); 
-
-		*/
-
-		NULL3P(_tmpNod,nodLeft,nodRight);
+		NULLP(_tmpNod);
 	}
 
 
@@ -465,18 +449,19 @@ struct BNode {
 
 	// Find a specified node relative to the current node
 	BNode* const Find(int const uVal) {
-		BNode* _pCurr = this;
+		BNode* _pCurr = (BNode* const)this;
 
 		if ISNULL(_pCurr) {
 			std::cout << "Can't locate the root node.." << "\n\n";
 			return nullptr;
 		}
 
-		for (; nullptr != _pCurr; ) {
+		do {
 			if (VAL(_pCurr) == uVal) break;
 			else if (VAL(_pCurr) < uVal) _pCurr = _pCurr->Right();
 				else _pCurr = _pCurr->Left();
-		}
+
+		} while (nullptr != _pCurr);
 
 		return (_pCurr);
 	}
@@ -490,11 +475,11 @@ private:
 	BNode* _lstNodLeft;
 	BNode* _lstNodRight;
 	BNode* _recentNod;
+	BNode** _backRoot;
 	
 	unsigned int LEFT_T;
 	unsigned int RIGHT_T;
 	unsigned int BAL_T;
-	T_INFO NODINFO;
 	
 
 	// leaves count on the left of the current node
@@ -514,7 +499,7 @@ private:
 
 	// leaves count on the right of the current node
 	const unsigned int Rights() const {
-		BNode* curr = ISNULL(this) ? BNaN : (BNode* const)this;
+		BNode* curr = ISNULL(this)? BNaN : (BNode* const)this;
 
 		if ISNULL(curr) return 0;
 
@@ -566,7 +551,87 @@ private:
 	}
 
 
+
+private:
+
+	static struct AVL {
+
+		constexpr AVL()
+		{
+		};
+
+		static UINT const LT_Count() { return LT; }
+		static UINT const RT_Count() { return RT; }
+
+		static void set_LT_Count(const UINT nc) { LT = nc; }
+		static void set_RT_Count(const UINT nc) { RT = nc; }
+
+		static BNode* const get_new_root() {
+			return (pNewRoot);
+		}
 	
+		static void reset_data() {
+			LT = 0; RT = 0; BAL = 0;
+		}
+
+		static void compute_balance() {
+			BAL = (LT > RT)? LT - RT : RT - LT;
+		}
+
+		static void make_balance() {
+			if (LT > RT) R_TURNS();
+			 else L_TURNS();
+
+		}
+
+		static UINT const balance_value() {
+			return BAL;
+		}
+
+	private:
+		static UINT LT; // maximum in the Left Branches
+		static UINT RT; // maximum in the Right Branches
+		static UINT BAL; // difference between LT & RT
+		static BNode* pNewRoot;
+
+		/* rotate left branches to the right of the root. */
+		static void R_TURNS() {
+			PNODE leafRoot = BRoot;
+			int rootVal = VAL(leafRoot);
+			int leftVal = VAL(leafRoot->Left());
+
+			PNODE leftLeft = ALLOC_N(leafRoot->Left()->Left(), IS_VALID(leafRoot->Left()->Left()));
+			leftLeft->setParent(BNaN);
+
+			PNODE leftRight = ALLOC_N(leafRoot->Left()->Right(),
+								IS_VALID(leafRoot->Left()->Right()));
+
+			leftRight->setParent(BNaN);
+
+			PNODE right = ALLOC_N(leafRoot->Right(), IS_VALID(leafRoot->Right()));
+			right->setParent(BNaN);
+
+			PNODE newRoot = ALLOC_N(leftVal, (-1 != leftVal));
+			newRoot->setTopRoot();
+
+			newRoot->Add(ALLOC_N(rootVal, (-1 != rootVal)));
+			newRoot->Add(leftLeft);
+			newRoot->Add(leftRight);
+			newRoot->Add(right);
+
+			pNewRoot = (BNode* const)newRoot;
+		}
+
+		/* rotate right branches to the left of the root. */
+		static void L_TURNS() {
+
+		}
+
+	} NFO; // END Of struct AVLX DEfs...
+
+
+
+
 protected:
 	NOD_DIR _dir;
 	struct BNode* links[3];
@@ -575,101 +640,18 @@ protected:
 		((BNode* const)this)->_dir = xDir;
 	}
 
-
-	// rotate left branches to the right of the root.
-	void R_TURNS(BNode* refLeaf) {
-		BNode nodLeast;
-		BNode* nodTmp = nullptr , *nodRight = nullptr;
-
-		// A BNode's object contains relation to its left & right leaflet.
-		nodLeast = *refLeaf; 
-
-		refLeaf->Remove();
-
-		/* Recall that the Remove() method adjusts the associated child
-		   leaves of the deleted node. The following is to avoid the duplicated
-		   leaves on the branches.. */
-		nodLeast.links[NOD_DIR::PARENT] = BNaN;
-		nodLeast.links[NOD_DIR::LEFT] = BNaN;
-		nodLeast.links[NOD_DIR::RIGHT] = BNaN;
-
-		// move the copied leaflet into heap spaces.
-		nodTmp = new BNode(std::move(nodLeast));
-
-		// Add lesser to the right branches.
-		nodRight = T_ROOT()->Right();
-		if P_ASSERT(nodRight) nodRight->Add(nodTmp);
-	
-
-		NULL2P(nodTmp,nodRight);
-	}
-
-
-	// rotate right branches to the left of the root.
-	void L_TURNS(BNode* refLeaf) {
-		BNode nodGreat;
-		BNode* nodTmp = nullptr, *nodLeft = nullptr;
-
-		nodGreat = *refLeaf;
-
-		refLeaf->Remove();
-
-		nodGreat.links[NOD_DIR::PARENT] = BNaN;
-		nodGreat.links[NOD_DIR::LEFT] = BNaN;
-		nodGreat.links[NOD_DIR::RIGHT] = BNaN;
-
-		nodTmp = new BNode(std::move(nodGreat));
-
-		// Add greater to the left branches.
-		nodLeft = T_ROOT()->Left();
-		if P_ASSERT(nodLeft) nodLeft->Add(nodTmp);
-
-		NULL2P(nodTmp, nodLeft);
-	}
-
-
-	void Normalize() {
-		UINT L0, R0, L1, R1; 
-		BNode* pLest = nullptr, *pGreat = nullptr,
-			*nodLeft = nullptr, *nodRight = nullptr;
-		
-		nodLeft = T_ROOT()->Left();
-		nodRight = T_ROOT()->Right();
-
-		L0 = NODINFO.LL; // leaves count on the leftmost node
-		R0 = NODINFO.LR; // leaves count on the right of the leftmost node
-
-		L1 = NODINFO.RL; // leaves count on the left of the rightmost node
-		R1 = NODINFO.RR; // leaves count on the rightmost node
-
-		pLest = (L0 > R0)? (ISNULL(nodLeft) ? BNaN : nodLeft->leftEnd()) :
-							ISNULL(nodLeft) ? BNaN : nodLeft->rightEnd();
-
-		pGreat = (L1 > R1)? (ISNULL(nodRight) ? BNaN : nodRight->leftEnd()) :
-							  ISNULL(nodRight) ? BNaN : nodRight->rightEnd();
-
-		NODINFO._Lesser = pLest;
-		NODINFO._Greater = pGreat;
-
-		if P_ASSERT(pLest) R_TURNS(pLest);
-		else if P_ASSERT(pGreat) L_TURNS(pGreat); else;
-
-		NULL2P(pLest, pGreat);
-	}
-
-
-	void T_SIGNAL(UINT _signal) {
-
-		switch (_signal)
-		{
-		case EVNT_BALANCE: Normalize(); break;
-
-		default: break;
-		}
-
+	void setNewRoot(BNode* const u_Root) {
+		this->_topRoot = u_Root;
+		this->_topRoot->setTopRoot();
 	}
 
 }; // end of BNode definition..
+
+// Static AVL's members initialization
+UINT BNode::AVL::LT = 0;
+UINT BNode::AVL::RT = 0;
+UINT BNode::AVL::BAL = 0;
+BNode* BNode::AVL::pNewRoot = nullptr;
 
 
 #endif
@@ -685,18 +667,20 @@ static inline BNode* const ALLOC_N(const int _Value, const bool nd_valid = true)
 }
 
 
+static inline BNode* const ALLOC_N(BNode* const uNod, const bool nd_valid = true) {
+	return (nd_valid)? new BNode(std::move(*uNod)) : BNaN;
+}
+
 
 BNode* const seek_nd(const BNode* _Root, int const _Val) {
 
 	if (!P_ASSERT(_Root)) return nullptr;
 
-	for (; nullptr != _Root; ) {
+	for (; P_ASSERT(_Root);  ) {
 
-		if (VAL(_Root) == _Val) return (BNode*)(_Root);
+		if (VAL(_Root) == _Val) return (BNode* const)(_Root);
 		else if (VAL(_Root) < _Val) _Root = _Root->Right();
 		else _Root = _Root->Left();
-
-		if (!P_ASSERT(_Root)) continue;
 
 	}
 
@@ -715,7 +699,6 @@ BNode* const treeAdd(BNode* _Root, int const _Val) {
 		else if (VAL(_tmpRoot) < _Val) {
 			_tmpNew = _tmpRoot;
 			_tmpRoot = _tmpRoot->Right();
-
 		}
 		else {
 			_tmpNew = _tmpRoot;
