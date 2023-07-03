@@ -44,6 +44,14 @@ BNode* const treeAdd(BNode*, int const);
 
 #define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr;
 
+#define FREE1M(p) if C_ASSERT(p) free(p);
+
+#define FREE2M(p1,p2) if C_ASSERT(p1) free(p1); \
+					  if C_ASSERT(p2) free(p2);
+
+#define FREE3M(p1,p2,p3) if C_ASSERT(p1) free(p1); \
+						 if C_ASSERT(p2) free(p2); \
+						 if C_ASSERT(p3) free(p3);
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -156,10 +164,10 @@ BNode* const treeAdd(BNode*, int const);
 #define R_HEIGHT(x) std::cout << "R_HEIGHT: " << x->RCount() << "\n";
 
 #define LEFT_TAIL(x) std::cout << "L_TAIL: " << "\n"; \
-			x->leftEnd()->Print();
+				x->leftEnd()->Print();
 
 #define RIGHT_TAIL(x) std::cout << "R_TAIL: " << "\n"; \
-			x->rightEnd()->Print();
+				x->rightEnd()->Print();
 
 
 
@@ -191,18 +199,16 @@ private:
 
 
 struct BNode {
-
+	friend void setTopRoot(BNode** const);
 
 	BNode() {
 		this->_value = -1;
 		this->_dir = NOD_DIR::UNKNOWN;
 
-		_topRoot = BNaN;
 		_lstNodLeft = BNaN;
 		_lstNodRight = BNaN;
 		_recentNod = BNaN;
-		_backRoot = nullptr;
-
+		
 		this->links[0] = BNaN;
 		this->links[1] = BNaN;
 		this->links[2] = BNaN;
@@ -270,13 +276,13 @@ struct BNode {
 
 
 	~BNode() {
-		_backRoot = nullptr;
+
+		if C_ASSERT(_topRoot) free(_topRoot);
+		if C_ASSERT(_outerTop) free(_outerTop);
 		if C_ASSERT(_lstNodLeft) free(_lstNodLeft);
 		if C_ASSERT(_lstNodRight) free(_lstNodRight);
 		if C_ASSERT(_recentNod) free(_recentNod);
-		if C_ASSERT(_topRoot) free(_topRoot);
 		
-
 		for (std::size_t i = 0; i < 3; i++)
 			if C_ASSERT(links[i]) free(links[i]);
 
@@ -323,7 +329,7 @@ struct BNode {
 	}
 
 	
-	const BNode* const T_ROOT() const { return ISNULL(_topRoot)? BNaN : _topRoot; }
+	const BNode* const T_ROOT() const { return ISNULL(BNode::_topRoot)? BNaN : BNode::_topRoot; }
 	BNode* recent() const { return ISNULL(_recentNod)? BNaN : _recentNod; }
 	const unsigned int T_LEFT() const { return LEFT_T; }
 	const unsigned int T_RIGHT() const { return RIGHT_T; }
@@ -369,13 +375,6 @@ struct BNode {
 	
 
 	// Access Manipulation Methods...
-	void setTopRoot() {
-		BRoot = (BNode* const)this;
-		_topRoot = (BNode* const)BRoot;
-		_backRoot = (BNode** const)&_topRoot;
-	}
-
-
 	void Add(BNode* _uNod) {
 		BNode* _tmpNod = (BNode* const)this;
 		
@@ -395,14 +394,12 @@ struct BNode {
 
 		NFO.reset_data();
 
-		NFO.set_LT_Count(BRoot->LCount());
-		NFO.set_RT_Count(BRoot->RCount());
+		NFO.set_LT_Count(BNode::_topRoot->LCount());
+		NFO.set_RT_Count(BNode::_topRoot->RCount());
 		NFO.compute_balance();
 
-		if (NFO.balance_value() > 1) {
+		if (NFO.balance_value() > 1)
 			NFO.make_balance();
-			setNewRoot(NFO.get_new_root());
-		}
 
 		NULLP(_tmpNod);
 	}
@@ -471,11 +468,12 @@ struct BNode {
 private:
 	int _value;
 
-	BNode* _topRoot;
+	static BNode* _topRoot;
+	static BNode** _outerTop;
+
 	BNode* _lstNodLeft;
 	BNode* _lstNodRight;
 	BNode* _recentNod;
-	BNode** _backRoot;
 	
 	unsigned int LEFT_T;
 	unsigned int RIGHT_T;
@@ -560,16 +558,16 @@ private:
 		{
 		};
 
+		~AVL() {
+			if C_ASSERT(pNewRoot) free(pNewRoot);
+		}
+
 		static UINT const LT_Count() { return LT; }
 		static UINT const RT_Count() { return RT; }
 
 		static void set_LT_Count(const UINT nc) { LT = nc; }
 		static void set_RT_Count(const UINT nc) { RT = nc; }
 
-		static BNode* const get_new_root() {
-			return (pNewRoot);
-		}
-	
 		static void reset_data() {
 			LT = 0; RT = 0; BAL = 0;
 		}
@@ -588,6 +586,11 @@ private:
 			return BAL;
 		}
 
+		static BNode* const new_root() {
+			return (pNewRoot);
+		}
+
+
 	private:
 		static UINT LT; // maximum in the Left Branches
 		static UINT RT; // maximum in the Right Branches
@@ -596,7 +599,7 @@ private:
 
 		/* rotate left branches to the right of the root. */
 		static void R_TURNS() {
-			PNODE leafRoot = BRoot;
+			PNODE leafRoot = BNode::_topRoot;
 			int rootVal = VAL(leafRoot);
 			int leftVal = VAL(leafRoot->Left());
 
@@ -604,7 +607,7 @@ private:
 			leftLeft->setParent(BNaN);
 
 			PNODE leftRight = ALLOC_N(leafRoot->Left()->Right(),
-								IS_VALID(leafRoot->Left()->Right()));
+						IS_VALID(leafRoot->Left()->Right()));
 
 			leftRight->setParent(BNaN);
 
@@ -612,7 +615,7 @@ private:
 			right->setParent(BNaN);
 
 			PNODE newRoot = ALLOC_N(leftVal, (-1 != leftVal));
-			newRoot->setTopRoot();
+			setTopRoot(&newRoot);
 
 			newRoot->Add(ALLOC_N(rootVal, (-1 != rootVal)));
 			newRoot->Add(leftLeft);
@@ -640,12 +643,13 @@ protected:
 		((BNode* const)this)->_dir = xDir;
 	}
 
-	void setNewRoot(BNode* const u_Root) {
-		this->_topRoot = u_Root;
-		this->_topRoot->setTopRoot();
-	}
-
+	
 }; // end of BNode definition..
+
+
+// Static BNode's members initialization
+BNode* BNode::_topRoot = nullptr;
+BNode** BNode::_outerTop = nullptr;
 
 // Static AVL's members initialization
 UINT BNode::AVL::LT = 0;
@@ -659,7 +663,19 @@ BNode* BNode::AVL::pNewRoot = nullptr;
 
 
 
-#if defined PNOD
+#if defined(PNOD)
+
+void setTopRoot(BNode** const outPtr) {
+	// _outerTop = &nRoot; nRoot is declared in the main
+	if ISNULL(BNode::_outerTop) BNode::_outerTop = outPtr;
+
+	// if the new root is set up in the main and &nRoot != &newRoot
+	if (C_ASSERT(*outPtr) && (BNode::_outerTop != outPtr))
+		*BNode::_outerTop = *outPtr; // nRoot = newRoot;
+
+	BNode::_topRoot = *BNode::_outerTop; // _topRoot = nRoot;
+	BRoot = BNode::_topRoot;
+}
 
 
 static inline BNode* const ALLOC_N(const int _Value, const bool nd_valid = true) {
@@ -699,6 +715,7 @@ BNode* const treeAdd(BNode* _Root, int const _Val) {
 		else if (VAL(_tmpRoot) < _Val) {
 			_tmpNew = _tmpRoot;
 			_tmpRoot = _tmpRoot->Right();
+
 		}
 		else {
 			_tmpNew = _tmpRoot;
