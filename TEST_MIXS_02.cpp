@@ -7,37 +7,35 @@
 int main()
 {
 	PNODE nRoot = ALLOC_N(15);
-	nRoot->setTopRoot();
+	setTopRoot(&nRoot);
 
 	std::cout << "Adding up.. " << "\n\n";
 
-	/* Use BRoot as a Global Static Root to make it
-		Fixed to the root */
-	BRoot->Add(ALLOC_N(9));
-	BRoot->Add(ALLOC_N(23));
-	BRoot->Add(ALLOC_N(4));
-	BRoot->Add(ALLOC_N(12));
-	BRoot->Add(ALLOC_N(8));
-	BRoot->Add(ALLOC_N(3)); // R_TURNS happens after this one
+	nRoot->Add(ALLOC_N(9));
+	nRoot->Add(ALLOC_N(23));
+	nRoot->Add(ALLOC_N(4));
+	nRoot->Add(ALLOC_N(12));
+	nRoot->Add(ALLOC_N(8));
+	nRoot->Add(ALLOC_N(3)); // R_TURNS happens after this one
 
-	BRoot->Add(ALLOC_N(17));
-	BRoot->Add(ALLOC_N(28));
+	nRoot->Add(ALLOC_N(17));
+	nRoot->Add(ALLOC_N(28));
 
-	BRoot->Add(ALLOC_N(2));
-	BRoot->Add(ALLOC_N(11));
-	BRoot->Add(ALLOC_N(5));
+	nRoot->Add(ALLOC_N(2));
+	nRoot->Add(ALLOC_N(11));
+	nRoot->Add(ALLOC_N(5));
 
 
-	BRoot->Print();
+	nRoot->Print();
 
 	// try print any number of nodes to ascertain the rotation function
-	BRoot->Find(4)->Print();
+	nRoot->Find(12)->Print();
 
 
-	L_HEIGHT(BRoot);
-	R_HEIGHT(BRoot);
+	L_HEIGHT(nRoot);
+	R_HEIGHT(nRoot);
 
-	free(BRoot);
+	free(nRoot);
 
 
 	NULLP(nRoot);
