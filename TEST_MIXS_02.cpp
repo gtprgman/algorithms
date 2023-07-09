@@ -25,21 +25,23 @@ int main()
 	nRoot->Add(ALLOC_N(11));
 	nRoot->Add(ALLOC_N(5));
 
+	nRoot->Add(ALLOC_N(16));
+	nRoot->Add(ALLOC_N(35));
+	//nRoot->Add(ALLOC_N(52)); // L_TURNS should happen after this
 
 	nRoot->Print();
 
 	// try print any number of nodes to ascertain the rotation function
-	nRoot->Find(12)->Print();
+	nRoot->Find(12)->Remove()->Print();
+	nRoot->Find(15)->Print();
 
 
 	L_HEIGHT(nRoot);
 	R_HEIGHT(nRoot);
 
-	free(nRoot);
+	delete nRoot;
 
-
-	NULLP(nRoot);
-	return 0;
+	return -1;
 
 }
 
