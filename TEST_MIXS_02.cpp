@@ -7,7 +7,7 @@
 int main()
 {
 	PNODE nRoot = ALLOC_N(15);
-	setTopRoot(&nRoot);
+	setTopRoot(nRoot);
 
 	std::cout << "Adding up.. " << "\n\n";
 
@@ -27,7 +27,7 @@ int main()
 
 	nRoot->Add(ALLOC_N(16));
 	nRoot->Add(ALLOC_N(35));
-	//nRoot->Add(ALLOC_N(52)); // L_TURNS should happen after this
+	nRoot->Add(ALLOC_N(52)); // L_TURNS should happen after this
 
 	nRoot->Print();
 
