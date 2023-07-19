@@ -1,5 +1,4 @@
 #include <iostream>
-#include <string>
 #include "mixtree.h"
 
 
@@ -7,7 +6,7 @@
 int main()
 {
 	PNODE nRoot = ALLOC_N(15);
-	setTopRoot(nRoot);
+	setTopRoot(&nRoot);
 
 	std::cout << "Adding up.. " << "\n\n";
 
@@ -17,6 +16,13 @@ int main()
 	nRoot->Add(ALLOC_N(12));
 	nRoot->Add(ALLOC_N(8));
 	nRoot->Add(ALLOC_N(3)); // R_TURNS happens after this one
+	
+	nRoot->Print();
+
+	L_HEIGHT(nRoot);
+	R_HEIGHT(nRoot);
+	RET;
+
 
 	nRoot->Add(ALLOC_N(17));
 	nRoot->Add(ALLOC_N(28));
@@ -27,21 +33,16 @@ int main()
 
 	nRoot->Add(ALLOC_N(16));
 	nRoot->Add(ALLOC_N(35));
-	nRoot->Add(ALLOC_N(52)); // L_TURNS should happen after this
+	nRoot->Add(ALLOC_N(52));
 
 	nRoot->Print();
 
-	// try print any number of nodes to ascertain the rotation function
-	nRoot->Find(12)->Remove()->Print();
-	nRoot->Find(15)->Print();
-
-
 	L_HEIGHT(nRoot);
 	R_HEIGHT(nRoot);
+	RET;
+
 
 	delete nRoot;
-
-	return -1;
-
+	
 }
 
