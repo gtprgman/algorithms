@@ -46,11 +46,11 @@ static BNode* const treeAdd(BNode* const, int const);
 #define FREE1M(p) if C_ASSERT(p) free(p);
 
 #define FREE2M(p1,p2) if C_ASSERT(p1) free(p1); \
-		if C_ASSERT(p2) free(p2);
+					  if C_ASSERT(p2) free(p2);
 
 #define FREE3M(p1,p2,p3) if C_ASSERT(p1) free(p1); \
-			if C_ASSERT(p2) free(p2); \
-			if C_ASSERT(p3) free(p3);
+						 if C_ASSERT(p2) free(p2); \
+						 if C_ASSERT(p3) free(p3);
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -160,7 +160,7 @@ static BNode* const treeAdd(BNode* const, int const);
 #define RIGHT_V_ASSERT(x) std::cout << "right value: " << VAL(x->Right())) << "\n";
 
 
-#endif
+#endif  // end of #TREE_DIRS
 
 
 
@@ -192,7 +192,10 @@ enum NOD_DIR { UNKNOWN = -1, PARENT = 0, LEFT = 1, RIGHT = 2 };
 
 
 
-
+#if !defined(AVL_X_H)
+#define AVL_X_H
+	#include "avlx.h"
+#endif
 
 
 
@@ -215,7 +218,7 @@ struct CTEXT {
 private:
 	std::string _k;
 };
-#endif
+#endif  // end of #MIX_CTEXT
 
 
 
@@ -293,13 +296,15 @@ struct BNode {
 		rBNode.links[NOD_DIR::RIGHT] = nullptr;
 		rBNode.links[NOD_DIR::PARENT] = nullptr;
 
-		delete(&rBNode);
+		rBNode.~BNode();
 
 		return std::move(*this);
 	}
 
 
 	~BNode() {
+		this->_value = -1;
+		this->_dir = NOD_DIR::UNKNOWN;
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 		this->links[2] = nullptr;
@@ -390,9 +395,9 @@ struct BNode {
 
 
 	void Print() const {
-		printf("\n root's id: %d ", P_ASSERT(this)? VAL(this) : -1);
-		printf("\n left's id: %d ", P_ASSERT(this)? (P_ASSERT(this->Left())? VAL(this->Left()) : -1) : -1);
-		printf("\n right's id: %d ", P_ASSERT(this)? (P_ASSERT(this->Right())? VAL(this->Right()) : -1) : -1);
+		printf("\n root's id: %d ", P_ASSERT(this) ? VAL(this) : -1);
+		printf("\n left's id: %d ", P_ASSERT(this) ? (P_ASSERT(this->Left()) ? VAL(this->Left()) : -1) : -1);
+		printf("\n right's id: %d ", P_ASSERT(this) ? (P_ASSERT(this->Right()) ? VAL(this->Right()) : -1) : -1);
 		RET;
 	}
 
@@ -418,14 +423,14 @@ struct BNode {
 				SET_LEFT(_tmpNod, _uNod); BNode::_recentNod = _tmpNod->Left();
 			} // end if ..
 
-		NFO.reset_data();
+		AVL::reset_data();
 
-		NFO.set_LT_Count(BNode::_topRoot->LCount());
-		NFO.set_RT_Count(BNode::_topRoot->RCount());
-		NFO.compute_balance();
+		AVL::set_LT_Count(BNode::_topRoot->LCount());
+		AVL::set_RT_Count(BNode::_topRoot->RCount());
+		AVL::compute_balance();
 
-		if (NFO.balance_value() > 1)
-			NFO.make_balance();
+		if (AVL::balance_value() > 1)
+			AVL::make_balance();
 
 		NULL2P(_tmpNod, _uNod);
 	}
@@ -573,91 +578,6 @@ private:
 	}
 
 
-
-private:
-
-	static struct AVL {
-
-		static UINT const LT_Count() { return LT; }
-		static UINT const RT_Count() { return RT; }
-
-		static void set_LT_Count(const UINT nc) { LT = nc; }
-		static void set_RT_Count(const UINT nc) { RT = nc; }
-
-		static void reset_data() {
-			LT = 0; RT = 0; BAL = 0;
-		}
-
-		static void compute_balance() {
-			BAL = (LT > RT) ? LT - RT : RT - LT;
-		}
-
-		static void make_balance() {
-			if (LT > RT) R_TURNS();
-			else L_TURNS();
-
-		}
-
-		static UINT const balance_value() {
-			return BAL;
-		}
-
-
-
-	private:
-		static UINT LT; // maximum in the Left Branches
-		static UINT RT; // maximum in the Right Branches
-		static UINT BAL; // difference between LT & RT
-
-		// rotate left branches to the right of the root. 
-		static void R_TURNS() { 
-			BNode* const leafRoot = (BNode* const)BNode::T_ROOT();
-			int rootVal = VAL(leafRoot);
-			int leftVal = VAL(leafRoot->Left());
-
-			PNODE leftLeft = ALLOC_N(leafRoot->Left()->Left(), true);
-
-			PNODE leftRight = ALLOC_N(leafRoot->Left()->Right(), true);
-
-			PNODE right = ALLOC_N(leafRoot->Right(), true);
-
-			PNODE newRoot = ALLOC_N(leftVal, leftVal > 0);
-			setTopRoot(&newRoot);
-
-			newRoot->Add(ALLOC_N(rootVal, rootVal > 0));
-			newRoot->Add(leftLeft);
-			newRoot->Add(right);
-			newRoot->Add(leftRight); 
-
-		}
-
-
-		// rotate right branches to the left of the root. 
-		static void L_TURNS() { /*
-			BNode* const mRoot = (BNode* const)BNode::T_ROOT();
-			int rootVal = VAL(mRoot);
-			int rightVal = VAL(mRoot->Right());
-
-			PNODE left = ALLOC_N(mRoot->Left(), true);
-
-			PNODE rightRight = ALLOC_N(mRoot->Right()->Right(), true);
-
-			PNODE rightLeft = ALLOC_N(mRoot->Right()->Left(), true);
-
-			PNODE cRoot = ALLOC_N(rightVal, rightVal > 0);
-			setTopRoot(&cRoot);
-
-			cRoot->Add(ALLOC_N(rootVal, rootVal > 0));
-			cRoot->Add(left);
-			cRoot->Add(rightRight);
-			cRoot->Add(rightLeft); */
-		}
-
-	} NFO; // END Of struct AVLX DEfs...
-
-
-
-
 protected:
 	NOD_DIR _dir;
 	struct BNode* links[3];
@@ -681,14 +601,7 @@ BNode* BNode::_topRoot = nullptr;
 BNode* BNode::_recentNod = nullptr;
 
 
-
-// Static AVL's members initialization
-UINT BNode::AVL::LT = 0;
-UINT BNode::AVL::RT = 0;
-UINT BNode::AVL::BAL = 0;
-
-
-#endif
+#endif  // end of #MIX_NOD
 
 
 
@@ -731,6 +644,7 @@ static BNode* const seek_nd(const BNode* _Root, int const _Val) {
 		if (VAL(_Root) == _Val) return (BNode* const)(_Root);
 		else if (VAL(_Root) < _Val) _Root = _Root->Right();
 		else _Root = _Root->Left();
+
 	}
 
 	return (BNode*)(_Root);
@@ -767,4 +681,50 @@ static BNode* const treeAdd(BNode* const _Root, int const _Val) {
 }
 
 
-#endif
+
+// AVL Implementations
+void AVL::R_TURNS() {
+	BNode* const leafRoot = (BNode* const)BNode::T_ROOT();
+	int rootVal = VAL(leafRoot);
+	int leftVal = VAL(leafRoot->Left());
+
+	PNODE leftLeft = ALLOC_N(leafRoot->Left()->Left(), true);
+
+	PNODE leftRight = ALLOC_N(leafRoot->Left()->Right(), true);
+
+	PNODE right = ALLOC_N(leafRoot->Right(), true);
+
+	newRight = ALLOC_N(leftVal, (leftVal > 0) );
+	setTopRoot(&newRight);
+
+	newRight->Add(ALLOC_N(rootVal,(rootVal > 0)) );
+	newRight->Add(leftLeft);
+	newRight->Add(right);
+	newRight->Add(leftRight);
+
+	NULL3P(leftLeft, leftRight, right);
+}
+
+void AVL::L_TURNS() {
+	BNode* const mRoot = (BNode* const)BNode::T_ROOT();
+	int rootV = VAL(mRoot);
+	int rightV = VAL(mRoot->Right());
+
+	PNODE left = ALLOC_N(mRoot->Left(), true);
+	PNODE rightRight = ALLOC_N(mRoot->Right()->Right(), true);
+	PNODE rightLeft = ALLOC_N(mRoot->Right()->Left(), true);
+
+	newLeft = ALLOC_N(rightV, (rightV > 0));
+	setTopRoot(&newLeft);
+
+	newLeft->Add(ALLOC_N(rootV, (rootV > 0)));
+	newLeft->Add(left);
+	newLeft->Add(rightRight);
+	newLeft->Add(rightLeft);
+
+	NULL3P(left, rightLeft, rightRight);
+}
+
+
+
+#endif // end of #PNOD
