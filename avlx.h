@@ -1,3 +1,4 @@
+Using Licence GPL v. 3.0
 #pragma once
 
 
@@ -14,12 +15,11 @@ struct AVL {
 	static void set_RT_Count(const UINT nc) { RT = nc; }
 
 	static void reset_data() {
-		LT = 0; RT = 0; BAL = 0; _bTurnable = 0;
+		LT = 0; RT = 0; BAL = 0;
 	}
 
 	static void compute_balance() {
 		BAL = (LT > RT) ? LT - RT : RT - LT;
-		if (BAL > 1) _bTurnable = 1;
 	}
 
 	static void make_balance() {
@@ -32,16 +32,11 @@ struct AVL {
 		return BAL;
 	}
 
-	static bool const allow_rotate() {
-		return _bTurnable;
-	}
-
-
+	
 private:
 	static UINT LT; // maximum in the Left Branches
 	static UINT RT; // maximum in the Right Branches
 	static UINT BAL; // difference between LT & RT
-	static bool _bTurnable;
 
 	// rotate left branches to the right of the root.
 	static void R_TURNS();
@@ -56,4 +51,5 @@ private:
 unsigned int AVL::LT = 0;
 unsigned int AVL::RT = 0;
 unsigned int AVL::BAL = 0;
-bool AVL::_bTurnable = 0;
+
+	
