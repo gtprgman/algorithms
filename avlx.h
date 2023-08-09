@@ -1,4 +1,4 @@
-Using Licence GPL v. 3.0
+/* Using Licence GPL v. 3.0 */
 #pragma once
 
 
