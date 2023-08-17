@@ -1,8 +1,10 @@
+/* Using Licence GPL v 3.0 */
 #pragma once
-// Using License GPL v. 3.0
 
 struct BNode;
 struct AVL;
+struct _Dealloc;
+
 
 using UINT = unsigned int;
 using PNODE = struct BNode*;
@@ -19,6 +21,7 @@ static BNode* const ALLOC_N(BNode* const, const bool);
 static BNode* const seek_nd(const BNode*, int const);
 
 static BNode* const treeAdd(BNode* const, int const);
+
 
 
 #if !defined(NDIR)
@@ -51,11 +54,11 @@ static BNode* const treeAdd(BNode* const, int const);
 #define FREE1M(p) if C_ASSERT(p) delete p;
 
 #define FREE2M(p1,p2) if C_ASSERT(p1) delete p1; \
-					  if C_ASSERT(p2) delete p2;
+			if C_ASSERT(p2) delete p2;
 
 #define FREE3M(p1,p2,p3) if C_ASSERT(p1) delete p1; \
-						 if C_ASSERT(p2) delete p2; \
-						 if C_ASSERT(p3) delete p3;
+			if C_ASSERT(p2) delete p2; \
+			if C_ASSERT(p3) delete p3;
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -196,34 +199,47 @@ static BNode* const treeAdd(BNode* const, int const);
 #define RIGHT_V_ASSERT(x) std::cout << "right value: " << VAL(x->Right())) << "\n";
 
 
-#endif // End of #TREE_DIRS
+#endif // End of #TREE_DIRS defs
 
 
 
 #if !defined(MIX_CTEXT)
 #define MIX_CTEXT
 
-#endif
+#endif  // end of #MIX_CTEXT defs
 
 
 
 #if !defined(MIX_NOD)
 #define MIX_NOD
 // BNode definition
-#endif
+// Macros for Garbage Collector Working..
+
+// evaluate the deleted status of a node
+#define DELETED(_p) P_ASSERT(_p)? (_p->_deletion < 0) : -1
+
+// collect the specified node to the garbage list
+#define COLLECT(_p) {\
+	if ( !DELETED(_p) ) { \
+		_p->_deletion = -1; \
+		_Deleter.push(_p); \
+	}\
+}
+
+#endif // End of #MIX_NOD defs
 
 
 #if !defined(PNOD)
 #define PNOD
 // External functions for manipulating BNode
-#endif
+#endif   // end of #PNOD defs
 
 
 
 #if !defined(AVL_X_H)
 #define AVL_X_H
 	#include "avlx.h"
-#endif
+#endif  // end of #AVL_X_H defs
 
 
 
@@ -246,16 +262,44 @@ struct CTEXT {
 private:
 	std::string _k;
 };
-#endif  // end of #MIX_CTEXT
+#endif  // end of #MIX_CTEXT Impl
+
+
+
+
+// BNode Garbage Collector's Design & Impl
+#if !defined(_DEALLOC_H)
+#define _DEALLOC_H
+	#include <memory>
+	#include <vector>
+
+static struct _Dealloc {
+	void push(BNode* _pDel) {
+		_unused.emplace_back(_pDel);
+
+	}
+
+	void dispose_all() {
+		if (_unused.empty()) return;
+		for (std::vector<std::unique_ptr<BNode>>::iterator vt = _unused.begin();
+			vt != _unused.end(); vt++) vt->reset(nullptr);
+	}
+
+private:
+	std::vector<std::unique_ptr<BNode>> _unused;
+
+} _Deleter;
+
+#endif // end of #_DEALLOC_H impl
 
 
 
 #if defined (MIX_NOD)
 
-
 struct BNode {
 	friend struct AVL;
 	friend BNode* const ALLOC_N(BNode* const, const bool);
+
 
 	BNode() {
 		this->_value = -1;
@@ -263,6 +307,7 @@ struct BNode {
 		this->links[0] = BNaN;
 		this->links[1] = BNaN;
 		this->links[2] = BNaN;
+		this->_deletion = 0;
 	};
 
 
@@ -272,6 +317,7 @@ struct BNode {
 		this->links[0] = BNaN;
 		this->links[1] = BNaN;
 		this->links[2] = BNaN;
+		this->_deletion = 0;
 
 	};
 
@@ -290,6 +336,7 @@ struct BNode {
 
 		this->_value = refNod._value;
 		this->_dir = refNod._dir;
+		this->_deletion = refNod._deletion;
 
 		this->links[LEFT] = refNod.links[LEFT];
 		this->links[RIGHT] = refNod.links[RIGHT];
@@ -315,6 +362,7 @@ struct BNode {
 
 		this->_value = rBNode._value;
 		this->_dir = rBNode._dir;
+		this->_deletion = rBNode._deletion;
 
 		this->links[LEFT] = rBNode.Left();
 		this->links[RIGHT] = rBNode.Right();
@@ -323,6 +371,7 @@ struct BNode {
 		rBNode.links[LEFT] = nullptr;
 		rBNode.links[RIGHT] = nullptr;
 		rBNode.links[PARENT] = nullptr;
+		rBNode._deletion = -1;
 
 		rBNode.~BNode();
 
@@ -336,6 +385,7 @@ struct BNode {
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 		this->links[2] = nullptr;
+		this->_deletion = -1; // this is crucial to prevent delete on the already deleted node.
 	}
 
 	// Accessor Get() Methods...
@@ -379,6 +429,13 @@ struct BNode {
 	static const BNode* const T_ROOT() { return ISNULL(linkPtr[TOP])? BNaN : linkPtr[TOP]; }
 	static const BNode* const recent() { return ISNULL(linkPtr[RECENT])? BNaN : linkPtr[RECENT]; }
 	
+	// garbage collector static member functions..
+	static void Collect();
+
+	static void Dispose() {
+		_Deleter.dispose_all();
+	}
+
 	static void setTopRoot(BNode** const outPtr = nullptr) {
 		// ppThis = &nRoot;
 		if (BNode::_outRoot == nullptr) BNode::_outRoot = outPtr;
@@ -386,8 +443,9 @@ struct BNode {
 		// nRoot != newRoot?; nRoot = newRoot;
 		if (*BNode::_outRoot != *outPtr)  *BNode::_outRoot = *outPtr;
 		linkPtr[TOP] = *BNode::_outRoot;
-
 	}
+
+
 
 	// Accessor Set() Methods...
 	void Set(int _uVal) {
@@ -419,7 +477,7 @@ struct BNode {
 
 
 	void setParent(BNode* const uNod) {
-		
+
 		this->links[PARENT] = uNod;
 
 		if P_ASSERT(this->links[PARENT])
@@ -508,7 +566,7 @@ struct BNode {
 
 		if P_ASSERT(nodTemp->Right())
 			ADD(pParent, nodTemp->Right());
-		
+
 		// free the unused space in heap
 		delete nodTemp;
 		NULLP(pParent);
@@ -535,7 +593,6 @@ struct BNode {
 
 		return (_pCurr);
 	}
-
 
 
 
@@ -579,7 +636,7 @@ private:
 	/* return the last node of the left
 		of the current node */
 	BNode* const lastLeft() const {
-		BNode* curr = nullptr, * bckup = nullptr;
+		BNode* curr = nullptr, *bckup = nullptr;
 		curr = !P_ASSERT(this)? BNaN : (BNode* const)this;
 
 		if (!P_ASSERT(curr)) return BNaN;
@@ -599,7 +656,7 @@ private:
 	/* return the last node of the right of
 		the current node */
 	BNode* const lastRight() const {
-		BNode* curr = nullptr, * bckup = nullptr;
+		BNode* curr = nullptr, *bckup = nullptr;
 		curr = !P_ASSERT(this)? BNaN : (BNode* const)this;
 
 		if (!P_ASSERT(curr)) return BNaN;
@@ -615,7 +672,9 @@ private:
 	}
 
 
+
 protected:
+	int _deletion;
 	NOD_DIR _dir;
 	struct BNode* links[3];
 
@@ -630,6 +689,32 @@ protected:
 	}
 
 
+	// garbage collector member functions impl..
+	void collectLeft() {
+		BNode* _curr = (BNode* const)this;
+
+		do {
+			if P_ASSERT(_curr->Right()) COLLECT(_curr->Right());
+			if P_ASSERT(_curr->Left()) COLLECT(_curr->Left());
+			_curr = _curr->Left();
+		} while P_ASSERT(_curr);
+
+		NULLP(_curr);
+	}
+
+
+	void collectRight() {
+		BNode* _curr = (BNode* const)this;
+
+		do {
+			if P_ASSERT(_curr->Right()) COLLECT(_curr->Right());
+			if P_ASSERT(_curr->Left()) COLLECT(_curr->Left());
+			_curr = _curr->Right();
+		} while P_ASSERT(_curr);
+
+		NULLP(_curr);
+	}
+
 }; // end of BNode definition..
 
 
@@ -638,8 +723,7 @@ BNode* BNode::linkPtr[] = {nullptr, nullptr};
 BNode* BNode::* _outRoot = nullptr;
 BNode** BNode::_outRoot = nullptr;
 
-
-#endif  // end of #MIX_NOD
+#endif  // end of #MIX_NOD Impl
 
 
 
@@ -658,14 +742,14 @@ static inline BNode* const ALLOC_N(BNode* const uNod, const bool nd_valid = true
 
 	if ((nd_valid) && (val_ > 0))
 		tmpNew = new BNode(uNod->Release());
-	
+
 	// Re-Managing the Node's relations of Parent, Left & New connections
 	PNODE nLeft = P_ASSERT(tmpNew->Left())? tmpNew->Left() : BNaN;
 	PNODE nRight = P_ASSERT(tmpNew->Right())? tmpNew->Right() : BNaN;
-		
+
 	if P_ASSERT(nLeft) nLeft->setParent(tmpNew);
 	if P_ASSERT(nRight) nRight->setParent(tmpNew);
-	
+
 	NULL2P(nLeft, nRight);
 	return (tmpNew);
 }
@@ -719,13 +803,13 @@ static inline BNode* const treeAdd(BNode* const _Root, int const _Val) {
 
 
 /* AVL Implementations
- Rotations Algorithms both R_TURNS() and L_TURNS() are inspired
- from https://www.programiz.com/dsa/avl-tree
+	Rotations Algorithms of both R_TURNS & L_TURNS()
+	are inspired from https://www.programiz.com/dsa/avl-tree
 */
 
 void inline AVL::R_TURNS() {
 	// because ::_outRoot directly point to the outer root
-	pRoot1 = *BNode::_outRoot; 
+	pRoot1 = *BNode::_outRoot;
 	BNode* newRoot1 = ALLOC_N(pRoot1->Left(), true);
 	newRoot1->links[PARENT] = BNaN;
 
@@ -735,7 +819,7 @@ void inline AVL::R_TURNS() {
 
 	SET_RIGHT(newRoot1, pRoot1);
 	BNode::setTopRoot(&newRoot1);
-	
+
 	NULL2P(pRoot1, newRoot1);
 }
 
@@ -758,4 +842,36 @@ void inline AVL::L_TURNS() {
 
 
 
-#endif // end of #PNOD
+// BNode's garbage collector impl..
+void inline BNode::Collect() {
+	if ((AVL::LT_Count() < 1) || (AVL::RT_Count() < 1)) return;
+
+	BNode* _gRoot = (BNode* const)BNode::T_ROOT();
+	BNode* _gLeft = _gRoot->Left();
+	BNode* _gRight = _gRoot->Right();
+
+	// garbage collects on the left sub-branches..
+	_gLeft->Left()->collectLeft();
+	_gLeft->Left()->collectRight();
+
+	_gLeft->Right()->collectLeft();
+	_gLeft->Right()->collectRight();
+
+
+	// garbage collects on the right sub-branches..
+	_gRight->Left()->collectLeft();
+	_gRight->Left()->collectRight();
+
+	_gRight->Right()->collectLeft();
+	_gRight->Right()->collectRight();
+
+	NULL2P(_gLeft, _gRight);
+
+	// garbage collects on the residual root's branches..
+	_gRoot->collectLeft();
+	_gRoot->collectRight();
+
+	NULLP(_gRoot);
+}
+
+#endif // end of #PNOD Impl
