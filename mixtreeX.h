@@ -16,19 +16,21 @@ template <class T>
 struct BNode;
 
 
+template <class T>
+struct NodeTraits;
 
-template < typename P = void* >
+template < typename P = void*  >
 struct NodeTraits {
 	using v_type = std::remove_pointer_t<typename P>;
 	using p_type = typename P;
 	using u_type = std::unique_ptr<v_type>;
 };
 
-template < class T >
-struct NodeTraits<BNode<T>*> {
-	using memberType = typename T;
-};
 
+template < class T >
+struct NodeTraits< BNode<T> >{
+	using memberType = T;
+};
 
 
 template <typename P>
@@ -62,11 +64,11 @@ constexpr P const ALLOC_N(P const, const bool);
 
 // seek a specified node relative with the root node.
 template <class T, typename P >
-constexpr P const seek_nd(const P, int const);
+constexpr P seek_nd(const P, int const);
 
 // add a new node object to the tree branches which root is P.
 template <class T , typename P>
-constexpr P const treeAdd(P const, int const);
+constexpr P treeAdd(P const, int const);
 
 
 
@@ -94,7 +96,7 @@ constexpr P const treeAdd(P const, int const);
 
 #define C_ASSERT(x) (nullptr != x)
 
-#define P_ASSERT(x) ( (nullptr != x) && (x->Value() > 0) )
+#define P_ASSERT(x) ( (nullptr != x)? (x->Value() > 0) : 0 )
 
 #define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
 
@@ -162,7 +164,7 @@ constexpr P const treeAdd(P const, int const);
 #define SET_LEFT(x, _nod_) {\
 	x->setLeft(_nod_); \
 	_nod_->setParent(x);\
-	_nod_->setDir(LEFT);\
+	_nod_->setDir(TDIR::LEFT);\
 }
 
 
@@ -170,7 +172,7 @@ constexpr P const treeAdd(P const, int const);
 #define SET_RIGHT(x, _nod_) {\
 	x->setRight(_nod_); \
 	_nod_->setParent(x); \
-	_nod_->setDir(RIGHT); \
+	_nod_->setDir(TDIR::RIGHT); \
 }
 
 
@@ -291,7 +293,7 @@ constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
 
 #ifndef AVL_X_H
 #define AVL_X_H
-	#include "avlx.h"
+	#include "avl2x.h"
 
 #endif  // end of #AVL_X_H defs
 
@@ -369,7 +371,7 @@ struct BNode {
 
 	constexpr BNode<T>() {
 		this->_value = -1;
-		this->_dir = UNKNOWN;
+		this->_dir = TDIR::UNKNOWN;
 
 		BNode<T>::linkPtr[2] = nullptr;
 		BNode<T>::_outRoot = nullptr;
@@ -384,7 +386,7 @@ struct BNode {
 
 	constexpr BNode<T>(int _Key) {
 		this->_value = _Key;
-		this->_dir = UNKNOWN;
+		this->_dir = TDIR::UNKNOWN;
 
 		BNode<T>::linkPtr[2] = nullptr;
 		BNode<T>::_outRoot = nullptr;
@@ -458,7 +460,7 @@ struct BNode {
 
 	~BNode<T>() {
 		this->_value = -1;
-		this->_dir = UNKNOWN;
+		this->_dir = TDIR::UNKNOWN;
 
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
@@ -509,8 +511,8 @@ struct BNode {
 	}
 
 
-	constexpr BNode<T>* const T_ROOT() { return ISNULL(linkPtr[TOP])? nullptr : linkPtr[TOP]; }
-	constexpr BNode<T>* const recent() { return ISNULL(linkPtr[RECENT])? nullptr : linkPtr[RECENT]; }
+	static constexpr BNode<T>* const T_ROOT() { return ISNULL(linkPtr[TOP])? nullptr : linkPtr[TOP]; }
+	static constexpr BNode<T>* const recent() { return ISNULL(linkPtr[RECENT])? nullptr : linkPtr[RECENT]; }
 	
 	// garbage collector static member functions..
 	static void Collect();
@@ -518,7 +520,7 @@ struct BNode {
 	static void Dispose();
 
 
-	constexpr void setTopRoot(BNode<T>** const outPtr = nullptr) {
+	static constexpr void setTopRoot(BNode<T>** const outPtr = nullptr) {
 		// ppThis = &nRoot;
 		if (BNode<T>::_outRoot == nullptr) BNode<T>::_outRoot = outPtr;
 
@@ -548,7 +550,7 @@ struct BNode {
 		this->links[LEFT] = uNod;
 
 		if P_ASSERT(this->links[LEFT])
-			this->links[LEFT]->_dir = LEFT;
+			this->links[LEFT]->_dir = TDIR::LEFT;
 	}
 
 	constexpr void setRight(BNode<T>* const uNod) {
@@ -559,7 +561,7 @@ struct BNode {
 		this->links[RIGHT] = uNod;
 
 		if P_ASSERT(this->links[RIGHT])
-			this->links[RIGHT]->_dir = RIGHT;
+			this->links[RIGHT]->_dir = TDIR::RIGHT;
 	}
 
 
@@ -568,7 +570,7 @@ struct BNode {
 		this->links[PARENT] = uNod;
 
 		if P_ASSERT(this->links[PARENT])
-			this->links[PARENT]->_dir = PARENT;
+			this->links[PARENT]->_dir = TDIR::PARENT;
 	}
 
 
@@ -772,6 +774,7 @@ protected:
 	// release current selected node & transfer resources to the respected node.
 	constexpr BNode<T> Release() {
 		BNode<T>&& bNod = std::move(*this);
+		this->_deletion = -1;
 		return std::remove_all_extents_t<BNode<T>&&>(bNod);
 	}
 
@@ -881,7 +884,7 @@ constexpr P const ALLOC_N(P const _uNod, const bool nd_stat = true) {
 
 // seek a specified node relative with the specified root node.
 template < class T, typename P = BNode<T>* >
-constexpr P const seek_nd(const P _Root, int const _Val) {
+constexpr P seek_nd(const P _Root, int const _Val) {
 
 	if (!P_ASSERT(_Root)) return nullptr;
 
@@ -900,7 +903,7 @@ constexpr P const seek_nd(const P _Root, int const _Val) {
 
 // add a new node object to the tree branches which root is P.
 template <class T, typename P = BNode<T>* >
-constexpr P const treeAdd(P const _Root, int const _Val ) {
+constexpr P treeAdd(P const _Root, int const _Val ) {
 
 	P _tmpRoot = _Root, _tmpNew = nullptr;
 
@@ -936,17 +939,17 @@ constexpr P const treeAdd(P const _Root, int const _Val ) {
 	are inspired from https://www.programiz.com/dsa/avl-tree
 */
 
-// P is expected to be BNode<T>*
+
 template <typename P  >
 constexpr void inline AVL<typename P>::R_TURNS() {
 	// because ::_outRoot directly point to the outer root
-	pRoot1 =*BNode<DType>::_outRoot; 
+	pRoot1 = BNode<DType>::T_ROOT(); 
 	newRoot1 = ALLOC_N<DType>(pRoot1->Left(), true);
 	newRoot1->links[PARENT] = nullptr;
 
 	pRoot1->setLeft(ALLOC_N<DType>(newRoot1->Right(), true));
 	pRoot1->Left()->setParent(pRoot1);
-	pRoot1->Left()->setDir(LEFT);
+	pRoot1->Left()->setDir(TDIR::LEFT);
 
 	SET_RIGHT(newRoot1, pRoot1);
 	BNode<DType>::setTopRoot(&newRoot1); 
@@ -958,13 +961,13 @@ constexpr void inline AVL<typename P>::R_TURNS() {
 
 template <typename P>
 constexpr void inline AVL<typename P>::L_TURNS() {
-	pRoot2 = *BNode<DType>::_outRoot;
+	pRoot2 = BNode<DType>::T_ROOT();
 	newRoot2 = ALLOC_N<DType>(pRoot2->Right(), true);
 	newRoot2->links[PARENT] = nullptr;
 
 	pRoot2->setRight(ALLOC_N<DType>(newRoot2->Left(), true));
 	pRoot2->Right()->links[PARENT] = pRoot2;
-	pRoot2->Right()->setDir(RIGHT);
+	pRoot2->Right()->setDir(TDIR::RIGHT);
 
 	SET_LEFT(newRoot2, pRoot2);
 
@@ -996,7 +999,7 @@ constexpr void COLLECT(P _p) {
 /* BNode's garbage collector impl.., 
   Collect() & Dispose() are static member methods of BNode<T>. */
 template <class T >
-static void inline BNode<T>::Collect() {
+void inline BNode<T>::Collect() {
 	if ((AVL<BNode<T>*>::LT_Count() < 1) || (AVL<BNode<T>*>::RT_Count() < 1)) return;
 
 	BNode<T>* _gRoot = (BNode<T>* const)BNode<T>::T_ROOT();
@@ -1030,7 +1033,7 @@ static void inline BNode<T>::Collect() {
 
 
 template <class T >
-static inline void BNode<T>::Dispose() {
+inline void BNode<T>::Dispose() {
 	_Deleter<BNode<T>*>.dispose_all();
 }
 
