@@ -74,3 +74,6 @@ typename NodeTraits<P>::p_type AVL<P>::newRoot1 = nullptr;
 template <typename P>
 typename NodeTraits<P>::p_type AVL<P>::newRoot2 = nullptr;
 
+
+
+
