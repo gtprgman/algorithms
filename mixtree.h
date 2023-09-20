@@ -39,7 +39,7 @@ static BNode* const treeAdd(BNode* const, int const);
 
 #define C_ASSERT(x) (nullptr != x)
 
-#define P_ASSERT(x) ( (nullptr != x) && (x->Value() > 0) )
+#define P_ASSERT(x) ( (nullptr != x)? (x->Value() > 0) : 0 )
 
 #define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
 
@@ -502,6 +502,7 @@ struct BNode {
 
 		if (!P_ASSERT(_uNod)) return;
 		if (!P_ASSERT(_tmpNod)) return;
+		if (VAL(_uNod) < 0) return; // if -1
 
 		if (VAL(_tmpNod) < VAL(_uNod)) {
 			if (P_ASSERT(_tmpNod->Right())) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
@@ -685,6 +686,7 @@ protected:
 	// release current selected node & transfer resources to the respected node.
 	const BNode Release() {
 		BNode&& bNod = std::move(*this);
+		this->_deletion = -1;
 		return std::remove_all_extents_t<BNode&&>(bNod);
 	}
 
