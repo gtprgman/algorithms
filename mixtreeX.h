@@ -1,8 +1,8 @@
 /* Using Licence GPL v 3.0 */
 #pragma once
 
-/* T represents the core data stored in the BNode Tree
-   P represents a pointer to BNode<T>
+/* T represents the core data stored in the BNode Tree.
+   P represents a pointer to BNode<T>.
 
    NB:
    The parametric instantiation of BNode only to identify the stored data object
@@ -72,6 +72,7 @@ constexpr P treeAdd(P const, int const);
 
 
 
+
 #ifndef NDIR
 #define NDIR
 	enum class TDIR: std::int8_t { UNKNOWN = -1, PARENT = 0, LEFT = 1, RIGHT = 2 };
@@ -111,11 +112,11 @@ constexpr P treeAdd(P const, int const);
 #define FREE1M(p) if C_ASSERT(p) delete p;
 
 #define FREE2M(p1,p2) if C_ASSERT(p1) delete p1; \
-					  if C_ASSERT(p2) delete p2;
+			if C_ASSERT(p2) delete p2;
 
 #define FREE3M(p1,p2,p3) if C_ASSERT(p1) delete p1; \
-						 if C_ASSERT(p2) delete p2; \
-						 if C_ASSERT(p3) delete p3;
+			if C_ASSERT(p2) delete p2; \
+			if C_ASSERT(p3) delete p3;
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -246,19 +247,19 @@ constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
 #define ROOT_P_ASSERT(x) std::cout << "root ptr: " << P_ASSERT(x) << "\n\n";
 
 #define C_ASSERT_PRINT(x) std::cout << "root ptr: " << C_ASSERT(x) << "\n"; \
-						  std::cout << "left ptr: " << C_ASSERT(x->Left()) << "\n"; \
-						  std::cout << "right ptr: " << C_ASSERT(x->Right()) << "\n"; \
-						  RET;
+			std::cout << "left ptr: " << C_ASSERT(x->Left()) << "\n"; \
+			std::cout << "right ptr: " << C_ASSERT(x->Right()) << "\n"; \
+			RET;
 
 #define P_ASSERT_PRINT(x) std::cout << "root ptr: " << P_ASSERT(x) << "\n"; \
-						  std::cout << "left ptr: " << P_ASSERT(x->Left()) << "\n"; \
-						  std::cout << "right ptr: " << P_ASSERT(x->Right()) << "\n"; \
-						  RET;
+			std::cout << "left ptr: " << P_ASSERT(x->Left()) << "\n"; \
+			std::cout << "right ptr: " << P_ASSERT(x->Right()) << "\n"; \
+			RET;
 
 #define V_ASSERT_PRINT(x) std::cout << "root ptr: " << VAL(x) << "\n"; \
-						  std::cout << "left ptr: " << VAL(x->Left()) << "\n"; \
-						  std::cout << "right ptr: " << VAL(x->Right()) << "\n"; \
-						  RET;
+			std::cout << "left ptr: " << VAL(x->Left()) << "\n"; \
+			std::cout << "right ptr: " << VAL(x->Right()) << "\n"; \
+			RET;
 
 #define ROOT_V_ASSERT(x) std::cout << "root value: " << VAL(x) << "\n";
 #define LEFT_V_ASSERT(x) std::cout << "left value: " << VAL(x->Left()) << "\n";
@@ -510,7 +511,11 @@ struct BNode {
 		return this->_dir;
 	}
 
-
+	// for debugging purposes..
+	static constexpr BNode<T>* const originalRoot() {
+		return *BNode<T>::_outRoot;
+	}
+	
 	static constexpr BNode<T>* const T_ROOT() { return ISNULL(linkPtr[TOP])? nullptr : linkPtr[TOP]; }
 	static constexpr BNode<T>* const recent() { return ISNULL(linkPtr[RECENT])? nullptr : linkPtr[RECENT]; }
 	
@@ -522,11 +527,13 @@ struct BNode {
 
 	static constexpr void setTopRoot(BNode<T>** const outPtr = nullptr) {
 		// ppThis = &nRoot;
-		if (BNode<T>::_outRoot == nullptr) BNode<T>::_outRoot = outPtr;
+		if (nullptr == BNode<T>::_outRoot)
+			BNode<T>::_outRoot = outPtr;
 
 		// nRoot != newRoot?; nRoot = newRoot;
-		if (*BNode<T>::_outRoot != *outPtr)  *BNode<T>::_outRoot = *outPtr;
-		linkPtr[TOP] = *BNode<T>::_outRoot;
+		if (*BNode<T>::_outRoot != *outPtr)  *BNode<T>::_outRoot = (BNode<T>* const)(*outPtr);
+		BNode<T>::linkPtr[TOP] = (BNode<T>* const)(*BNode<T>::_outRoot);
+	
 	}
 
 
@@ -585,22 +592,23 @@ struct BNode {
 
 	// Access Manipulation Methods...
 
-	constexpr void Add(BNode<T>* _uNod = nullptr) {
+	constexpr void Add(BNode<T>* _uNod ) {
 		BNode<T>* _tmpNod = (BNode<T>* const)this;
 
 		if (!P_ASSERT(_uNod)) return;
 		if (!P_ASSERT(_tmpNod)) return;
+		if (VAL(_uNod) < 0) return; // -1
 
 		if (VAL(_tmpNod) < VAL(_uNod)) {
 			if (P_ASSERT(_tmpNod->Right())) { _tmpNod = _tmpNod->Right(); _tmpNod->Add(_uNod); }
 			else {// if right node is null
-				SET_RIGHT(_tmpNod, _uNod); linkPtr[RECENT] = _tmpNod->Right();
+				SET_RIGHT(_tmpNod, _uNod); BNode<T>::linkPtr[RECENT] = _tmpNod->Right();
 			}
 		}
 		else
 			if (P_ASSERT(_tmpNod->Left())) { _tmpNod = _tmpNod->Left(); _tmpNod->Add(_uNod); }
 			else { // if left node is null
-				SET_LEFT(_tmpNod, _uNod); linkPtr[RECENT] = _tmpNod->Left();
+				SET_LEFT(_tmpNod, _uNod); BNode<T>::linkPtr[RECENT] = _tmpNod->Left();
 			} // end if ..
 
 		AVL<BNode<T>*>::reset_data();
@@ -690,8 +698,7 @@ private:
 
 	static BNode<T>* linkPtr[2];
 	static BNode<T>** _outRoot;
-
-
+	
 	// leaves count on the left of the current node
 	constexpr unsigned int Lefts() const {
 		BNode<T>* curr = !P_ASSERT(this)? nullptr : (BNode<T>* const)this;
@@ -767,6 +774,7 @@ protected:
 	TDIR _dir;
 	struct BNode<T>* links[3];
 
+
 	constexpr void setDir(const TDIR xDir) {
 		((BNode<T>* const)this)->_dir = xDir;
 	}
@@ -811,9 +819,6 @@ protected:
 
 template <class T>
 BNode<T>* BNode<T>::linkPtr[] = { nullptr,nullptr };
-
-template <class T>
-BNode<T>** BNode<T>::*_outRoot = nullptr;
 
 template <class T>
 BNode<T>** BNode<T>::_outRoot = nullptr;
@@ -941,38 +946,38 @@ constexpr P treeAdd(P const _Root, int const _Val ) {
 
 
 template <typename P  >
-constexpr void inline AVL<typename P>::R_TURNS() {
+constexpr inline void AVL<typename P>::R_TURNS() {
 	// because ::_outRoot directly point to the outer root
-	pRoot1 = BNode<DType>::T_ROOT(); 
-	newRoot1 = ALLOC_N<DType>(pRoot1->Left(), true);
-	newRoot1->links[PARENT] = nullptr;
+	AVL<P>::pRoot1 = BNode<AVL<P>::DType>::linkPtr[TOP];
+	AVL<P>::newRoot1 = ALLOC_N<AVL<P>::DType>(AVL<P>::pRoot1->Left(), true);
+	AVL<P>::newRoot1->links[PARENT] = nullptr;
 
-	pRoot1->setLeft(ALLOC_N<DType>(newRoot1->Right(), true));
-	pRoot1->Left()->setParent(pRoot1);
-	pRoot1->Left()->setDir(TDIR::LEFT);
+	AVL<P>::pRoot1->setLeft(ALLOC_N<AVL<P>::DType>(AVL<P>::newRoot1->Right(), true));
+	AVL<P>::pRoot1->Left()->setParent(AVL<P>::pRoot1);
+	AVL<P>::pRoot1->Left()->setDir(TDIR::LEFT);
 
-	SET_RIGHT(newRoot1, pRoot1);
-	BNode<DType>::setTopRoot(&newRoot1); 
+	SET_RIGHT(AVL<P>::newRoot1, AVL<P>::pRoot1);
+	BNode<AVL<P>::DType>::setTopRoot(&AVL<P>::newRoot1); 
 
-	NULL2P(pRoot1, newRoot1);
+	NULL2P(AVL<P>::pRoot1, AVL<P>::newRoot1);
 }
 
 
 
 template <typename P>
-constexpr void inline AVL<typename P>::L_TURNS() {
-	pRoot2 = BNode<DType>::T_ROOT();
-	newRoot2 = ALLOC_N<DType>(pRoot2->Right(), true);
-	newRoot2->links[PARENT] = nullptr;
+constexpr inline void AVL<typename P>::L_TURNS() {
+	AVL<P>::pRoot2 = BNode<AVL<P>::DType>::linkPtr[TOP];
+	AVL<P>::newRoot2 = ALLOC_N<AVL<P>::DType>(AVL<P>::pRoot2->Right(), true);
+	AVL<P>::newRoot2->links[PARENT] = nullptr;
 
-	pRoot2->setRight(ALLOC_N<DType>(newRoot2->Left(), true));
-	pRoot2->Right()->links[PARENT] = pRoot2;
-	pRoot2->Right()->setDir(TDIR::RIGHT);
+	AVL<P>::pRoot2->setRight(ALLOC_N<AVL<P>::DType>(AVL<P>::newRoot2->Left(), true));
+	AVL<P>::pRoot2->Right()->links[PARENT] = AVL<P>::pRoot2;
+	AVL<P>::pRoot2->Right()->setDir(TDIR::RIGHT);
 
-	SET_LEFT(newRoot2, pRoot2);
+	SET_LEFT(AVL<P>::newRoot2, AVL<P>::pRoot2);
 
-	BNode<DType>::setTopRoot(&newRoot2);
-	NULL2P(pRoot2, newRoot2);
+	BNode<AVL<P>::DType>::setTopRoot(&AVL<P>::newRoot2);
+	NULL2P(AVL<P>::pRoot2, AVL<P>::newRoot2);
 }
 
 
