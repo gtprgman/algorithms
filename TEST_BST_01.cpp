@@ -4,10 +4,6 @@
 	- Choose 'Release' in the Solution Configurations Combo Box on the I.D.E.
 	- To run this program, Click on the [Debug] menu and choose 'Start Without Debugging'
 		or simply press [Ctrl] + [F5]
-	
-	In Code Blocks that uses mingw64 Compiler:
-	- The program runs well without any problems.
-   
 */
 #include <iostream>
 #include "\MIXUTIL\mixtreeX.h"
@@ -31,35 +27,38 @@ int main()
 	PNODE<CTEXT> nRoot = ALLOC_N<CTEXT>(15);
 	BNode<CTEXT>::setTopRoot(&nRoot);
 
-	
-	std::cout << "Adding up.. " << "\n\n";
-	
-	nRoot->Add(ALLOC_N<CTEXT>(9));
-	nRoot->Add(ALLOC_N<CTEXT>(23));
-	nRoot->Add(ALLOC_N<CTEXT>(4));
-	nRoot->Add(ALLOC_N<CTEXT>(12));
-	nRoot->Add(ALLOC_N<CTEXT>(8));
-	nRoot->Add(ALLOC_N<CTEXT>(3)); // R_TURNS() CALLED AFTER THIS ONE
-	
-	//nRoot = BNode<CTEXT>::T_ROOT();
+	PRINT("Adding up nodes..");
 
-	/* the root should be reassigned a primary root,
-		even though the prior call to 'setTopRoot()' has
-		been initiated. Maybe the templated instance of a
-		pointer to BNode (BNode<T>*) is destroyed when the 
-	    'setTopRoot()' returns.
+	treeAdd<CTEXT>(nRoot,9);
+	treeAdd<CTEXT>(nRoot, 23);
+	treeAdd<CTEXT>(nRoot,4);
+	treeAdd<CTEXT>(nRoot,12);
+	treeAdd<CTEXT>(nRoot, 8);
+	treeAdd<CTEXT>(nRoot,3); // R_TURNS() CALLED AFTER THIS ONE
+	
+	PRINT("R_TURNS() Executed.");
+	// Try to find, modify or delete any nodes in the tree to assert the R_TURNS().
+
+	/*
+	PRINT("Deleting Node 4");
+	DEL_T<CTEXT>(4);
+
+	PRINT("Print Node 3:");
+	NODE_T<CTEXT>(3)->Print();
 	*/
-
-	nRoot->T_ROOT()->Print();
-
 	
+	PRINT("Root INFO:");
+	nRoot->Print();
 
 	RET;
 
-	L_HEIGHT(nRoot->T_ROOT());
-	R_HEIGHT(nRoot->T_ROOT());
+	L_HEIGHT(nRoot);
+	R_HEIGHT(nRoot);
+	RET;
 
-	
+	// ---------------------
+
+	PRINT("Adding next sequence of nodes..");
 	nRoot->Add(ALLOC_N<CTEXT>(17));
 	nRoot->Add(ALLOC_N<CTEXT>(28));
 
@@ -68,19 +67,30 @@ int main()
 	nRoot->Add(ALLOC_N<CTEXT>(5));
 
 	nRoot->Add(ALLOC_N<CTEXT>(16));
-	nRoot->Add(ALLOC_N<CTEXT>(35)); //L_TURNS() happens after this one
-	nRoot->Add(ALLOC_N<CTEXT>(52));
+	nRoot->Add(ALLOC_N<CTEXT>(35));
+	nRoot->Add(ALLOC_N<CTEXT>(52)); //L_TURNS() happens after this one
 
-	nRoot->T_ROOT()->Print();
+	PRINT("L_TURNS() Executed");
+	// Try to find, modify or delete any node in the tree for the assertion of L_TURNS().
+
+	/*
+	PRINT("Print Node 3:");
+	NODE_T<CTEXT>(3)->Print();
+	
+	*/
+
+	PRINT("Root INFO:");
+	nRoot->Print();
 
 	RET;
 
-	L_HEIGHT(nRoot->T_ROOT());
-	R_HEIGHT(nRoot->T_ROOT());
-	
+	L_HEIGHT(nRoot);
+	R_HEIGHT(nRoot);
+
 
 	BNode<CTEXT>::Collect();
 	BNode<CTEXT>::Dispose();
+
 };
 
 
