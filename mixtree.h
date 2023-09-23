@@ -695,11 +695,11 @@ protected:
 	void collectLeft() {
 		BNode* _curr = (BNode* const)this;
 
-		do {
+		 while (P_ASSERT(_curr)) {
 			if P_ASSERT(_curr->Right()) COLLECT(_curr->Right());
 			if P_ASSERT(_curr->Left()) COLLECT(_curr->Left());
 			_curr = _curr->Left();
-		} while P_ASSERT(_curr);
+		};
 
 		NULLP(_curr);
 	}
@@ -708,11 +708,11 @@ protected:
 	void collectRight() {
 		BNode* _curr = (BNode* const)this;
 
-		do {
+		while (P_ASSERT(_curr) ){
 			if P_ASSERT(_curr->Right()) COLLECT(_curr->Right());
 			if P_ASSERT(_curr->Left()) COLLECT(_curr->Left());
 			_curr = _curr->Right();
-		} while P_ASSERT(_curr);
+		};
 
 		NULLP(_curr);
 	}
