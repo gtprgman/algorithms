@@ -19,18 +19,23 @@ struct BNode;
 template <class T>
 struct NodeTraits;
 
+template < class T >
+struct NodeTraits< BNode<T> > {
+	using memberType = T;
+	
+};
+
 template < typename P = void*  >
 struct NodeTraits {
-	using v_type = std::remove_pointer_t<typename P>;
 	using p_type = typename P;
-	using u_type = std::unique_ptr<v_type>;
+	using v_type = std::remove_pointer_t<P>;
+	using uType = std::unique_ptr<v_type>;
+	using iType = typename NodeTraits<v_type>::memberType;
+
 };
 
 
-template < class T >
-struct NodeTraits< BNode<T> >{
-	using memberType = T;
-};
+
 
 
 template <typename P>
@@ -40,9 +45,6 @@ using UINT = unsigned int;
 
 template <class T>
 using PNODE = struct BNode<T>*;
-
-template <class T >
-using ONODE = BNode<T>;
 
 
 constexpr const std::size_t CHRSZ() { return sizeof(char); }
@@ -64,7 +66,7 @@ constexpr P const ALLOC_N(P const, const bool);
 
 // seek a specified node relative with the root node.
 template <class T, typename P >
-constexpr P seek_nd(const P, int const);
+constexpr P seek_nd(P , int const);
 
 // add a new node object to the tree branches which root is P.
 template <class T , typename P>
@@ -112,7 +114,7 @@ constexpr P treeAdd(P const, int const);
 #define FREE1M(p) if C_ASSERT(p) delete p;
 
 #define FREE2M(p1,p2) if C_ASSERT(p1) delete p1; \
-			if C_ASSERT(p2) delete p2;
+		if C_ASSERT(p2) delete p2;
 
 #define FREE3M(p1,p2,p3) if C_ASSERT(p1) delete p1; \
 			if C_ASSERT(p2) delete p2; \
@@ -210,10 +212,30 @@ constexpr void PARENT_OF(BNode<T>* _root, BNode<T>* const _nod) {
 
 // Find a Node with a specified value 'V_' and get a pointer to it.
 template <class T>
-constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
-	return _Root->Find(V_);
+constexpr BNode<T>* const NODE_T(int V_) {
+	return BNode<T>::T_ROOT()->Find(V_);
 }
 
+
+// Delete a specified node's value relative to the root
+template < class T >
+constexpr void DEL_T(int V_) {
+	BNode<T>::T_ROOT()->Find(V_)->Remove();
+}
+
+
+// Store a data object to the specified Node's value
+template <class T>
+constexpr void SET_T(int const _V, T const _Data) {
+	NODE_T<T>(_V)->Set_Data(_Data);
+}
+
+
+// Get a data object from a specified Node's value
+template < class T >
+constexpr T const DATA_T(int const _V) {
+	NODE_T<T>(_V)->Data();
+}
 
 #define TEXT_ALLOC(_txt) new char[std::strlen(_txt)*CHRSZ];
 #endif // End of #TREE_DIRS defs
@@ -225,7 +247,7 @@ constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
 #define DEBUGGER_TREE_H
 // debugging macros
 #define RET std::cout << "\n\n"
-#define PRINT(_Text) std::cout << (_Text) << "\n";
+#define PRINT(_Text) std::cout << (_Text) << "\n\n";
 
 // get the height of the left branches
 #define L_HEIGHT(x) std::cout << "L_HEIGHT: " << x->LCount() << "\n";
@@ -235,12 +257,12 @@ constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
 
 // extract information of a node at the leftmost end of the branches
 #define LEFT_TAIL(x) std::cout << "L_TAIL: " << "\n"; \
-					 x->leftEnd()->Print();
+			x->leftEnd()->Print();
 
 
 // extract information of a node at the rightmost end of the branches
 #define RIGHT_TAIL(x) std::cout << "R_TAIL: " << "\n"; \
-					  x->rightEnd()->Print();
+			x->rightEnd()->Print();
 
 
 #define ROOT_C_ASSERT(x) std::cout << "root ptr: " << C_ASSERT(x) << "\n\n";
@@ -312,7 +334,7 @@ constexpr BNode<T>* const NODE_T(BNode<T>* _Root, int V_) {
 		constexpr void dispose_all();
 
 	private:
-		std::vector<typename NodeTraits<P>::u_type> _unused;
+		std::vector<typename NodeTraits<P>::uType> _unused;
 	};
 
 
@@ -374,9 +396,6 @@ struct BNode {
 		this->_value = -1;
 		this->_dir = TDIR::UNKNOWN;
 
-		BNode<T>::linkPtr[2] = nullptr;
-		BNode<T>::_outRoot = nullptr;
-
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 		this->links[2] = nullptr;
@@ -388,9 +407,6 @@ struct BNode {
 	constexpr BNode<T>(int _Key) {
 		this->_value = _Key;
 		this->_dir = TDIR::UNKNOWN;
-
-		BNode<T>::linkPtr[2] = nullptr;
-		BNode<T>::_outRoot = nullptr;
 
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
@@ -511,9 +527,8 @@ struct BNode {
 		return this->_dir;
 	}
 
-	// for debugging purposes..
 	static constexpr BNode<T>* const originalRoot() {
-		return *BNode<T>::_outRoot;
+		return *AVL<BNode<T>*>::outerRoot;
 	}
 	
 	static constexpr BNode<T>* const T_ROOT() { return ISNULL(linkPtr[TOP])? nullptr : linkPtr[TOP]; }
@@ -526,14 +541,13 @@ struct BNode {
 
 
 	static constexpr void setTopRoot(BNode<T>** const outPtr = nullptr) {
-		// ppThis = &nRoot;
-		if (nullptr == BNode<T>::_outRoot)
-			BNode<T>::_outRoot = outPtr;
+		if (nullptr == AVL<BNode<T>*>::outerRoot)
+			AVL<BNode<T>*>::outerRoot = outPtr;
 
-		// nRoot != newRoot?; nRoot = newRoot;
-		if (*BNode<T>::_outRoot != *outPtr)  *BNode<T>::_outRoot = (BNode<T>* const)(*outPtr);
-		BNode<T>::linkPtr[TOP] = (BNode<T>* const)(*BNode<T>::_outRoot);
-	
+		if (*AVL<BNode<T>*>::outerRoot != *outPtr)
+			*AVL<BNode<T>*>::outerRoot = *outPtr;
+
+		BNode<T>::linkPtr[TOP] = (BNode<T>* const)(*AVL<BNode<T>*>::outerRoot);
 	}
 
 
@@ -697,7 +711,6 @@ private:
 	typename T nod_data;
 
 	static BNode<T>* linkPtr[2];
-	static BNode<T>** _outRoot;
 	
 	// leaves count on the left of the current node
 	constexpr unsigned int Lefts() const {
@@ -791,11 +804,11 @@ protected:
 	constexpr void collectLeft() {
 		BNode<T>* _curr = (BNode<T>* const)this;
 
-		do {
+		while (P_ASSERT(_curr)) {
 			if P_ASSERT(_curr->Right()) COLLECT<T>(_curr->Right());
 			if P_ASSERT(_curr->Left()) COLLECT<T>(_curr->Left());
 			_curr = _curr->Left();
-		} while P_ASSERT(_curr);
+		};
 
 		NULLP(_curr);
 	}
@@ -804,11 +817,11 @@ protected:
 	constexpr void collectRight() {
 		BNode<T>* _curr = (BNode<T>* const)this;
 
-		do {
+		while (P_ASSERT(_curr)) {
 			if P_ASSERT(_curr->Right()) COLLECT<T>(_curr->Right());
 			if P_ASSERT(_curr->Left()) COLLECT<T>(_curr->Left());
 			_curr = _curr->Right();
-		} while P_ASSERT(_curr);
+		};
 
 		NULLP(_curr);
 	}
@@ -819,9 +832,6 @@ protected:
 
 template <class T>
 BNode<T>* BNode<T>::linkPtr[] = { nullptr,nullptr };
-
-template <class T>
-BNode<T>** BNode<T>::_outRoot = nullptr;
 
 
 #endif  // end of #MIX_NOD Impl
@@ -887,9 +897,9 @@ constexpr P const ALLOC_N(P const _uNod, const bool nd_stat = true) {
 
 
 
-// seek a specified node relative with the specified root node.
+// seek a specified node's value relative to the specified root node.
 template < class T, typename P = BNode<T>* >
-constexpr P seek_nd(const P _Root, int const _Val) {
+constexpr P seek_nd(P _Root, int const _Val) {
 
 	if (!P_ASSERT(_Root)) return nullptr;
 
@@ -948,7 +958,7 @@ constexpr P treeAdd(P const _Root, int const _Val ) {
 template <typename P  >
 constexpr inline void AVL<typename P>::R_TURNS() {
 	// because ::_outRoot directly point to the outer root
-	AVL<P>::pRoot1 = BNode<AVL<P>::DType>::linkPtr[TOP];
+	AVL<P>::pRoot1 = *AVL<P>::outerRoot;
 	AVL<P>::newRoot1 = ALLOC_N<AVL<P>::DType>(AVL<P>::pRoot1->Left(), true);
 	AVL<P>::newRoot1->links[PARENT] = nullptr;
 
@@ -966,12 +976,12 @@ constexpr inline void AVL<typename P>::R_TURNS() {
 
 template <typename P>
 constexpr inline void AVL<typename P>::L_TURNS() {
-	AVL<P>::pRoot2 = BNode<AVL<P>::DType>::linkPtr[TOP];
+	AVL<P>::pRoot2 = *AVL<P>::outerRoot;
 	AVL<P>::newRoot2 = ALLOC_N<AVL<P>::DType>(AVL<P>::pRoot2->Right(), true);
 	AVL<P>::newRoot2->links[PARENT] = nullptr;
 
 	AVL<P>::pRoot2->setRight(ALLOC_N<AVL<P>::DType>(AVL<P>::newRoot2->Left(), true));
-	AVL<P>::pRoot2->Right()->links[PARENT] = AVL<P>::pRoot2;
+	AVL<P>::pRoot2->Right()->setParent(AVL<P>::pRoot2);
 	AVL<P>::pRoot2->Right()->setDir(TDIR::RIGHT);
 
 	SET_LEFT(AVL<P>::newRoot2, AVL<P>::pRoot2);
