@@ -6,13 +6,15 @@
 template <typename P>
 struct AVL {
 
-	using DType = typename NodeTraits<std::remove_pointer_t<P>>::memberType;
+	using DType = typename NodeTraits<P>::iType;
 
 	static typename NodeTraits<P>::p_type pRoot1;
 	static typename NodeTraits<P>::p_type pRoot2;
 
 	static typename NodeTraits<P>::p_type newRoot1;
 	static typename NodeTraits<P>::p_type newRoot2;
+
+	static typename NodeTraits<P>::p_type* outerRoot;
 
 	static constexpr UINT const LT_Count() { return LT; }
 	static constexpr UINT const RT_Count() { return RT; }
@@ -42,7 +44,7 @@ private:
 	static UINT LT; // maximum in the Left Branches
 	static UINT RT; // maximum in the Right Branches
 	static UINT BAL; // difference between LT & RT
-
+	
 	// rotate left branches to the right of the root.
 	static constexpr void R_TURNS();
 
@@ -61,6 +63,10 @@ UINT AVL<P>::RT = 0;
 
 template <typename P>
 UINT AVL<P>::BAL = 0;
+
+
+template <typename P>
+typename NodeTraits<P>::p_type* AVL<P>::outerRoot = nullptr;
 
 template<typename P>
 typename NodeTraits<P>::p_type AVL<P>::pRoot1 = nullptr;
