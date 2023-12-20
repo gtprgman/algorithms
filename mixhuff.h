@@ -414,7 +414,7 @@ inline const node TO_NODE(const Byte _c) {
 
 
 inline const node TO_FREQ_NODE(const node& _nod) { 
-	node _fNod = _nod.Freq(); // construct frequency node
+	node _fNod = std::floor(_nod.Freq()); // construct frequency node
 	_fNod.setData(_nod.Value()); 
 	return _fNod; 
 }
@@ -901,59 +901,44 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 
 template <class N>
 constexpr inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
-	std::size_t i = 0, j = 0, k = 0, m = 0, t = 0, r = 0;
+std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
 	std::size_t mid = 0, _len = _Len;
-	N _v1, _v3, _v2, _v4;
-	node _n1, _n3, _n2, _n4;
+	N _v2, _v4;
+	node _n2, _n4;
 
 	mid = (_Len / 2);
 
-	i = 0;  // index: i,j, k, t & r
-	m = mid; // index & accumulator : i & m
+	i = 0;  // accumulator: (i); index: (t), (r)
+	m = mid; // threshold: (j), (_len)
 
-	for (; m > i && _len > mid; m--, _len--) {
-		
-		j = m; k = j - 1;
-		t = _len; r = t - 1;
-		// while (j=mid) >= 0 
-		while (j >= 0 && t >= m) {
+	for (; i < _len; ) {
+		for (; i < m; i++) {
+			t = i; r = t + 1;
 
-			_v3 = VALT<N>(vn[j]); // supposed to be larger
-			_v1 = VALT<N>(vn[k]); // supposed to be smaller
+			while (t >= j) {
+				_v4 = (N)VALT<double>(vn[r]); // supposed as larger
+				_v2 = (N)VALT<double>(vn[t]); // supposed as smaller
 
-			_v4 = VALT<N>(vn[t]); // supposed to be larger
-			_v2 = VALT<N>(vn[r]); // supposed to be smaller
-
-			if (_v1 > _v3) {
-				_n1 = vn[j]; // smaller value
-				_n3 = vn[k]; // greater value
-
-				vn[k] = _n1;
-				vn[j] = _n3;
+				if (_v2 > _v4) {
+					_n2 = vn[r]; // conserved the smaller
+					vn[r] = vn[t]; // copy the greater to the smaller slot
+					vn[t] = _n2; // replace the correct slot with the correct value
+				}
+				--t; r = t + 1;
 			}
-
-			if (_v2 > _v4) {
-				_n2 = vn[t]; // smaller value
-				_n4 = vn[r]; // greater value
-
-				vn[r] = _n2;
-				vn[t] = _n4;
-			}
-			--j; k = j - 1; 
-			--t; r = t - 1;
 		}
-	}
+	// 'i' is likely approaching 'm' ; lim( 'i->m' )
+	j = i - 1; // 'j' is assigned a new threshold limit
+	m = _len; // 'mid < _len' for the next iterations of the inner 'for..loop'
 }
 
 
 inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
 	std::size_t i = 0;
 	double fc = 0.00;
-	// ht : huffman tree's root ; ft : branch of the huffman's root
-	node* ht = nullptr, *ft = nullptr;
+	// ft, f2t : branches of the huffman's tree
+	node* ft = nullptr, *f2t = nullptr;
 
-	// constructs huffman tree's root
-	ht = (CONST_PTR)ALLOC_N<double>(0.00); 
 	
 	// initialize fc before use
 	fc = fc + VALT<double>(vn[0]) + VALT<double>(vn[1]);
@@ -966,11 +951,13 @@ inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len
 		// calculate root's frequency value
 		fc = fc + VALT<double>(vn[i]);
 
-		node* f2t = (CONST_PTR)ALLOC_N<double>(fc);
+		f2t = (CONST_PTR)ALLOC_N<double>(fc);
 		f2t->links[0] = ft;
-		f2t->links[1] = (CONST_PTR)(&vn[2]);
-
+		f2t->links[1] = (CONST_PTR)(&vn[i]);
 		ft = f2t;
-	
 	}
+
+	NULLP(f2t);
+
+	return (ft);
 }
