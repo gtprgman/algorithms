@@ -167,6 +167,11 @@ static struct _Deallocator {
 #endif
 
 
+#ifndef _TYPE_INFO_H
+#define _TYPE_INFO_H
+	#include <typeinfo>
+#endif
+
 #define RET std::cout << "\n";
 
 #define PRINT(_t) std::cout << (_t) << "\n";
@@ -248,10 +253,11 @@ inline ULONG R_HEIGHT(const node* const _pRoot) {
 template < class N = double >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
-	_vt = (huffTree::DATA_TREE == node::xTree)?
-		(N)_Nod.Value() : (N)_Nod.FrequencyData();
+	
+	_vt = (std::strcmp("unsigned long", typeid(_vt).name()))?
+		(N)_Nod.FrequencyData() : (N)_Nod.Value();
 
-	return _vt;
+	return std::remove_all_extents_t<N>(_vt);
 }
 
 
@@ -259,12 +265,10 @@ constexpr inline const N VALT(const node& _Nod) {
 template < class N = double> 
 constexpr inline const N VALX(const node* const _p) {
 	N _v;
-	node* _tmp = (CONST_PTR)_p;
 
-	_v = (huffTree::DATA_TREE == node::xTree)? (N)_tmp->Value() : (N)_tmp->FrequencyData();
+	_v = (std::strcmp("unsigned long", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
-	NULLP(_tmp);
-	return _v;
+	return std::remove_all_extents_t<N>(_v);
 }
 
 
@@ -902,9 +906,9 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 template <class N>
 constexpr inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
 std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
-	std::size_t mid = 0, _len = _Len;
-	N _v2, _v4;
-	node _n2, _n4;
+std::size_t mid = 0, _len = _Len;
+N _v2 , _v4;
+node _n2, _n4;
 
 	mid = (_Len / 2);
 
@@ -915,9 +919,9 @@ std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
 		for (; i < m; i++) {
 			t = i; r = t + 1;
 
-			while (t >= j) {
-				_v4 = (N)VALT<double>(vn[r]); // supposed as larger
-				_v2 = (N)VALT<double>(vn[t]); // supposed as smaller
+			while(t > 0) {
+				_v4 = VALT<N>(vn[r]); // supposed as larger
+				_v2 = VALT<N>(vn[t]); // supposed as smaller
 
 				if (_v2 > _v4) {
 					_n2 = vn[r]; // conserved the smaller
@@ -928,13 +932,14 @@ std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
 			}
 		}
 	// 'i' is likely approaching 'm' ; lim( 'i->m' )
-	j = i - 1; // 'j' is assigned a new threshold limit
 	m = _len; // 'mid < _len' for the next iterations of the inner 'for..loop'
+  }	
 }
 
 
+
 inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
-	std::size_t i = 0;
+std::size_t i = 0;
 	double fc = 0.00;
 	// ft, f2t : branches of the huffman's tree
 	node* ft = nullptr, *f2t = nullptr;
@@ -945,7 +950,10 @@ inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len
 
 	ft = (CONST_PTR)ALLOC_N<double>(fc);
 	ft->links[0] = (CONST_PTR)(&vn[0]);
+	ft->links[0]->setCode('0');
+
 	ft->links[1] = (CONST_PTR)(&vn[1]);
+	ft->links[1]->setCode('1');
 
 	for (i = 2; i < _Len; i++) {
 		// calculate root's frequency value
@@ -953,11 +961,16 @@ inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len
 
 		f2t = (CONST_PTR)ALLOC_N<double>(fc);
 		f2t->links[0] = ft;
+		f2t->links[0]->setCode('0');
+
 		f2t->links[1] = (CONST_PTR)(&vn[i]);
+		f2t->links[1]->setCode('1');
+
 		ft = f2t;
 	}
 
 	NULLP(f2t);
 
-	return (ft);
+	return (ft);	
 }
+
