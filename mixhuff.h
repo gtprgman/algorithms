@@ -16,12 +16,7 @@ enum class tDir : std::int8_t {
 constexpr std::int8_t ZERO = static_cast<std::int8_t>(tDir::LEFT);
 constexpr std::int8_t ONE = static_cast<std::int8_t>(tDir::RIGHT);
 
-struct HF_REC {
-	char _code;
-	double _freq;
-	double _fdata;
-	Byte _data;
-};
+
 
 
 
@@ -134,6 +129,27 @@ ULONG simple_avl::BAL = 0;
 #ifndef HUFF_TREE
 	#include <vector>
 	std::vector<std::unique_ptr<node>> _repo;
+	std::vector<node*> _nRepo;
+
+	struct HF_REC {
+		std::vector<char> _bits;
+		Byte _data;
+	};
+
+
+	// custom deleter for std::unique_ptr<node>
+	struct N_DELETER {
+		void operator()(node* _p0) {
+			_nRepo.emplace_back(_p0->links[1]);
+			
+			while (nullptr != _p0) {
+				_nRepo.emplace_back(_p0->links[0]);
+				_p0 = _p0->links[0];
+			}
+
+			for (node* p_ : _nRepo) delete(p_);
+		}
+	};
 
 #endif
 
@@ -154,6 +170,8 @@ static struct _Deallocator {
 	 
 } _Deleter;
 
+
+
 #endif
 
 
@@ -166,11 +184,11 @@ static struct _Deallocator {
 #include <vector>
 #endif
 
-
 #ifndef _TYPE_INFO_H
 #define _TYPE_INFO_H
 	#include <typeinfo>
 #endif
+
 
 #define RET std::cout << "\n";
 
@@ -250,7 +268,7 @@ inline ULONG R_HEIGHT(const node* const _pRoot) {
 
 
 // returns the value of a node as specified by a reference to any node in the tree.
-template < class N = double >
+template < class N >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
 	
@@ -262,7 +280,7 @@ constexpr inline const N VALT(const node& _Nod) {
 
 
 // returns the value of a node specified by a pointer to any node in the tree.
-template < class N = double> 
+template < class N > 
 constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
@@ -287,7 +305,8 @@ constexpr inline const char BIT(const N _v) {
 
 
 /* returns the data representation of a specified node's value '_v',
- 'setRoot()' must be initiated first before use
+ 'setRoot()' must be initiated first before use. This function is valid
+ only on a data or frequency tree but before plotted to a huffman tree.
 */
 template <class N>
 constexpr inline const char DATA(const N _v) {
@@ -296,7 +315,6 @@ constexpr inline const char DATA(const N _v) {
 	NULLP(tmp);
 	return (char)data_value;
 }
-
 
 /* returns the data representation of any node in the huffman tree,
 *  this should be used only on a generated huffman tree.
@@ -312,6 +330,7 @@ inline const char DATAX(const node* _ft) {
 inline const char DATAC(const node& _fNod) {
 	return (char)_fNod.Value();
 }
+
 
 
 /* extracts information of a node with a specified value '_v'
@@ -373,7 +392,7 @@ inline void passed_by(const node* const _p = nullptr ) {
 
 inline void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
-		printf("(%.2f, %.2f %%Fqr)\n", VALX(_p), (const double)(_p->Freq()));
+		printf("(%u.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->Freq()));
 	else std::cout << 0.00 << "\n";
 }
 
@@ -469,15 +488,16 @@ void freq_add_from_node(const node*, const node&);
 
 // sorts the frequency nodes in ascending order
 template <class N>
-constexpr void nodesSort(std::vector<node>&, const std::size_t);
-
+void nodesSort(std::vector<node>&, const std::size_t);
 
 /* constructs a huffman tree from the gathered frequency nodes,
 	the frequency nodes in the list must be sorted before a huffman tree
 	could properly be constructed, this is crucial.
 */
-void huff_tree_create(const std::vector<node>&, const std::size_t);
+const node* huff_tree_create(const std::vector<node>&, const std::size_t);
 
+// Huffman Encoding initiated by this function
+void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 // simple_avl class Impl..
@@ -873,7 +893,7 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 	/* in the frequency tree, we don't need any further the frequency value of 
 	    any data frequency obtained earlier from the data tree */
 
-	if (_fCurr->FrequencyData() > _dNod.FrequencyData()) 
+	if (_fCurr->FrequencyData() > _dNod.FrequencyData())
 		if (ASSERT_P(_fCurr->links[0])) {
 			_fCurr = _fCurr->links[0];
 			_fCurr->Add(_dNod);
@@ -901,7 +921,7 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 
 	else if (_fCurr->FrequencyData() == _dNod.FrequencyData()) {
 		/* we need to enforce unique the frequency of each data unit
-			for easing the organizer method of huffman concept 
+			for easing the organizer method of huffman concept
 		*/
 		const double fcNew = (_dNod.FrequencyData() + (_dNod.FrequencyData() / 100.00)); // to enforce unique
 		node::_totSizes += 1.0;
@@ -919,11 +939,11 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 
 
 template <class N>
-constexpr inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
-std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
-std::size_t mid = 0, _len = _Len;
-N _v2 , _v4;
-node _n2, _n4;
+inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
+	std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
+	std::size_t mid = 0, _len = _Len;
+	N _v2 , _v4;
+	node _n2, _n4;
 
 	mid = (_Len / 2);
 
@@ -948,13 +968,12 @@ node _n2, _n4;
 		}
 	// 'i' is likely approaching 'm' ; lim( 'i->m' )
 	m = _len; // 'mid < _len' for the next iterations of the inner 'for..loop'
-  }	
+  }
 }
 
 
-
-inline void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
-std::size_t i = 0;
+inline const node* huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
+	std::size_t i = 0;
 	double fc = 0.00;
 	// ft, f2t : branches of the huffman's tree
 	node* ft = nullptr, *f2t = nullptr;
@@ -986,6 +1005,12 @@ std::size_t i = 0;
 
 	NULLP(f2t);
 
-	return (ft);	
+	return (ft);
 }
 
+
+
+inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
+	
+
+}
