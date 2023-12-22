@@ -290,13 +290,28 @@ constexpr inline const char BIT(const N _v) {
  'setRoot()' must be initiated first before use
 */
 template <class N>
-constexpr inline const N DATA(const N _v) {
+constexpr inline const char DATA(const N _v) {
 	node* tmp = (CONST_PTR)node::_main;
-	const char data_value = tmp->Find<N>(_v)->dataValue();
+	const Byte data_value = tmp->Find<N>(_v)->Value();
 	NULLP(tmp);
-	return data_value;
+	return (char)data_value;
 }
 
+
+/* returns the data representation of any node in the huffman tree,
+*  this should be used only on a generated huffman tree.
+*/
+inline const char DATAX(const node* _ft) {
+	return (char)_ft->Value();
+}
+
+
+/* returns the data representation of a node, which
+  node is already converted to a frequency node.
+*/
+inline const char DATAC(const node& _fNod) {
+	return (char)_fNod.Value();
+}
 
 
 /* extracts information of a node with a specified value '_v'
