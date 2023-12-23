@@ -490,9 +490,15 @@ void freq_add_from_node(const node*, const node&);
 template <class N>
 void nodesSort(std::vector<node>&, const std::size_t);
 
+// search a frequency node in a vector container
+const bool vector_search(const std::vector<node>&, const node&);
+
+// add frequency node to the vector container
+void add_frequencyNodes(std::vector<node>&, const node&);
+
 /* constructs a huffman tree from the gathered frequency nodes,
-	the frequency nodes in the list must be sorted before a huffman tree
-	could properly be constructed, this is crucial.
+  the frequency nodes in the list must be sorted before a huffman tree
+   could properly be constructed, this is crucial.
 */
 const node* huff_tree_create(const std::vector<node>&, const std::size_t);
 
@@ -940,36 +946,42 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 
 template <class N>
 inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
-	std::size_t i = 0,j = 0,m = 0, t = 0, r = 0;
-	std::size_t mid = 0, _len = _Len;
-	N _v2 , _v4;
-	node _n2, _n4;
+int i = 0, m = 0, t = 0, r = 0;
+int mid = 0, _len = (int)_Len;
+N _v2 , _v4;
+node _n2, _n4;
 
-	mid = (_Len / 2);
+	mid = (_len / 2);
+	m = mid; 
 
-	i = 0;  // accumulator: (i); index: (t), (r)
-	m = mid; // threshold: (j), (_len)
+	/* 
+	index: (t) & (r) 
+	accumulator: (i)
+	threshold: (m) & (len)
+	*/
 
-	for (; i < _len; ) {
-		for (; i < m; i++) {
-			t = i; r = t + 1;
+    for (; i < _len; ) {
+	   for (; i < m; i++) {
+		t = i; r = t + 1;
 
-			while(t > 0) {
-				_v4 = VALT<N>(vn[r]); // supposed as larger
-				_v2 = VALT<N>(vn[t]); // supposed as smaller
+		   while (t >= 0) {
+			_v4 = VALT<N>(vn[r]); // supposed as larger
+			_v2 = VALT<N>(vn[t]); // supposed as smaller
 
-				if (_v2 > _v4) {
-					_n2 = vn[r]; // conserved the smaller
-					vn[r] = vn[t]; // copy the greater to the smaller slot
-					vn[t] = _n2; // replace the correct slot with the correct value
-				}
-				--t; r = t + 1;
-			}
-		}
-	// 'i' is likely approaching 'm' ; lim( 'i->m' )
-	m = _len; // 'mid < _len' for the next iterations of the inner 'for..loop'
-  }
+			   if (_v2 > _v4) {
+				_n2 = vn[r]; // conserved the smaller
+				vn[r] = vn[t]; // copy the greater to the smaller slot
+				vn[t] = _n2; // replace the correct slot with the correct value
+			   }
+			--t; r = t + 1;
+		   }
+		   /* i' is likely approaching 'm' ; lim( 'i->m' )
+		    'mid < _len' for the next iterations of the inner 'for..loop' */
+		     m = _len;
+	}
+    }				
 }
+
 
 
 inline const node* huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
