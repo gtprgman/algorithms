@@ -74,7 +74,6 @@ struct node {
 	static node* _main, *_recent;
 	static node** _ppRoot;
 	static double _totSizes;
-	static huffTree xTree;
 	
 private:
 	char cDir;
@@ -84,7 +83,6 @@ private:
 };
 
 double node::_totSizes = 0.00;
-huffTree node::xTree = huffTree::UNKNOWN;
 node* node::_main = nullptr;
 node* node::_recent = nullptr;
 node** node::_ppRoot = nullptr;
@@ -490,10 +488,11 @@ void freq_add_from_node(const node*, const node&);
 template <class N>
 void nodesSort(std::vector<node>&, const std::size_t);
 
-// search a frequency node in a vector container
+/* search a frequency node in the vector container, 'nodesSort()' 
+   must be initiated before use */
 const bool vector_search(const std::vector<node>&, const node&);
 
-// add frequency node to the vector container
+// add a frequency node to the vector container
 void add_frequencyNodes(std::vector<node>&, const node&);
 
 /* constructs a huffman tree from the gathered frequency nodes,
@@ -538,8 +537,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
 		nCount(0.00), freq(0.00),cDir('0'), _visited(0), _deleted(0)
 	{
-		node::xTree = huffTree::UNKNOWN;
-
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 	}
@@ -548,8 +545,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	node::node(const double frq_data):xDir(tDir::UNKNOWN), _fdata(frq_data),
 		_data(0),nCount(0.00), freq(0.00), cDir('0'), _visited(0), _deleted(0)
 	{
-		node::xTree = huffTree::FREQ_TREE;
-
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 	}
@@ -559,8 +554,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir('0'),  
 		_visited(0), _deleted(0)
 	{
-		node::xTree = huffTree::DATA_TREE;
-
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 	}
@@ -812,15 +805,13 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 inline void simple_avl::rotate_Right() {
 	node* _nRoot = nullptr;
 
-	if (huffTree::DATA_TREE == node::xTree) {
-		_nRoot = *node::_ppRoot;
-		_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
-		_nRoot->links[0] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
-		_nRoot->links[0]->setCode('0');
-		_root1->links[1] = _nRoot;
-		_root1->links[1]->setCode('1');
-		node::setRoot((const node** const)(&_root1));
-	}
+	_nRoot = *node::_ppRoot;
+	_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
+	_nRoot->links[0] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
+	_nRoot->links[0]->setCode('0');
+	_root1->links[1] = _nRoot;
+	_root1->links[1]->setCode('1');
+	node::setRoot((const node** const)(&_root1));
 
 	NULL2P(_nRoot, _root1);
 }
@@ -828,15 +819,13 @@ inline void simple_avl::rotate_Right() {
 inline void simple_avl::rotate_Left() {
 	node* _nRoot = nullptr;
 
-	if (huffTree::DATA_TREE == node::xTree) {
-		_nRoot = *node::_ppRoot;
-		_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
-		_nRoot->links[1] = (CONST_PTR)ALLOC_N(LEFT(_root2));
-		_nRoot->links[1]->setCode('1');
-		_root2->links[0] = _nRoot;
-		_root2->links[0]->setCode('0');
-		node::setRoot((const node** const)(&_root2));
-	}
+	_nRoot = *node::_ppRoot;
+	_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
+	_nRoot->links[1] = (CONST_PTR)ALLOC_N(LEFT(_root2));
+	_nRoot->links[1]->setCode('1');
+	_root2->links[0] = _nRoot;
+	_root2->links[0]->setCode('0');
+	node::setRoot((const node** const)(&_root2));
 
 	NULL2P(_nRoot, _root2);
 }
@@ -981,6 +970,54 @@ node _n2, _n4;
 	}
     }				
 }
+
+
+
+/* search a frequency node in the vector container, 'nodesSort()' must be initiated
+   before use */
+inline const bool vector_search(const std::vector<node>& _vecNod, const node& _fNod) {
+	int vecSize = 0, M = 0, L = 0, R = 0; 
+	int L1 = 0, R1 = 0, M1 = 0;
+	int Vc = 0, Uc = 0; // Vc : vector's value; Uc: user's value
+	int nSeek = 0;
+
+	if (_vecNod.empty()) return 0;
+
+	vecSize = (int)_vecNod.size();
+	R = vecSize;
+	M = (L + R) / 2;
+	M1 = M;
+	R1 = M1;
+
+
+	Uc = (int)VALT<Byte>(_fNod);
+
+	do {
+		Vc = (int)VALT<Byte>(_vecNod[M]);
+
+		if (Uc > Vc) {
+			L = M; 
+			R = vecSize;
+			M = (L + R) / 2;
+		}
+		else if (Uc < Vc) {
+			L = L1; R = R1;
+			M = (L + R) / 2;
+		}
+		else if (Uc == Vc) break;
+
+		L1 = L; 
+		R1 = (Uc > Vc)? R : M;
+		++nSeek;
+
+		if ((M < 0) || (M > vecSize )) break;
+		if (nSeek > vecSize) return 0;
+		
+	} while (Uc != Vc);
+
+	return (Vc == Uc);
+}
+
 
 
 
