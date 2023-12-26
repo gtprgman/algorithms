@@ -130,9 +130,14 @@ ULONG simple_avl::BAL = 0;
 	std::vector<node*> _nRepo;
 
 	struct HF_REC {
-		std::vector<char> _bits;
-		Byte _data;
-	};
+	char _bits[255] = "\0";
+	Byte _data;
+
+	   void reset() {
+		delete[] _bits;
+		this->_data = 0;
+	   }
+	} _hRec;
 
 
 	// custom deleter for std::unique_ptr<node>
@@ -488,8 +493,7 @@ void freq_add_from_node(const node*, const node&);
 template <class N>
 void nodesSort(std::vector<node>&, const std::size_t);
 
-/* search a frequency node in the vector container, 'nodesSort()' 
-   must be initiated before use */
+// search a frequency node in the vector container
 const bool vector_search(const std::vector<node>&, const node&);
 
 // add a frequency node to the vector container
@@ -973,8 +977,8 @@ node _n2, _n4;
 
 
 
-/* search a frequency node in the vector container, 'nodesSort()' must be initiated
-   before use */
+/* search a frequency node in the vector container, the nodes in the vector must
+   be sorted before this function could applied. */
 inline const bool vector_search(const std::vector<node>& _vecNod, const node& _fNod) {
 	int vecSize = 0, M = 0, L = 0, R = 0; 
 	int L1 = 0, R1 = 0, M1 = 0;
@@ -1019,6 +1023,14 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const node& _f
 }
 
 
+// add a frequency node to the vector container
+inline void add_FrequencyNodes(std::vector<node>& _vec, const node& _Nod) {
+	// if the data already existed in the container, just return back
+	if (vector_search(_vec, _Nod)) return;
+
+	// if the data not yet existed, add the data to the container
+	_vec.emplace_back(node(_Nod));
+}
 
 
 inline const node* huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
