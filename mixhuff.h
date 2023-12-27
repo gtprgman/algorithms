@@ -3,9 +3,10 @@
 using UINT = unsigned int;
 using ULONG = unsigned long;
 using Byte = unsigned long;
+using LongRange = long long;
+
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
-enum class huffTree : std::int8_t { UNKNOWN = 0, DATA_TREE = 1, FREQ_TREE = 2 };
 
 enum class tDir : std::int8_t {
 	UNKNOWN = -1,
@@ -15,8 +16,6 @@ enum class tDir : std::int8_t {
 
 constexpr std::int8_t ZERO = static_cast<std::int8_t>(tDir::LEFT);
 constexpr std::int8_t ONE = static_cast<std::int8_t>(tDir::RIGHT);
-
-
 
 
 
@@ -130,14 +129,58 @@ ULONG simple_avl::BAL = 0;
 	std::vector<node*> _nRepo;
 
 	struct HF_REC {
-	char _bits[255] = "\0";
-	Byte _data;
+		HF_REC() : _bits{ '\0' } ,_data(0) {
+		}
 
-	   void reset() {
-		delete[] _bits;
-		this->_data = 0;
-	   }
-	} _hRec;
+		HF_REC(char(&_bts)[255], Byte _dta) {
+			strcpy_s(_bits, (const char*)_bts);
+			_data = _dta;
+		}
+
+		~HF_REC() {
+			reset();
+		}
+
+		HF_REC(const HF_REC& _hfr) {
+			if (this == &_hfr) return;
+			*this = _hfr;
+		}
+
+
+		HF_REC(HF_REC&& _hfr) {
+			if (this == &_hfr) return;
+			*this = std::move(_hfr);
+		}
+
+		const HF_REC& operator= (const HF_REC& _hfc) {
+			if (this == &_hfc) return (*this);
+
+			strcpy_s(_bits, (const char*)_hfc._bits);
+			_data = _hfc._data;
+
+			return (*this);
+		}
+
+		HF_REC&& operator= (HF_REC&& _hf) {
+			if (this == &_hf) return std::move(*this);
+
+			strcpy_s(_bits, (const char*)_hf._bits);
+			_data = _hf._data;
+
+			_hf.~HF_REC();
+		
+			return std::move(*this);
+		}
+
+		char _bits[255];
+		Byte _data;
+
+		void reset() {
+			for (std::size_t i = 0; i < 255; i++)
+				_bits[i] = '\0';
+			this->_data = 0;
+		}
+	};
 
 
 	// custom deleter for std::unique_ptr<node>
@@ -154,6 +197,7 @@ ULONG simple_avl::BAL = 0;
 		}
 	};
 
+	HF_REC _hc;
 #endif
 
 
@@ -455,7 +499,7 @@ inline const node TO_NODE(const Byte _c) {
 
 
 inline const node TO_FREQ_NODE(const node& _nod) { 
-	node _fNod = std::floor(_nod.Freq()); // construct frequency node
+	node _fNod = _nod.Freq(); // construct frequency node
 	_fNod.setData(_nod.Value()); 
 	return _fNod; 
 }
@@ -499,9 +543,9 @@ const bool vector_search(const std::vector<node>&, const node&);
 // add a frequency node to the vector container
 void add_frequencyNodes(std::vector<node>&, const node&);
 
-/* constructs a huffman tree from the gathered frequency nodes,
-  the frequency nodes in the list must be sorted before a huffman tree
-   could properly be constructed, this is crucial.
+
+/* generate a huffman tree from the frequency tree,
+   the nodes in the frequency tree must be sorted before use
 */
 const node* huff_tree_create(const std::vector<node>&, const std::size_t);
 
@@ -808,7 +852,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 // AVL Implementations
 inline void simple_avl::rotate_Right() {
 	node* _nRoot = nullptr;
-
 	_nRoot = *node::_ppRoot;
 	_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
 	_nRoot->links[0] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
@@ -820,9 +863,9 @@ inline void simple_avl::rotate_Right() {
 	NULL2P(_nRoot, _root1);
 }
 
+
 inline void simple_avl::rotate_Left() {
 	node* _nRoot = nullptr;
-
 	_nRoot = *node::_ppRoot;
 	_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
 	_nRoot->links[1] = (CONST_PTR)ALLOC_N(LEFT(_root2));
@@ -939,10 +982,10 @@ inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
 
 template <class N>
 inline void nodesSort(std::vector<node>& vn, const std::size_t _Len) {
-int i = 0, m = 0, t = 0, r = 0;
-int mid = 0, _len = (int)_Len;
-N _v2 , _v4;
-node _n2, _n4;
+	LongRange i = 0, m = 0, t = 0, r = 0;
+	LongRange mid = 0, _len = (LongRange)_Len;
+	N _v2 , _v4;
+	node _n2, _n4;
 
 	mid = (_len / 2);
 	m = mid; 
@@ -953,51 +996,53 @@ node _n2, _n4;
 	threshold: (m) & (len)
 	*/
 
-    for (; i < _len; ) {
-	   for (; i < m; i++) {
-		t = i; r = t + 1;
+	for (; i < _len; ) {
+		for (; i < m; i++) {
+			t = i; r = t + 1;
 
-		   while (t >= 0) {
-			_v4 = VALT<N>(vn[r]); // supposed as larger
-			_v2 = VALT<N>(vn[t]); // supposed as smaller
+			while (t >= 0) {
+				_v4 = VALT<N>(vn[r]); // supposed as larger
+				_v2 = VALT<N>(vn[t]); // supposed as smaller
 
-			   if (_v2 > _v4) {
-				_n2 = vn[r]; // conserved the smaller
-				vn[r] = vn[t]; // copy the greater to the smaller slot
-				vn[t] = _n2; // replace the correct slot with the correct value
-			   }
-			--t; r = t + 1;
-		   }
-		   /* i' is likely approaching 'm' ; lim( 'i->m' )
-		    'mid < _len' for the next iterations of the inner 'for..loop' */
-		     m = _len;
+				if (_v2 > _v4) {
+					_n2 = vn[r]; // conserved the smaller
+					vn[r] = vn[t]; // copy the greater to the smaller slot
+					vn[t] = _n2; // replace the correct slot with the correct value
+				}
+				--t; r = t + 1;
+			}
+			/* i' is likely approaching 'm' ; lim( 'i->m' )
+			'mid < _len' for the next iterations of the inner 'for..loop' */
+			m = _len;
+		}
 	}
-    }				
 }
 
 
 
-/* search a frequency node in the vector container, the nodes in the vector must
-   be sorted before this function could applied. */
+/* search a frequency node in the vector container, the nodes
+   in the container need to be sorted first before this function
+   could applied.
+*/
 inline const bool vector_search(const std::vector<node>& _vecNod, const node& _fNod) {
-	int vecSize = 0, M = 0, L = 0, R = 0; 
-	int L1 = 0, R1 = 0, M1 = 0;
-	int Vc = 0, Uc = 0; // Vc : vector's value; Uc: user's value
-	int nSeek = 0;
+	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
+	LongRange L1 = 0, R1 = 0, M1 = 0;
+	LongRange Vc = 0, Uc = 0; // Vc : vector's value; Uc: user's value
+	LongRange nSeek = 0;
 
 	if (_vecNod.empty()) return 0;
 
-	vecSize = (int)_vecNod.size();
+	vecSize = (LongRange)_vecNod.size();
 	R = vecSize;
 	M = (L + R) / 2;
 	M1 = M;
 	R1 = M1;
 
 
-	Uc = (int)VALT<Byte>(_fNod);
+	Uc = (LongRange)VALT<Byte>(_fNod);
 
 	do {
-		Vc = (int)VALT<Byte>(_vecNod[M]);
+		Vc = (LongRange)VALT<Byte>(_vecNod[M]);
 
 		if (Uc > Vc) {
 			L = M; 
@@ -1030,9 +1075,14 @@ inline void add_FrequencyNodes(std::vector<node>& _vec, const node& _Nod) {
 
 	// if the data not yet existed, add the data to the container
 	_vec.emplace_back(node(_Nod));
+
 }
 
 
+
+/* generate a huffman tree from the frequency tree,
+   the nodes in the frequency tree must be sorted before use
+*/
 inline const node* huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
 	std::size_t i = 0;
 	double fc = 0.00;
@@ -1050,6 +1100,9 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 	ft->links[1] = (CONST_PTR)(&vn[1]);
 	ft->links[1]->setCode('1');
 
+	//ft->Print();
+	//RET;
+
 	for (i = 2; i < _Len; i++) {
 		// calculate root's frequency value
 		fc = fc + VALT<double>(vn[i]);
@@ -1062,9 +1115,11 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 		f2t->links[1]->setCode('1');
 
 		ft = f2t;
+		//ft->Print();
+		//RET;
 	}
 
-	NULLP(f2t);
+	f2t = nullptr;
 
 	return (ft);
 }
@@ -1072,6 +1127,46 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 
 inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
-	
+	node* _ft = (node*)_f0t;
+	Byte j = 0; LongRange cLen = 0;
+	const Byte Len = L_HEIGHT(_ft);
 
+	strcat_s(_hc._bits, new char(_ft->links[1]->Code()));
+	_hc._data = _ft->links[1]->Value();
+
+
+	/* construct a new copy of '_hc' and emplaced it to the vector,
+		the constructed '_hc' is a rvalue object (object in temporary space) */ 
+	_tab.emplace_back(HF_REC(_hc));
+	_hc.reset();
+	strcat_s(_hc._bits, "0");
+
+	for (; j < (Len - 1); ) {
+		_ft = ASSERT_P(_ft->links[0])? _ft->links[0] : nullptr;
+
+		if (nullptr == _ft) break;
+		else {
+			/* put bits code,
+			   if the end of the node is reached */
+			if ((j + 1) == (Len-1)) {
+				_hc._data = _ft->links[0]->Value();
+			}
+			else
+			{
+				strcat_s(_hc._bits, new char(_ft->links[1]->Code()));
+				_hc._data = _ft->links[1]->Value();
+			}
+
+			_tab.emplace_back(HF_REC( _hc)); 
+
+			cLen = (LongRange)std::strlen(_hc._bits);
+			
+			_hc._data = 0;
+			_hc._bits[cLen-1] = '\0';
+			strcat_s(_hc._bits, "0");
+
+			++j;
+		}
+	}
+	_ft = nullptr;
 }
