@@ -1,11 +1,11 @@
 #include <iostream>
-#include <cstdio>
-
 #include "mixhuff.h"
+
 
 
 int main() {
 	std::vector<node> freqNod, readyNods;
+
 	const char s[] = "Ada Ate Apple";
 
 	// LEN(s + '/0')
@@ -33,31 +33,36 @@ int main() {
 	for (const node& e : freqNod)
 		add_FrequencyNodes(readyNods, e);
 
+	/*
 	// Printing the ready nodes
 	for (const node& e : readyNods) {
 		RPRINT(e.dataValue()); RPRINT(e.FrequencyData());
 		RET;
 	}
-
+	*/
 	RET;
 	const std::size_t fLEN = readyNods.size();
 
-	std::unique_ptr<node,N_DELETER> ht = nullptr;
+	std::unique_ptr<node, N_DELETER> ht = nullptr;
+	ht.reset( (CONST_PTR)huff_tree_create(readyNods, fLEN) );
 
-	ht.reset((CONST_PTR)huff_tree_create(readyNods, fLEN));
+	node* f0 = ht.get();
 
-	ht->Print();
+	std::vector<HF_REC> huff;
+
+	huffman_encode(huff, f0);
+
+
+	for (const HF_REC& _hf : huff)
+	{
+		RPRINT((char)_hf._data); RPRINT(_hf._bits);
+	}
+
 	RET;
 
-	PRINT(DATAX(ht->links[1]));
-	RET;
+	
+	
+	node::Dispose();
 
-
-	LCOUNT(ht.get());
-	RCOUNT(ht.get());
-	RET;
-
-	node::Dispose();	
-
-return -1;
+	return -1;
 };
