@@ -25,6 +25,7 @@ struct node {
 	
 	node(const Byte); // for data tree
 	node(const double); // for frequency tree
+	node(NODE_T&&);
 	node(const NODE_T&); // construct from temporary node's data
 	node(const node&); // copy
 	node(node&&) noexcept;	// move
@@ -35,9 +36,7 @@ struct node {
 
 
 	void Add(const Byte);
-	void Add(const double);
-	void Add(const node&);
-
+	
 	static void setSize(std::size_t const);
 	static void setRoot(const node** const);
 	static void setRoot_stack(const node*);
@@ -245,11 +244,23 @@ struct NODE_T {
 	double _freq;
 
 	NODE_T() : _v(0), _freq(0.00) {}
+	~NODE_T() {
+		_v = 0;
+		_freq = 0.00;
+	}
+
+	NODE_T(node&& _rvn) {
+		_v = _rvn.Value();
+		_freq = _rvn.FrequencyData();
+		_rvn.~node();
+	}
+
 	NODE_T(const node& _uNod) {
 		_v = _uNod.Value();
 		_freq = _uNod.FrequencyData();
 	}
 
+	// NODE_T copy ctor
 	NODE_T(const NODE_T& _rNod) {
 		if (this == &_rNod) return;
 		*this = _rNod;
@@ -263,6 +274,20 @@ struct NODE_T {
 		return *this;
 	}
 
+	// NODE_T rvalue ctor
+	NODE_T(NODE_T&& _rvNodT) {
+		if (this == &_rvNodT) return;
+		*this = std::move(_rvNodT);
+	}
+
+	NODE_T&& operator= (NODE_T&& _rvNodT) {
+		if (this == &_rvNodT) return std::move(*this);
+		_v = _rvNodT._v;
+		_freq = _rvNodT._freq;
+		_rvNodT.~NODE_T();
+
+		return std::move(*this);
+	}
 };
 
 #define RET std::cout << "\n";
@@ -408,6 +433,22 @@ inline const char DATAC(const node& _fNod) {
 
 
 
+// create an instantaneous node object from a specified Byte value '_c'
+inline const node TO_NODE(const Byte _c) {
+	node _Nod = _c;
+	return _Nod;
+}
+
+
+// convert a specified node to the frequency node
+inline const node TO_FREQ_NODE(const node& _nod) {
+	node _fNod = _nod.Freq(); // construct frequency node
+	_fNod.setData(_nod.Value());
+	return _fNod;
+}
+
+
+
 /* extracts information of a node with a specified value '_v'
    ,this function needs to initiate the call to 'setRoot()' before use
 */ 
@@ -417,12 +458,27 @@ constexpr inline void NODE(const N _v) {
 }
 
 
+
+
 /* Get a pointer to any node of the tree with a specified value '_v'
   'setRoot()' must be called first before use
 */ 
 template < class N >
 constexpr const node* PNODE(const N _v) {
 	return (node::_main)->Find<N>(_v);
+}
+
+
+
+
+/* Get an rvalue node object as specified by a data value 'ch',
+   this could apply only when the data tree has been built. */ 
+node&& ANODE(const char ch) {
+	node* _nx = (CONST_PTR)PNODE<Byte>((Byte)ch);
+	if (nullptr != _nx) 
+		return std::move(NODE_T(TO_FREQ_NODE(*_nx))); // _nx is a pointer to any node on the tree
+
+	return std::move(NODE_T(node((Byte)0)));
 }
 
 
@@ -527,20 +583,6 @@ inline void NPRINT(const std::vector<node>& _vn) {
 }
 
 
-inline const node TO_NODE(const Byte _c) {
-	node _Nod = _c;
-	return _Nod;
-}
-
-
-
-inline const node TO_FREQ_NODE(const node& _nod) { 
-	node _fNod = _nod.Freq(); // construct frequency node
-	_fNod.setData(_nod.Value()); 
-	return _fNod; 
-}
-
-
 
 #endif
 
@@ -564,34 +606,35 @@ inline void COLLECT(const node* const _p) {
 }
 
 
-/* Forward Declaration of any needed functs .. */
+// Add a node as specified by the Byte parameter to the tree 
 void data_tree_add(const node*, const Byte);
-void freq_add_from_node(const node*, const node&);
-
 
 // sorts the nodes in ascending order
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
-// search a node in the vector container using binary search method
+/* search a node in the vector container using binary search method,
+ the second parameter must be supplied with 'TO_NODE(Byte)' or any
+ expression that evaluates to a const node */ 
 template < class N >
-const bool vector_search(const std::vector<node>&, const node&);
+const bool vector_search(const std::vector<node>&, const node);
 
 
-// search a node in the vector using linear search method
+/* search a node in the vector using linear search method,
+ the second parameter must be supplied with 'ANODE(ch) ' */
 template < class N >
-const bool search_Node(const std::vector<node>&, const node&);
+const bool search_Node(const std::vector<node>&, node&&);
 
 /*  Filter a nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
-void frequency_Filter(std::vector<node>&, const std::vector<node>&);
+template < class N >
+void filter_Nodes(std::vector<node>&, const std::vector<node>&);
 
-/* add node to the vector container, the method incorporate
-   ' search_Node() ' for restricting any data with the same value being
+/* add a node to the vector container, the method incorporate
+   ' search_Node() ' for restricting any data with the same value for being
    entered twice.
 */ 
-template < class N >
-void add_Nodes(std::vector<node>&, const node&);
+void add_Nodes(std::vector<node>&, node&&);
 
 /* generate a huffman tree from the vector nodes data,
    the nodes in the vector must be sorted before use
@@ -665,6 +708,16 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	{
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
+	}
+
+
+	node::node(NODE_T&& _nodT):xDir(tDir::UNKNOWN),
+		_data(_nodT._v), nCount(0.00), freq(0.00), _fdata(_nodT._freq), cDir('0'),
+		_visited(0), _deleted(0) 
+	{
+		this->links[0] = nullptr;
+		this->links[1] = nullptr;
+		_nodT.~NODE_T();
 	}
 
 	node::node(const node& rNod) {
@@ -761,23 +814,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 			simple_avl::make_balance();
 
 		NULLP(_p);
-	}
-
-
-	void node::Add(const double dv) {
-		node* _p = nullptr;
-		_p = (CONST_PTR)(this);
-		node nodTmp = node(dv);
-		freq_add_from_node(_p, nodTmp);
-
-		NULLP(_p);
-	}
-
-
-	void node::Add(const node& _Node) {
-		node* _p = nullptr;
-		_p = (CONST_PTR)(this);
-		freq_add_from_node(_p, _Node);
 	}
 
 
@@ -989,57 +1025,6 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 
 
 
-inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
-	node* _fCurr = (CONST_PTR)_fRoot;
-
-	/* in the frequency tree, we don't need any further the frequency value of 
-	    any data frequency obtained earlier from the data tree */
-
-	if (_fCurr->FrequencyData() > _dNod.FrequencyData())
-		if (ASSERT_P(_fCurr->links[0])) {
-			_fCurr = _fCurr->links[0];
-			_fCurr->Add(_dNod);
-			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
-		}
-		else {
-			_fCurr->links[0] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
-			(_fCurr->links[0])->setCode('0');
-			(_fCurr->links[0])->setCount((_fCurr->links[0])->Count() + 1.0);
-			node::_recent = _fCurr->links[0];
-		}
-	
-	else if (_fCurr->FrequencyData() < _dNod.FrequencyData())
-		if (ASSERT_P(_fCurr->links[1])) {
-			_fCurr = _fCurr->links[1];
-			_fCurr->Add(_dNod);
-			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
-		}
-		else {
-			_fCurr->links[1] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
-			(_fCurr->links[1])->setCode('1');
-			(_fCurr->links[1])->setCount((_fCurr->links[1])->Count() + 1.0);
-			node::_recent = _fCurr->links[1];
-		}
-
-	else if (_fCurr->FrequencyData() == _dNod.FrequencyData()) {
-		/* we need to enforce unique the frequency of each data unit
-			for easing the organizer method of huffman concept
-		*/
-		const double fcNew = (_dNod.FrequencyData() + (_dNod.FrequencyData() / 100.00)); // to enforce unique
-		node::_totSizes += 1.0;
-		_fCurr->Add(fcNew);
-		node::_recent = (CONST_PTR)PNODE<double>(fcNew);
-		_fCurr = node::_recent;
-	}
-
-	// automatically add to garbage collector
-	_Deleter.push(node::_recent);
-	_fCurr = nullptr;
-}
-
-
-
-
 template <class N >
 inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 	LongRange i = 0, m = 0, t = 0, r = 0;
@@ -1082,12 +1067,9 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 
 
 
-/* search a frequency node in the vector container, the nodes
-   in the container need to be sorted first before this function
-   could applied.
-*/
+
 template < class N >
-inline const bool vector_search(const std::vector<node>& _vecNod, const node& _fNod) {
+inline const bool vector_search(const std::vector<node>& _vecNod, const node _fNod) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
 	LongRange L1 = 0, R1 = 0, M1 = 0;
 	LongRange nSeek = 0;
@@ -1135,9 +1117,11 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const node& _f
 
 
 template < class N >
-const bool search_Node(const std::vector<node>& _vec, const node& _Nod) {
+const bool search_Node(const std::vector<node>& _vec, node&& _Nod) {
 	bool _xFound = 0;
 	N _v0, _v1;
+
+	if (_vec.empty()) return 0;
 
 	_v0 = VALT<N>(_Nod);
 
@@ -1150,14 +1134,38 @@ const bool search_Node(const std::vector<node>& _vec, const node& _Nod) {
 		}
 	}
 
-
 	return _xFound;
 }
 
 
 
+void add_Nodes(std::vector<node>& _vec, node&& _Nod) {
+	Byte _v = _Nod.Value();
+	std::size_t _vecLen = _vec.size();
 
-inline void frequency_Filter(std::vector<node>& _dest, const std::vector<node>& _src) {
+	RPRINT((char)_v);
+	RPRINT(_vecLen);
+	RPRINT(typeid(_v).name());
+	RET;
+
+	/*
+	if (_vecLen < 20)
+		if (search_Node<Byte>(_vec, ANODE(_Nod.dataValue()) ) )return;
+		else if (_vecLen > 20)
+			if (vector_search<Byte>(_vec, TO_NODE(_Nod.Value()) ) ) return;
+
+
+	if (_v != 0)
+		_vec.emplace_back(NODE_T(node(_Nod)));
+
+	if (_vec.size() > 20) sort_Nodes<Byte>(_vec, _vec.size());
+	*/
+}
+
+
+
+template < class N >
+inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
 	LongRange jPos = 0,_Len = 0;
 	node nc;
 
@@ -1166,33 +1174,16 @@ inline void frequency_Filter(std::vector<node>& _dest, const std::vector<node>& 
 	_Len = (LongRange)_src.size();
 
 	nc = NODE_T(_src[0]);
+	add_Nodes<N>(_dest, nc);
 
 	for (LongRange i = 0; i < _Len; i++) {
-			// comparing frequency of both side
-		if (VALT<double>(nc) == (VALT<double>(_src[i]))) {
-
-			if (_dest.empty())
-				if (nc.Value() != 0) _dest.emplace_back(node(nc));
-				else
-				{
-					nc = NODE_T(_src[i]);
-					add_Nodes<Byte>(_dest, nc);
-				}
+			// comparing value of both side
+		if (VALT<N>(nc) == (VALT<N>(_src[i]))) {
+			nc = NODE_T(_src[i]);
+			add_Nodes<N>(_dest, nc);
 		}
-		else nc = NODE_T(_src[i]);
+
 	}
-}
-
-
-template < class N >
-void add_Nodes(std::vector<node>& _vec, const node& _Nod) {
-	Byte _v = VALT<Byte>(_Nod);
-
-	if (search_Node<N>(_vec, _Nod)) return;
-
-	if ( _v !=  0)
-		_vec.emplace_back(NODE_T(node(_Nod)) );
-
 }
 
 
