@@ -29,15 +29,18 @@ int main() {
 
 	}
 
-	sort_Nodes<double>(nods, LEN);
+	sort_Nodes<Byte>(nods, LEN);
 
 	NPRINT(nods);
 	RET;
 	RET;
 
-	frequency_Filter(huffNods, nods);
+	// Demonstrates 'ANODE()' and 'TO_NODE()'
+	PRINT( search_Node<Byte>(nods, ANODE('e')) ); RET;
 
-	NPRINT(huffNods);
+	PRINT( vector_search<Byte>(nods, TO_NODE((Byte)'t')) ); RET;
+	
+	
 
 	
 	RET;
