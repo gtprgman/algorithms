@@ -24,28 +24,38 @@ int main() {
 
 	// Collect data from the tree
 	for (const auto& c : s) {
-		node ns = NODE_T(TO_FREQ_NODE(*PNODE<Byte>((Byte)c)) );
-		nods.emplace_back(ns);
+		//node ns = NODE_T(TO_FREQ_NODE(*PNODE<Byte>((Byte)c)) );
+		nods.emplace_back(ANODE(c));
 
 	}
 
+
 	sort_Nodes<Byte>(nods, LEN);
 
-	NPRINT(nods);
+
+	PRINT(vector_search(nods, nodeY('d')));
+	PRINT(search_Node(nods, nodeX('V')));
+
+
+
+//	NPRINT(nods);
 	RET;
 	RET;
 
-	// Demonstrates 'ANODE()' and 'TO_NODE()'
-	PRINT( search_Node<Byte>(nods, ANODE('e')) ); RET;
 
-	PRINT( vector_search<Byte>(nods, TO_NODE((Byte)'t')) ); RET;
+	//NPRINT(nods);
+	RET;
+	RET;
+
 	
-	
+	//filter_Nodes<double>(huffNods, nods);
+
+	//NPRINT(huffNods);
 
 	
 	RET;
 	RET;
 	node::Dispose();
 
-	return -1;	
+	return -1;
 };
