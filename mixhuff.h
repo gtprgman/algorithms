@@ -25,9 +25,10 @@ struct node {
 	
 	node(const Byte); // for data tree
 	node(const double); // for frequency tree
-	node(NODE_T&&);
-	node(const NODE_T&); // construct from temporary node's data
-	node(const node&); // copy
+	node(NODE_T&&); // construct from rvalue NODE_T
+	node(const NODE_T&); // construct from NODE_T
+	node(node&); // copy
+	node(const node&); // overloaded copy
 	node(node&&) noexcept;	// move
 
 	const node& operator= (const node&);
@@ -65,6 +66,8 @@ struct node {
 	const bool Deleted() const;
 	const node Release() const;
 	
+	//Implicit conversion
+	operator NODE_T() const;
 	void Print() const;
 	static void Dispose();
 
@@ -249,6 +252,16 @@ struct NODE_T {
 		_freq = 0.00;
 	}
 
+	NODE_T(const Byte _vc) {
+		_v = _vc;
+		_freq = 0.00;
+	}
+
+	NODE_T(const Byte _vc, const double _fc) {
+		_v = _vc;
+		_freq = _fc;
+	}
+
 	NODE_T(node&& _rvn) {
 		_v = _rvn.Value();
 		_freq = _rvn.FrequencyData();
@@ -258,6 +271,11 @@ struct NODE_T {
 	NODE_T(const node& _uNod) {
 		_v = _uNod.Value();
 		_freq = _uNod.FrequencyData();
+	}
+
+	NODE_T(NODE_T& rNod) {
+		if (this == &rNod) return;
+		*this = rNod;
 	}
 
 	// NODE_T copy ctor
@@ -280,6 +298,7 @@ struct NODE_T {
 		*this = std::move(_rvNodT);
 	}
 
+	
 	NODE_T&& operator= (NODE_T&& _rvNodT) {
 		if (this == &_rvNodT) return std::move(*this);
 		_v = _rvNodT._v;
@@ -288,6 +307,7 @@ struct NODE_T {
 
 		return std::move(*this);
 	}
+
 };
 
 #define RET std::cout << "\n";
@@ -471,14 +491,19 @@ constexpr const node* PNODE(const N _v) {
 
 
 
-/* Get an rvalue node object as specified by a data value 'ch',
+/* Get an instantaneous node object as specified by a data value 'ch',
    this could apply only when the data tree has been built. */ 
-node&& ANODE(const char ch) {
-	node* _nx = (CONST_PTR)PNODE<Byte>((Byte)ch);
-	if (nullptr != _nx) 
-		return std::move(NODE_T(TO_FREQ_NODE(*_nx))); // _nx is a pointer to any node on the tree
+const NODE_T ANODE(const char ch) {
+	NODE_T _ntx = node();
 
-	return std::move(NODE_T(node((Byte)0)));
+	node* _nx = (CONST_PTR)PNODE<Byte>((Byte)ch);
+
+	if (nullptr != _nx) {
+		_ntx = TO_FREQ_NODE(*_nx);	// _nx is a pointer to any node on the tree
+		return _ntx; // return a copied NODE_T
+	}
+
+	return _ntx; // return a copied NODE_T
 }
 
 
@@ -574,6 +599,19 @@ constexpr char const* RET2() {
 }
 
 
+/* construct an instantaneous node object with data specified as '_ch',
+ this can be used anytime whenever we want an instantaneous node object,
+ despite of whether a data tree has been built or not, especially in the
+ case where we want to supply an instantaneous node object as argument to
+ the search_Node function. */ 
+#define nodeX(_ch) node((Byte)_ch)
+
+
+/* construct an instantaneous NODE_T object with data specified as '_ch' 
+   this is useful whenever we want an instantaneous NODE_T object supplied
+   as argument to the vector_search function */
+#define nodeY(_ch) (Byte)_ch
+
 // Print a collection of nodes from a vector
 inline void NPRINT(const std::vector<node>& _vn) {
 	for (const node& _ne : _vn) {
@@ -613,17 +651,13 @@ void data_tree_add(const node*, const Byte);
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
-/* search a node in the vector container using binary search method,
- the second parameter must be supplied with 'TO_NODE(Byte)' or any
- expression that evaluates to a const node */ 
-template < class N >
-const bool vector_search(const std::vector<node>&, const node);
+// search a node in the vector container using binary search method.
+const bool vector_search(const std::vector<node>&, const NODE_T );
 
 
 /* search a node in the vector using linear search method,
- the second parameter must be supplied with 'ANODE(ch) ' */
-template < class N >
-const bool search_Node(const std::vector<node>&, node&&);
+  argument to the second parameter must be supplied with ' nodeX(_ch)' macro. */ 
+const bool search_Node(const std::vector<node>&, const NODE_T);
 
 /*  Filter a nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
@@ -719,6 +753,13 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		this->links[1] = nullptr;
 		_nodT.~NODE_T();
 	}
+
+
+	node::node(node& rNod) {
+		if (this == &rNod) return;
+		*this = rNod;
+	}
+
 
 	node::node(const node& rNod) {
 		if (this == &rNod) return;
@@ -916,6 +957,12 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 	const bool node::Deleted() const { return _deleted;  }
 
+	// implicit conversion
+	node::operator NODE_T() const {
+		node _nc = _data;
+		_nc.setFrequencyData(_fdata);
+		return _nc;
+	}
 
 	const node node::Release() const {
 		node&& tmp = node(*this);
@@ -1067,13 +1114,11 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 
 
 
-
-template < class N >
-inline const bool vector_search(const std::vector<node>& _vecNod, const node _fNod) {
+inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _fNod) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
 	LongRange L1 = 0, R1 = 0, M1 = 0;
 	LongRange nSeek = 0;
-	N Vc, Uc; // Vc : vector's value; Uc: user's value
+	Byte Vc, Uc; // Vc : vector's value; Uc: user's value
 
 	if (_vecNod.empty()) return 0;
 
@@ -1084,10 +1129,10 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const node _fN
 	R1 = M1;
 
 
-	Uc = VALT<N>(_fNod);
+	Uc = _fNod._v;
 
 	do {
-		Vc = VALT<N>(_vecNod[M]);
+		Vc = (_vecNod[M]).Value();
 
 		R1 = (Uc > Vc)? R : M;
 
@@ -1111,22 +1156,22 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const node _fN
 		
 	} while (Uc != Vc);
 
-	return (Vc == Uc);
+
+	return ( Uc == Vc );
 }
 
 
 
-template < class N >
-const bool search_Node(const std::vector<node>& _vec, node&& _Nod) {
+const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 	bool _xFound = 0;
-	N _v0, _v1;
+	Byte _v0, _v1;
 
 	if (_vec.empty()) return 0;
 
-	_v0 = VALT<N>(_Nod);
+	_v0 = _Nod._v;
 
-	for (const node e : _vec) {
-		_v1 = VALT<N>(e);
+	for (const node& e : _vec) {
+		_v1 = e.Value();
 
 		if (_v0 == _v1) {
 			_xFound = 1;
