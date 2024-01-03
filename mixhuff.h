@@ -599,7 +599,7 @@ constexpr char const* RET2() {
 }
 
 
-/* construct an instantaneous node object with data specified as '_ch',
+/* construct an instantaneous node object with a data specified as '_ch',
  this can be used anytime whenever we want an instantaneous node object,
  despite of whether a data tree has been built or not, especially in the
  case where we want to supply an instantaneous node object as argument to
@@ -607,7 +607,7 @@ constexpr char const* RET2() {
 #define nodeX(_ch) node((Byte)_ch)
 
 
-/* construct an instantaneous NODE_T object with data specified as '_ch' 
+/* construct an instantaneous NODE_T object with a data specified as '_ch' 
    this is useful whenever we want an instantaneous NODE_T object supplied
    as argument to the vector_search function */
 #define nodeY(_ch) (Byte)_ch
@@ -659,19 +659,18 @@ const bool vector_search(const std::vector<node>&, const NODE_T );
   argument to the second parameter must be supplied with ' nodeX(_ch)' macro. */ 
 const bool search_Node(const std::vector<node>&, const NODE_T);
 
-/*  Filter a nodes to a separate vector container,
+/*  Filter nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
-template < class N >
 void filter_Nodes(std::vector<node>&, const std::vector<node>&);
 
 /* add a node to the vector container, the method incorporate
-   ' search_Node() ' for restricting any data with the same value for being
+   methods for restricting any data with the same value for being
    entered twice.
 */ 
-void add_Nodes(std::vector<node>&, node&&);
+void add_Nodes(std::vector<node>&, const NODE_T);
 
 /* generate a huffman tree from the vector nodes data,
-   the nodes in the vector must be sorted before use
+   the nodes in the vector must be sorted on frequency before use
 */
 const node* huff_tree_create(const std::vector<node>&, const std::size_t);
 
@@ -1184,50 +1183,44 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 
-void add_Nodes(std::vector<node>& _vec, node&& _Nod) {
-	Byte _v = _Nod.Value();
+void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
+	Byte _b = _Nod._v;
 	std::size_t _vecLen = _vec.size();
 
-	RPRINT((char)_v);
-	RPRINT(_vecLen);
-	RPRINT(typeid(_v).name());
-	RET;
 
-	/*
 	if (_vecLen < 20)
-		if (search_Node<Byte>(_vec, ANODE(_Nod.dataValue()) ) )return;
-		else if (_vecLen > 20)
-			if (vector_search<Byte>(_vec, TO_NODE(_Nod.Value()) ) ) return;
+		if (search_Node(_vec, nodeX(_b)) )return;
+	else if (_vecLen > 20)
+			if (vector_search(_vec, nodeY(_b)) ) return;
 
 
-	if (_v != 0)
-		_vec.emplace_back(NODE_T(node(_Nod)));
+	if (_b != 0)
+		_vec.emplace_back(ANODE((const char)_b));
 
 	if (_vec.size() > 20) sort_Nodes<Byte>(_vec, _vec.size());
-	*/
 }
 
 
 
-template < class N >
 inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
 	LongRange jPos = 0,_Len = 0;
-	node nc;
+	NODE_T nc;
 
 	if (_src.empty()) return;
 
 	_Len = (LongRange)_src.size();
 
-	nc = NODE_T(_src[0]);
-	add_Nodes<N>(_dest, nc);
+	nc = ANODE(_src[0].dataValue());
+	add_Nodes(_dest, nc);
 
 	for (LongRange i = 0; i < _Len; i++) {
 			// comparing value of both side
-		if (VALT<N>(nc) == (VALT<N>(_src[i]))) {
-			nc = NODE_T(_src[i]);
-			add_Nodes<N>(_dest, nc);
+		if (VALT<double>(nc) == (VALT<double>(_src[i]))) {
+			nc = ANODE(_src[i].dataValue());
+			add_Nodes(_dest, nc);
 		}
-
+		else
+			nc = ANODE(_src[i].dataValue());
 	}
 }
 
@@ -1239,7 +1232,6 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 	// ft, f2t : branches of the huffman's tree
 	node* ft = nullptr, *f2t = nullptr;
 
-	
 	// initialize fc before use
 	fc = fc + VALT<double>(vn[0]) + VALT<double>(vn[1]);
 
@@ -1252,8 +1244,6 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 	//ft->Print();
 	//RET;
-
-	
 
 	for (i = 2; i < _Len; i++) {
 		// calculate root's frequency value
@@ -1280,46 +1270,40 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 	node* _ft = (node*)_f0t;
-	Byte j = 0; LongRange cLen = 0;
-	const Byte Len = L_HEIGHT(_ft);
+	LongRange _cLen = 0;
+	const LongRange _Len = L_HEIGHT(_f0t);
 
-	strcat_s(_hc._bits, new char(_ft->links[1]->Code()));
+	strcat_s(_hc._bits, new const char(_ft->links[1]->Code()));
 	_hc._data = _ft->links[1]->Value();
 
-
 	/* construct a new copy of '_hc' and emplaced it to the vector,
-		the constructed '_hc' is a rvalue object (object in temporary space) */ 
-	_tab.emplace_back(HF_REC(_hc));
+	   the constructed '_hc' is a rvalue object (object in temporary space) */ 
+	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
 	_hc.reset();
 	strcat_s(_hc._bits, "0");
 
-	for (; j < (Len - 1); ) {
+
+	for (LongRange j = 1; j < _Len; j++) {
 		_ft = ASSERT_P(_ft->links[0])? _ft->links[0] : nullptr;
 
 		if (nullptr == _ft) break;
-		else {
-			/* put bits code,
-			   if the end of the node is reached */
-			if ((j + 1) == (Len-1)) {
-				_hc._data = _ft->links[0]->Value();
-			}
-			else
-			{
-				strcat_s(_hc._bits, new char(_ft->links[1]->Code()));
-				_hc._data = _ft->links[1]->Value();
-			}
+			// put bits code
+			strcat_s(_hc._bits, new const char(_ft->links[1]->Code()) );
+			_hc._data = _ft->links[1]->Value();
 
-			_tab.emplace_back(HF_REC( _hc)); 
+			_tab.emplace_back<const HF_REC>(HF_REC( _hc)); 
 
-			cLen = (LongRange)std::strlen(_hc._bits);
+			_cLen = (LongRange)std::strlen(_hc._bits);
 			
 			_hc._data = 0;
-			_hc._bits[cLen-1] = '\0';
+			_hc._bits[_cLen-1] = '\0';
 			strcat_s(_hc._bits, "0");
 
-			++j;
-		}
-	}
+	} 
+
+	_hc._data = _ft->links[0]->Value();
+	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+
 	_ft = nullptr;
 }
 
