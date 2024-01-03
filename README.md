@@ -20,7 +20,7 @@ TEST_BST_XX.cpp : testing unit for any respective library of binary node.
 
 mixhuff.h : a library for 'huffman' encoding - decoding mechanism.
 TEST_HUFF_00.cpp : testing unit for 'mixhuff.h' (pre-built).
-TEST_HUFF_READY_03.cpp : testing unit for the almost ready 'mixhuff.h' library.
+TEST_HUFF_READY_03.cpp : Unit test for 'mixhuff.h' library.
 
 
 
