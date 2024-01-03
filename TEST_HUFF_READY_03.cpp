@@ -4,10 +4,12 @@
 
 
 int main() {
+	std::vector<HF_REC> hfc;
 	std::vector<node> nods,huffNods;
 	Byte rootValue = 0;
 	
-	const char s[] = "Ada Ate Apple";
+	const char s[] = "Ada Ate Apple Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum";
+
 	const std::size_t LEN = strnlen_s(s, sizeof(s));
 
 	rootValue = (Byte)total_values(s, LEN);
@@ -30,32 +32,37 @@ int main() {
 	}
 
 
-	sort_Nodes<Byte>(nods, LEN);
-
-
-	PRINT(vector_search(nods, nodeY('d')));
-	PRINT(search_Node(nods, nodeX('V')));
-
-
-
-//	NPRINT(nods);
-	RET;
-	RET;
-
-
-	//NPRINT(nods);
-	RET;
-	RET;
+	sort_Nodes<double>(nods, LEN);
 
 	
-	//filter_Nodes<double>(huffNods, nods);
+	filter_Nodes(huffNods, nods);
 
-	//NPRINT(huffNods);
+	NPRINT(huffNods);
 
-	
+
 	RET;
 	RET;
+	HF_REC hcf;
+
+
+	std::unique_ptr<node> ht = nullptr;
+	ht.reset((CONST_PTR)huff_tree_create(huffNods, huffNods.size()));
+
+	node* fh = ht.get(); // get raw pointer
+
+	huffman_encode(hfc, fh);
+
+
+	for (const HF_REC& hf : hfc) {
+		RPRINT((char)hf._data); RPRINT(":") RPRINT(hf._bits); RPRINT("|");
+		RET;
+	}
+
+
+	RET;
+	RET;
+
 	node::Dispose();
 
-	return -1;
+	return -1;	
 };
