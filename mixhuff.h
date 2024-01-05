@@ -45,7 +45,7 @@ struct node {
 	template < class N >
 	constexpr const node* Find(const N);
 
-	void setCode(const char);
+	void setCode(const bool);
 	void setData(const Byte);
 	void setFrequencyData(const double);
 	void setCount(const double);
@@ -60,7 +60,7 @@ struct node {
 	const double Freq() const;
 	const double Count() const;
 	const double Capacity() const;
-	const char Code() const;
+	const bool Code() const;
 
 	const bool Visited() const;
 	const bool Deleted() const;
@@ -79,7 +79,7 @@ struct node {
 	static double _totSizes;
 	
 private:
-	char cDir;
+	bool cDir;
 	double nCount,freq, _fdata;
 	Byte _data;
 	bool _visited, _deleted;
@@ -133,11 +133,12 @@ ULONG simple_avl::BAL = 0;
 	std::vector<node*> _nRepo;
 
 	struct HF_REC {
-		HF_REC() : _bits{ '\0' } ,_data(0) {
+		HF_REC() {
+			_data = 0;
 		}
 
-		HF_REC(char(&_bts)[255], Byte _dta) {
-			strcpy_s(_bits, (const char*)_bts);
+		HF_REC(std::vector<bool>& _bts, Byte _dta) {
+			_bits = _bts;
 			_data = _dta;
 		}
 
@@ -156,19 +157,21 @@ ULONG simple_avl::BAL = 0;
 			*this = std::move(_hfr);
 		}
 
+
 		const HF_REC& operator= (const HF_REC& _hfc) {
 			if (this == &_hfc) return (*this);
 
-			strcpy_s(_bits, (const char*)_hfc._bits);
+			_bits = _hfc._bits;
 			_data = _hfc._data;
 
 			return (*this);
 		}
 
+
 		HF_REC&& operator= (HF_REC&& _hf) {
 			if (this == &_hf) return std::move(*this);
 
-			strcpy_s(_bits, (const char*)_hf._bits);
+			_bits = _hf._bits;
 			_data = _hf._data;
 
 			_hf.~HF_REC();
@@ -176,14 +179,26 @@ ULONG simple_avl::BAL = 0;
 			return std::move(*this);
 		}
 
-		char _bits[255];
-		Byte _data;
+		
+		const char* Bits() const {
+			std::size_t sz = _bits.size();
+			for (std::size_t j = 0; j < sz; j++)
+				if (_bits[j]) strcat((char*)_cb.c_str(), "1"); else
+					strcat((char*)_cb.c_str(), "0"); 
+
+			return _cb.c_str();
+		}
+
 
 		void reset() {
-			for (std::size_t i = 0; i < 255; i++)
-				_bits[i] = '\0';
+			if (!_bits.empty()) _bits.clear();
+			_cb.clear();
 			this->_data = 0;
 		}
+
+		std::string _cb;
+		std::vector<bool> _bits;
+		Byte _data;
 	};
 
 	
@@ -490,7 +505,6 @@ constexpr const node* PNODE(const N _v) {
 
 
 
-
 /* Get an instantaneous node object as specified by a data value 'ch',
    this could apply only when the data tree has been built. */ 
 const NODE_T ANODE(const char ch) {
@@ -599,7 +613,7 @@ constexpr char const* RET2() {
 }
 
 
-/* construct an instantaneous node object with a data specified as '_ch',
+/* construct an instantaneous node object with data specified as '_ch',
  this can be used anytime whenever we want an instantaneous node object,
  despite of whether a data tree has been built or not, especially in the
  case where we want to supply an instantaneous node object as argument to
@@ -607,7 +621,7 @@ constexpr char const* RET2() {
 #define nodeX(_ch) node((Byte)_ch)
 
 
-/* construct an instantaneous NODE_T object with a data specified as '_ch' 
+/* construct an instantaneous NODE_T object with data specified as '_ch' 
    this is useful whenever we want an instantaneous NODE_T object supplied
    as argument to the vector_search function */
 #define nodeY(_ch) (Byte)_ch
@@ -708,7 +722,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 	// Node Class Impl..
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
-		nCount(0.00), freq(0.00),cDir('0'), _visited(0), _deleted(0)
+		nCount(0.00), freq(0.00),cDir(0), _visited(0), _deleted(0)
 	{
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
@@ -716,7 +730,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	node::node(const double frq_data):xDir(tDir::UNKNOWN), _fdata(frq_data),
-		_data(0),nCount(0.00), freq(0.00), cDir('0'), _visited(0), _deleted(0)
+		_data(0),nCount(0.00), freq(0.00), cDir(0), _visited(0), _deleted(0)
 	{
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
@@ -724,7 +738,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	node::node(const Byte c): xDir(tDir::UNKNOWN), 
-		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir('0'),  
+		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),  
 		_visited(0), _deleted(0)
 	{
 		this->links[0] = nullptr;
@@ -736,7 +750,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	   relations, where only the data & frequency members are taking into consideration
 	*/ 
 	node::node(const NODE_T& _tmpNod) : xDir(tDir::UNKNOWN),
-		_data(_tmpNod._v), nCount(0.00), freq(0.00), _fdata(_tmpNod._freq), cDir('0'),
+		_data(_tmpNod._v), nCount(0.00), freq(0.00), _fdata(_tmpNod._freq), cDir(0),
 		_visited(0), _deleted(0) 
 	{
 		this->links[0] = nullptr;
@@ -745,7 +759,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	node::node(NODE_T&& _nodT):xDir(tDir::UNKNOWN),
-		_data(_nodT._v), nCount(0.00), freq(0.00), _fdata(_nodT._freq), cDir('0'),
+		_data(_nodT._v), nCount(0.00), freq(0.00), _fdata(_nodT._freq), cDir(0),
 		_visited(0), _deleted(0) 
 	{
 		this->links[0] = nullptr;
@@ -806,7 +820,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		links[0] = rvNod.links[0];
 		links[1] = rvNod.links[1];
 
-		rvNod.cDir = -1;
+		rvNod.cDir = 0;
 		rvNod.nCount = 0.00;
 		rvNod._data = 0;
 		rvNod._fdata = 0.00;
@@ -825,7 +839,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	node::~node() {
-		 cDir = -1;
+		 cDir = 0;
 		 nCount = 0.00;
 		 _data = 0;
 		 freq = 0.00;
@@ -867,7 +881,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	void node::setRoot(const node** const _uRoot = nullptr) {
 		if (node::_ppRoot == nullptr) node::_ppRoot = (node**)_uRoot;
 		if (*_ppRoot != *_uRoot) *_ppRoot = (node*)*_uRoot;
-		(*node::_ppRoot)->setCode('0');
+		(*node::_ppRoot)->setCode(0);
 		_main = (CONST_PTR)*_ppRoot;
 	}
 
@@ -905,8 +919,8 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
-	void node::setCode(const char ch) {
-		cDir = ch;
+	void node::setCode(const bool bc) {
+		cDir = bc;
 	}
 
 	void node::setVisit(const bool _v) {
@@ -947,7 +961,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
-	const char node::Code() const {
+	const bool node::Code() const {
 		return cDir;
 	}
 
@@ -997,9 +1011,9 @@ inline void simple_avl::rotate_Right() {
 	_nRoot = *node::_ppRoot;
 	_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
 	_nRoot->links[0] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
-	_nRoot->links[0]->setCode('0');
+	_nRoot->links[0]->setCode(0);
 	_root1->links[1] = _nRoot;
-	_root1->links[1]->setCode('1');
+	_root1->links[1]->setCode(1);
 	node::setRoot((const node** const)(&_root1));
 
 	NULL2P(_nRoot, _root1);
@@ -1011,9 +1025,9 @@ inline void simple_avl::rotate_Left() {
 	_nRoot = *node::_ppRoot;
 	_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
 	_nRoot->links[1] = (CONST_PTR)ALLOC_N(LEFT(_root2));
-	_nRoot->links[1]->setCode('1');
+	_nRoot->links[1]->setCode(1);
 	_root2->links[0] = _nRoot;
-	_root2->links[0]->setCode('0');
+	_root2->links[0]->setCode(0);
 	node::setRoot((const node** const)(&_root2));
 
 	NULL2P(_nRoot, _root2);
@@ -1036,6 +1050,7 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 		}
 		else {
 			_curr->links[0] = (CONST_PTR)ALLOC_N<const Byte>((const Byte)_v);
+			(_curr->links[0])->setCode(0);
 			(_curr->links[0])->setCount((_curr->links[0])->Count() + 1.0);
 			nParts = ((_curr->links[0])->Count() / node::_totSizes) * 100.00;
 			(_curr->links[0])->setFreq(nParts);
@@ -1050,6 +1065,7 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 		}
 		else {
 			_curr->links[1] = (CONST_PTR)ALLOC_N<const Byte>((const Byte)_v);
+			(_curr->links[1])->setCode(1);
 			(_curr->links[1])->setCount((_curr->links[1])->Count() + 1.0);
 			nParts = ((_curr->links[1])->Count() / node::_totSizes) * 100.00;
 			(_curr->links[1])->setFreq(nParts);
@@ -1183,6 +1199,7 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 
+
 void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 	Byte _b = _Nod._v;
 	std::size_t _vecLen = _vec.size();
@@ -1237,10 +1254,10 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 	ft = (CONST_PTR)ALLOC_N<double>(fc);
 	ft->links[0] = (CONST_PTR)(&vn[0]);
-	ft->links[0]->setCode('0');
+	ft->links[0]->setCode(0);
 
 	ft->links[1] = (CONST_PTR)(&vn[1]);
-	ft->links[1]->setCode('1');
+	ft->links[1]->setCode(1);
 
 	//ft->Print();
 	//RET;
@@ -1251,10 +1268,10 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 		f2t = (CONST_PTR)ALLOC_N<double>(fc);
 		f2t->links[0] = ft;
-		f2t->links[0]->setCode('0');
+		f2t->links[0]->setCode(0);
 
 		f2t->links[1] = (CONST_PTR)(&vn[i]);
-		f2t->links[1]->setCode('1');
+		f2t->links[1]->setCode(1);
 
 		ft = f2t;
 		//ft->Print();
@@ -1270,17 +1287,16 @@ inline const node* huff_tree_create(const std::vector<node>& vn, const std::size
 
 inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 	node* _ft = (node*)_f0t;
-	LongRange _cLen = 0;
 	const LongRange _Len = L_HEIGHT(_f0t);
 
-	strcat_s(_hc._bits, new const char(_ft->links[1]->Code()));
+	_hc._bits.push_back( _ft->links[1]->Code());
 	_hc._data = _ft->links[1]->Value();
 
 	/* construct a new copy of '_hc' and emplaced it to the vector,
 	   the constructed '_hc' is a rvalue object (object in temporary space) */ 
 	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
 	_hc.reset();
-	strcat_s(_hc._bits, "0");
+	_hc._bits.push_back(0);
 
 
 	for (LongRange j = 1; j < _Len; j++) {
@@ -1288,17 +1304,14 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 
 		if (nullptr == _ft) break;
 			// put bits code
-			strcat_s(_hc._bits, new const char(_ft->links[1]->Code()) );
+			_hc._bits.push_back(_ft->links[1]->Code());
 			_hc._data = _ft->links[1]->Value();
 
 			_tab.emplace_back<const HF_REC>(HF_REC( _hc)); 
-
-			_cLen = (LongRange)std::strlen(_hc._bits);
 			
 			_hc._data = 0;
-			_hc._bits[_cLen-1] = '\0';
-			strcat_s(_hc._bits, "0");
-
+			_hc._bits.pop_back();
+			_hc._bits.push_back(0);
 	} 
 
 	_hc._data = _ft->links[0]->Value();
@@ -1306,4 +1319,3 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 
 	_ft = nullptr;
 }
-
