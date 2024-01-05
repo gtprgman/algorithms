@@ -54,7 +54,7 @@ int main() {
 
 
 	for (const HF_REC& hf : hfc) {
-		RPRINT((char)hf._data); RPRINT(":") RPRINT(hf._bits); RPRINT("|");
+		RPRINT((char)hf._data); RPRINT(":"); RPRINT(hf.Bits()); RPRINT("|");
 		RET;
 	}
 
