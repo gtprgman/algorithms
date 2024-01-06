@@ -686,7 +686,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 /* generate a huffman tree from the vector nodes data,
    the nodes in the vector must be sorted on frequency before use
 */
-const node* huff_tree_create(const std::vector<node>&, const std::size_t);
+const node* huff_tree_create(std::vector<node*>&, const std::vector<node>&, const std::size_t);
 
 // Huffman Encoding initiated by this function
 void huffman_encode(std::vector<HF_REC>&,const node* const);
@@ -1243,42 +1243,53 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 
 
 
-inline const node* huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
+inline const node* huff_tree_create(std::vector<node*>& vnt, const std::vector<node>& vn, const std::size_t _Len) {
 	std::size_t i = 0;
 	double fc = 0.00;
 	// ft, f2t : branches of the huffman's tree
 	node* ft = nullptr, *f2t = nullptr;
 
-	// initialize fc before use
-	fc = fc + VALT<double>(vn[0]) + VALT<double>(vn[1]);
+	if (vn.empty()) return nullptr;
 
+	while( i < vn.size() ) {
+		fc = VALT<double>(vn[i]) + VALT<double>(vn[i + 1]);
+		ft = (CONST_PTR)ALLOC_N<double>(fc);
+		ft->links[0] = (CONST_PTR)(&vn[i]);
+		ft->links[0]->setCode(0);
+
+		ft->links[1] = (CONST_PTR)(&vn[i + 1]);
+		ft->links[1]->setCode(1);
+
+		vnt.emplace_back(ft);
+		i += 2;
+		fc = 0.00;
+	}
+
+	/* Debug Test Passed !*/
+
+	fc = 0.00;
+
+	fc = VALT<double>(*vnt[0]) + VALT<double>(*vnt[1]);
 	ft = (CONST_PTR)ALLOC_N<double>(fc);
-	ft->links[0] = (CONST_PTR)(&vn[0]);
-	ft->links[0]->setCode(0);
+	// setup links relation
+	ft->links[0] = vnt[0];
+	ft->setCode(0);
 
-	ft->links[1] = (CONST_PTR)(&vn[1]);
-	ft->links[1]->setCode(1);
+	ft->links[1] = vnt[1];
+	ft->setCode(1);
 
-	//ft->Print();
-	//RET;
-
-	for (i = 2; i < _Len; i++) {
-		// calculate root's frequency value
-		fc = fc + VALT<double>(vn[i]);
-
+	for (std::size_t j = 2; j < vnt.size(); j++) {
+		fc = fc + VALT<double>(*vnt[j]);
 		f2t = (CONST_PTR)ALLOC_N<double>(fc);
+
 		f2t->links[0] = ft;
 		f2t->links[0]->setCode(0);
 
-		f2t->links[1] = (CONST_PTR)(&vn[i]);
+		f2t->links[1] = vnt[j];
 		f2t->links[1]->setCode(1);
 
 		ft = f2t;
-		//ft->Print();
-		//RET;
 	}
-
-	f2t = nullptr;
 
 	return (ft);
 }
@@ -1289,33 +1300,67 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 	node* _ft = (node*)_f0t;
 	const LongRange _Len = L_HEIGHT(_f0t);
 
-	_hc._bits.push_back( _ft->links[1]->Code());
-	_hc._data = _ft->links[1]->Value();
+	_hc._bits.push_back(1);
+	_hc._bits.push_back(1);
+
+	_hc._data = _ft->links[1]->links[1]->Value();
 
 	/* construct a new copy of '_hc' and emplaced it to the vector,
 	   the constructed '_hc' is a rvalue object (object in temporary space) */ 
 	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
 	_hc.reset();
+
+	_hc._bits.push_back(1);
 	_hc._bits.push_back(0);
 
+	_hc._data = _ft->links[1]->links[0]->Value();
+	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+	_hc.reset();
+
+	_hc._bits.push_back(0);
 
 	for (LongRange j = 1; j < _Len; j++) {
 		_ft = ASSERT_P(_ft->links[0])? _ft->links[0] : nullptr;
 
 		if (nullptr == _ft) break;
 			// put bits code
-			_hc._bits.push_back(_ft->links[1]->Code());
+
+		if (j == (_Len - 1) ) {
+			_hc._bits.push_back(1);
 			_hc._data = _ft->links[1]->Value();
+
+			_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+			_hc._data = 0;
+
+			_hc._bits.pop_back();
+			_hc._bits.push_back(0);
+			_hc._data = _ft->links[0]->Value();
+
+			_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+			break;
+		}
+		/* the successive inner structure of huffman tree follows a 
+		   repeated links pattern of '1 1' & '1 0 ', when it reaches
+		   to the last node the links pattern are reduced to  '1 0 '.
+		*/
+			_hc._bits.push_back(1);
+			_hc._bits.push_back(1);
+			_hc._data = _ft->links[1]->links[1]->Value();
 
 			_tab.emplace_back<const HF_REC>(HF_REC( _hc)); 
 			
 			_hc._data = 0;
 			_hc._bits.pop_back();
 			_hc._bits.push_back(0);
-	} 
+			_hc._data = _ft->links[1]->links[0]->Value();
 
-	_hc._data = _ft->links[0]->Value();
-	_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+			_tab.emplace_back<const HF_REC>(HF_REC(_hc));
+
+			_hc._data = 0;
+			_hc._bits.pop_back();
+			_hc._bits.pop_back();
+			_hc._bits.push_back(0);
+	} 
 
 	_ft = nullptr;
 }
