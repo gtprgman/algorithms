@@ -5,6 +5,7 @@
 
 int main() {
 	std::vector<HF_REC> hfc;
+	std::vector<node*> nvt;
 	std::vector<node> nods,huffNods;
 	Byte rootValue = 0;
 	
@@ -28,7 +29,6 @@ int main() {
 	for (const auto& c : s) {
 		//node ns = NODE_T(TO_FREQ_NODE(*PNODE<Byte>((Byte)c)) );
 		nods.emplace_back(ANODE(c));
-
 	}
 
 
@@ -42,13 +42,13 @@ int main() {
 
 	RET;
 	RET;
-	HF_REC hcf;
-
-
+	
+	
 	std::unique_ptr<node> ht = nullptr;
-	ht.reset((CONST_PTR)huff_tree_create(huffNods, huffNods.size()));
+	ht.reset((CONST_PTR)huff_tree_create(nvt, huffNods, huffNods.size()));
 
 	node* fh = ht.get(); // get raw pointer
+
 
 	huffman_encode(hfc, fh);
 
@@ -57,7 +57,6 @@ int main() {
 		RPRINT((char)hf._data); RPRINT(":"); RPRINT(hf.Bits()); RPRINT("|");
 		RET;
 	}
-
 
 	RET;
 	RET;
