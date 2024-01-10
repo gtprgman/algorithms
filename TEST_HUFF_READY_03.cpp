@@ -13,6 +13,8 @@ int main() {
 
 	const std::size_t LEN = strnlen_s(s, sizeof(s));
 
+	const LongRange maxLen = (LongRange)(LEN - 1);
+
 	rootValue = (Byte)total_values(s, LEN);
 
 	node* data_t = (CONST_PTR)ALLOC_N<Byte>(rootValue/2);
@@ -32,9 +34,10 @@ int main() {
 	}
 
 
+	range_sort<double>(nods, (LongRange)0, maxLen);
+	
 	sort_Nodes<double>(nods, LEN);
 
-	
 	filter_Nodes(huffNods, nods);
 
 	NPRINT(huffNods);
