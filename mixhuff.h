@@ -665,6 +665,14 @@ void data_tree_add(const node*, const Byte);
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
+/* sort the nodes in ascending order using partial sort methods,
+  the first element's pos should be 0 and the last element should be (n - 1), 
+  you should precede the call to this one before calling any subsequent sorting
+  mechanism */ 
+template <class N>
+void range_sort(std::vector<node>&, const LongRange, const LongRange);
+
+
 // search a node in the vector container using binary search method.
 const bool vector_search(const std::vector<node>&, const NODE_T );
 
@@ -1125,6 +1133,60 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 			'mid < _len' for the next iterations of the inner 'for..loop' */
 		m = _len;
 	}	
+}
+
+
+template <class N>
+void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
+	NODE_T tiny;
+	LongRange q = 0, p = 0, lim = 0;
+	LongRange mid = (L + R) / 2;
+
+	while ((R - mid) < (mid - L)) --mid;
+
+	for (int i = 0; i < mid; i++)
+	{
+		lim = mid + i;
+		if (lim > R) break;
+
+		q = i; p = q + 1;
+
+		while (q >= 0) {
+			if ( VALT<N>(_vn[q]) > VALT<N>(_vn[p]) ) {
+				tiny = _vn[p];
+				_vn[p] = _vn[q];
+				_vn[q] = tiny;
+			}
+
+			if ( VALT<N>(_vn[q]) > VALT<N>(_vn[lim]) ) {
+				tiny = _vn[lim];
+				_vn[lim] = _vn[q];
+				_vn[q] = tiny;
+			}
+
+			q--; p--;
+		}
+	} // ..phase 1 passed
+
+	lim = R;
+
+	for (LongRange t = 0; t < mid; t++, lim--) {
+		p = t; q = p + 1;
+
+		if (lim < 0) break;
+
+		if ( VALT<N>(_vn[p]) > VALT<N>(_vn[q]) ) {
+			tiny = _vn[q];
+			_vn[q] = _vn[p];
+			_vn[p] = tiny;
+		}
+
+		if (VALT<N>(_vn[p]) > VALT<N>(_vn[lim]) ) {
+			tiny = _vn[lim];
+			_vn[lim] = _vn[p];
+			_vn[p] = tiny;
+		}
+	}
 }
 
 
