@@ -34,7 +34,11 @@ int main() {
 	}
 
 
-	range_sort<double>(nods, (LongRange)0, maxLen);
+	if (nods.size() > 10)
+	     merge_sort<double>(nods, (LongRange)nods.size());
+	else
+	    range_sort<double>(nods, (LongRange)0, maxLen);
+	
 	
 	sort_Nodes<double>(nods, LEN);
 
