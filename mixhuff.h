@@ -673,6 +673,20 @@ template <class N>
 void range_sort(std::vector<node>&, const LongRange, const LongRange);
 
 
+#ifndef MIXHUFF_USE_THREAD
+#define MIXHUFF_USE_THREAD
+	#include <thread>
+/*
+ Use threading processes to sort each subdivided data set,
+ the total datum to be sorted must be greater than 10 ( n > 10 ),
+ the '_Size' parameter argument should be the total size of the 
+ vector.
+*/
+	template< class N >
+	void merge_sort(std::vector<node>&, const LongRange);
+#endif
+
+
 // search a node in the vector container using binary search method.
 const bool vector_search(const std::vector<node>&, const NODE_T );
 
@@ -1188,6 +1202,31 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 		}
 	}
 }
+
+
+
+#ifdef MIXHUFF_USE_THREAD
+	template < class N >
+	void merge_sort(std::vector<node>& _vn, const LongRange _Size) {
+		if (_Size < 10) return;
+
+		LongRange l = 0, r = 0;
+		LongRange nDivs = _Size / 4;
+		std::thread* pt = new std::thread[4];
+
+		for (int k = 0; k < 4; k++) {
+			r = l + nDivs;
+
+			pt[k] = std::thread{ [&_vn,l,r]() {
+				range_sort<N>(_vn, l, r);
+			} };
+
+			pt[k].join();
+
+			l += nDivs;
+		}
+	}
+#endif
 
 
 
