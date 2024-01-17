@@ -1,5 +1,7 @@
 #pragma once
+/* Using License: GPL v 3.0. */
 
+using Bit = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
 using Byte = unsigned long;
