@@ -1,6 +1,9 @@
 #include <iostream>
+#include <map>
 #include "mixhuff.h"
 
+
+using BPAIR = std::pair<Bit, Byte>;
 
 
 int main() {
@@ -9,7 +12,7 @@ int main() {
 	std::vector<node> nods,huffNods;
 	Byte rootValue = 0;
 	
-	const char s[] = "Ada Ate Apple Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum";
+	const char s[] = "Ada Ate Apple";
 
 	const std::size_t LEN = strnlen_s(s, sizeof(s));
 
@@ -44,7 +47,7 @@ int main() {
 
 	filter_Nodes(huffNods, nods);
 
-	NPRINT(huffNods);
+	//NPRINT(huffNods);
 
 
 	RET;
@@ -68,6 +71,32 @@ int main() {
 	RET;
 	RET;
 
+	
+	std::map<Bit, Byte> mbp;
+
+	for (const HF_REC& hf : hfc) {
+		Bit x = 0b1, xc = 0b0;
+
+		for (std::size_t j = 0; j < hf._bits.size(); j++) {
+			x &= (Bit)hf._bits[j];
+			x <<= (7 - j);
+			xc |= x;
+			x = 0b1;
+		}
+		mbp.emplace(std::pair<Bit, Byte>(xc, hf._data));
+	}
+
+
+	for (const BPAIR& cp : mbp) {
+		printf("% d ,", cp.first);
+		printf("% c ,", cp.second);
+		RET;
+	}
+
+
+	RET;
+	RET;
+	
 	node::Dispose();
 
 	return -1;	
