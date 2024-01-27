@@ -689,7 +689,8 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
 #endif
 
 
-// search a node in the vector container using binary search method.
+/* search a node in the vector container using binary search method.
+This function applied only on a vector node sorted on 'Byte' .*/
 const bool vector_search(const std::vector<node>&, const NODE_T );
 
 
@@ -1234,48 +1235,44 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _fNod) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
-	LongRange L1 = 0, R1 = 0, M1 = 0;
-	LongRange nSeek = 0;
+	LongRange L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
 	Byte Vc, Uc; // Vc : vector's value; Uc: user's value
 
 	if (_vecNod.empty()) return 0;
 
 	vecSize = (LongRange)_vecNod.size();
-	R = vecSize;
+	R = vecSize; 
+	R1 = R;
 	M = (L + R) / 2;
-	M1 = M;
-	R1 = M1;
-
+	
 
 	Uc = _fNod._v;
 
 	do {
 		Vc = (_vecNod[M]).Value();
 
-		R1 = (Uc > Vc)? R : M;
-
 		if (Uc > Vc) {
-			L = M; 
-			R = vecSize;
-			M = (L + R) / 2;
+			L = M;
+			R = R1;
 		}
 		else if (Uc < Vc) {
-			L = L1; R = R1;
-			M = (L + R) / 2;
+			L = L1;
+			R = M;
 		}
+
 		else if (Uc == Vc) break;
 
-		L1 = L; 
-		
-		++nSeek;
+		L1 = L;
+		R1 = R;
+		M = (L + R) / 2;
 
+		++nSeek;
 		if ((M < 0) || (M > vecSize )) break;
-		if (nSeek > vecSize) return 0;
+		if (nSeek > vecSize) break;
 		
 	} while (Uc != Vc);
 
-
-	return ( Uc == Vc );
+	return ( Uc == Vc );	
 }
 
 
@@ -1307,11 +1304,10 @@ void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 	Byte _b = _Nod._v;
 	std::size_t _vecLen = _vec.size();
 
-
 	if (_vecLen < 20)
-		if (search_Node(_vec, nodeX(_b)) )return;
+	    if (search_Node(_vec, nodeX(_b)) )return;
 	else if (_vecLen > 20)
-			if (vector_search(_vec, nodeY(_b)) ) return;
+		if (vector_search(_vec, nodeY(_b)) ) return;
 
 
 	if (_b != 0)
