@@ -12,7 +12,7 @@ int main() {
 	std::vector<node> nods,huffNods;
 	Byte rootValue = 0;
 	
-	const char s[] = "Ada Ate Apple";
+	const char s[] = "Ada Ate Apple.";
 
 	const std::size_t LEN = strnlen_s(s, sizeof(s));
 
@@ -38,18 +38,18 @@ int main() {
 
 
 	if (nods.size() > 10)
-	     merge_sort<double>(nods, (LongRange)nods.size());
+		merge_sort<double>(nods, (LongRange)nods.size());
 	else
-	    range_sort<double>(nods, (LongRange)0, maxLen);
-	
-	
-	sort_Nodes<double>(nods, LEN);
+		range_sort<double>(nods, (LongRange)0, maxLen);
+
+	sort_Nodes<double>(nods, LEN-1);
+
 
 	filter_Nodes(huffNods, nods);
 
-	//NPRINT(huffNods);
+	NPRINT(huffNods);
 
-
+	
 	RET;
 	RET;
 	
@@ -96,8 +96,8 @@ int main() {
 
 	RET;
 	RET;
+
 	
 	node::Dispose();
-
-	return -1;	
+	return -1;
 };
