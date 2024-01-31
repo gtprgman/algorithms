@@ -663,7 +663,7 @@ inline void COLLECT(const node* const _p) {
 // Add a node as specified by the Byte parameter to the tree 
 void data_tree_add(const node*, const Byte);
 
-// sorts the nodes in ascending order
+// sorts the nodes in ascending order, the size_t argument must be (n - 1 )
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
@@ -1301,19 +1301,25 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
-	Byte _b = _Nod._v;
-	std::size_t _vecLen = _vec.size();
+	bool _bFound = 0;
+	const LongRange _vSize = (LongRange)_vec.size();
 
-	if (_vecLen < 20)
-	    if (search_Node(_vec, nodeX(_b)) )return;
-	else if (_vecLen > 20)
-		if (vector_search(_vec, nodeY(_b)) ) return;
+	if (_vec.empty()) {
+		if (_Nod._v != 0 )_vec.emplace_back(ANODE((char)_Nod._v));
+		return;
+	}
+	
+	if (_vSize < 20)
+		_bFound = search_Node(_vec, _Nod._v );
 
+	if (_vSize > 20) {
+		sort_Nodes<Byte>(_vec, _vSize-1);
+		_bFound = vector_search(_vec, _Nod._v);
+	}
 
-	if (_b != 0)
-		_vec.emplace_back(ANODE((const char)_b));
+	if (_bFound) return;
 
-	if (_vec.size() > 20) sort_Nodes<Byte>(_vec, _vec.size());
+	if (_Nod._v != 0) _vec.emplace_back(ANODE((char)_Nod._v));	
 }
 
 
@@ -1327,10 +1333,9 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 	_Len = (LongRange)_src.size();
 
 	nc = ANODE(_src[0].dataValue());
-	add_Nodes(_dest, nc);
 
 	for (LongRange i = 0; i < _Len; i++) {
-			// comparing value of both side
+		// comparing value of both side
 		if (VALT<double>(nc) == (VALT<double>(_src[i]))) {
 			nc = ANODE(_src[i].dataValue());
 			add_Nodes(_dest, nc);
