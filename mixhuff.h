@@ -1349,13 +1349,14 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 
 inline const node* huff_tree_create(std::vector<node*>& vnt, const std::vector<node>& vn, const std::size_t _Len) {
 	std::size_t i = 0;
+	const std::size_t _Len_1 = vn.size();
 	double fc = 0.00;
 	// ft, f2t : branches of the huffman's tree
 	node* ft = nullptr, *f2t = nullptr;
 
 	if (vn.empty()) return nullptr;
 
-	while( i < vn.size() ) {
+	while( i < _Len_1 ) {
 		fc = VALT<double>(vn[i]) + VALT<double>(vn[i + 1]);
 		ft = (CONST_PTR)ALLOC_N<double>(fc);
 		ft->links[0] = (CONST_PTR)(&vn[i]);
@@ -1382,7 +1383,9 @@ inline const node* huff_tree_create(std::vector<node*>& vnt, const std::vector<n
 	ft->links[1] = vnt[1];
 	ft->setCode(1);
 
-	for (std::size_t j = 2; j < vnt.size(); j++) {
+	const std::size_t _Len_2 = vnt.size();
+
+	for (std::size_t j = 2; j < _Len_2; j++) {
 		fc = fc + VALT<double>(*vnt[j]);
 		f2t = (CONST_PTR)ALLOC_N<double>(fc);
 
