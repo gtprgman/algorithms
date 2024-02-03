@@ -628,11 +628,16 @@ constexpr char const* RET2() {
    as argument to the vector_search function */
 #define nodeY(_ch) (Byte)_ch
 
-// Print a collection of nodes from a vector
+// Print a collection of nodes from the vector
 inline void NPRINT(const std::vector<node>& _vn) {
+	int col = 0;
 	for (const node& _ne : _vn) {
-		RPRINT(_ne.dataValue()); RPRINT(_ne.FrequencyData());
-		RET;
+		col++;
+		RPRINT(_ne.dataValue());
+		if (col > 79) {
+			col = 0;
+			RET;
+		}
 	}
 }
 
