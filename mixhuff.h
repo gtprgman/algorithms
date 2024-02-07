@@ -232,8 +232,10 @@ static struct _Deallocator {
 	void dispose_all() {
 		if (_repo.empty()) return; 
 		for (std::vector<std::unique_ptr<node>>::iterator vi = _repo.begin();
-			vi != _repo.end(); vi++) vi->reset(nullptr);
-			
+			vi != _repo.end(); vi++) {
+			vi->reset(nullptr);
+			vi->release();
+		}	
 	}
 
 	 
