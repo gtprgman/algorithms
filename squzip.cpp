@@ -23,9 +23,25 @@ using BPAIR = std::pair<Bit, Byte>;
 static std::size_t CSIZE = 0;
 static std::string progName, param1, param2, param3;
 static std::vector<char> RAWC;
+static std::vector<HF_REC> HC;
 static std::vector<node*> VNT;
-static std::vector<node> FNODS, READYNODS;
+static std::vector<node> NODS,FNODS, READYNODS;
+static std::map<Bit, Byte> mbp;
 static node* d_Tree = nullptr;
+
+
+
+
+void save_data(const char* _file,std::vector<node>& _src) {
+	std::ofstream _fo(_file, std::ios::out | std::ios::binary);
+
+	for (const node& e : _src) {
+		_fo.put(e.dataValue());
+	}
+	
+	_fo.close();
+
+}
 
 
 
@@ -79,6 +95,28 @@ void print_vector(std::vector<char>& _vc, const std::size_t _vSize) {
 }
 
 
+void print_hf_rec(std::vector<HF_REC>& _hfc) {
+	
+	for (const HF_REC& hf : _hfc) {
+		Bit x = 0b1, xc = 0b0;
+
+		for (std::size_t j = 0; j < hf._bits.size(); j++) {
+			x &= (Bit)hf._bits[j];
+			x <<= (7 - j);
+			xc |= x;
+			x = 0b1;
+		}
+		mbp.emplace(std::pair<Bit, Byte>(xc, hf._data));
+	}
+
+	for (const BPAIR& cp : mbp) {
+		printf("% d ,", cp.first);
+		printf("% c ,", cp.second);
+		RET;
+	}
+
+}
+
 
 
 // get the total sum of every count bytes in the file
@@ -113,8 +151,10 @@ const std::size_t read_v(std::ifstream& _inp, std::vector<char>& _vc) {
 
 	while (_inp) {
 		ch = _inp.get();
-		if (ch) _vc.push_back(ch);
-		_Count += ch;
+		if (ch) {
+			_vc.push_back(ch);
+			_Count++;
+		}
 		ch = 0;
 	}
 
@@ -123,37 +163,41 @@ const std::size_t read_v(std::ifstream& _inp, std::vector<char>& _vc) {
 
 
 
-
-// read the content of the file into data tree
-void read_T(std::ifstream& _inF, node*& _root) {
-	CSIZE = tot_f_values(_inF, param2.c_str());
-	_root = (CONST_PTR)ALLOC_N<Byte>((Byte)CSIZE / 2);
-	read_v(_inF, RAWC);
-	node::setRoot(ROOT2P(&_root));
+// Plot the read data on the tree
+void plot_on_tree(const std::size_t _Size) {
+	d_Tree = (CONST_PTR)ALLOC_N<Byte>((Byte)CSIZE);
+	node::setRoot(ROOT2P(&d_Tree));
 	node::setSize(RAWC.size());
-	
+
 	for (const auto& c : RAWC)
-		_root->Add((Byte)c);
-
-	for (const int& c : RAWC)
-		FNODS.emplace_back(ANODE(c));
-
-	RAWC.clear();
-	closeF(_inF);
+		d_Tree->Add(c);
 
 }
 
 
+
+// create a vector nodes from data collected from the tree
+void create_frequency_vector_nodes() {
+	for (const auto& c : RAWC)
+		FNODS.emplace_back(ANODE(c));
+
+
+	RAWC.clear();
+}
+
+
+
 void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
+	printf("\n sorting.. \n");
+	
 	if (_vSize > 20)
 		merge_sort<double>(_vn, (LongRange)_vSize);
 	else
 		range_sort<double>(_vn, 0, (LongRange)(_vSize - 1));
 
 
-	sort_Nodes<double>(_vn, (LongRange)(_vSize - 1));
+	sort_Nodes<double>(_vn, (LongRange)_vSize);
 }
-
 
 
 
@@ -164,10 +208,8 @@ void encode_file(std::ifstream& _input) {
 
 
 
-
-
 int main(int argc, const char* argv[4]) {
-	
+
 	for (std::size_t i = 0; i < 4; i++)
 	{
 		if ( !argv[i] ) argv[i] = " ";
@@ -185,8 +227,14 @@ int main(int argc, const char* argv[4]) {
 		return 0;
 	}
 
+	std::cout << "processing .. " << "\n\n";
+	std::cout << "This could take a few minutes.. " << "\n\n";
 	
-	read_T(fi, d_Tree);
+	CSIZE = read_v(fi, RAWC);
+
+	plot_on_tree((Byte)CSIZE);
+
+	create_frequency_vector_nodes();
 
 	sort_V(FNODS, FNODS.size());
 
@@ -194,12 +242,29 @@ int main(int argc, const char* argv[4]) {
 
 	FNODS.clear();
 
-	NPRINT(READYNODS);
+	sort_Nodes<double>(READYNODS, READYNODS.size());
+
+
+	PRINT("completed..");
+	PRINT("generating huffman tree structure.. ");
+	RET;
+
+	std::unique_ptr<node> ht = nullptr;
+	ht.reset((CONST_PTR)huff_tree_create(VNT, READYNODS, READYNODS.size()));
+	
+	node* fh = ht.get();
+
+	huffman_encode(HC, fh);
+
+	print_hf_rec(HC);
+
+	
+	closeF(fi);
 
 	
 	RET;
 	RET;
-	
+	RET;
 	node::Dispose();
 
 	return -1;
