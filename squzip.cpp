@@ -20,19 +20,32 @@ using BPAIR = std::pair<Bit, Byte>;
 			to which the huffman encoding is being applied on.
 */
 
-static std::size_t CSIZE = 0;
+// the number of bytes read
+static LONGFLOAT CSIZE = 0.000;
+
+// parameters for main()
 static std::string progName, param1, param2, param3;
-static std::vector<char> RAWC;
+
+// accommodate the data read from external media
+static std::vector<NODE_T> RAWC;
+
+// vector data of huffman record
 static std::vector<HF_REC> HC;
+
+// vector data of a number of pointers to node
 static std::vector<node*> VNT;
-static std::vector<node> NODS,FNODS, READYNODS;
+
+// vector of nodes
+static std::vector<node> NODS,READYNODS;
+
+// a list of mapping between the encoded bit patterns to its correspondence raw byte
 static std::map<Bit, Byte> mbp;
 static node* d_Tree = nullptr;
 
 
 
 
-void save_data(const char* _file,std::vector<node>& _src) {
+void inline save_data(const char* _file,std::vector<node>& _src) {
 	std::ofstream _fo(_file, std::ios::out | std::ios::binary);
 
 	for (const node& e : _src) {
@@ -46,7 +59,7 @@ void save_data(const char* _file,std::vector<node>& _src) {
 
 
 // open a file with a specified file name.
-const bool openF(std::ifstream& _inF,const char* _file) {
+inline const bool openF(std::ifstream& _inF,const char* _file) {
 	if (_inF.is_open()) _inF.close();
 	_inF.open(_file, std::ios::in | std::ios::binary);
 	return _inF.is_open();
@@ -55,14 +68,14 @@ const bool openF(std::ifstream& _inF,const char* _file) {
 
 
 // close an opened file
-void closeF(std::ifstream& _inpF) {
+inline void closeF(std::ifstream& _inpF) {
 	if (_inpF.is_open()) _inpF.close();
 }
 
 
 
 // print the contents of the file specified by _input
-void print_file(std::ifstream& _input) {
+inline void print_file(std::ifstream& _input) {
 	int col = 0;
 
 	while (_input) {
@@ -81,7 +94,7 @@ void print_file(std::ifstream& _input) {
 
 
 // print the contents of the vector data
-void print_vector(std::vector<char>& _vc, const std::size_t _vSize) {
+inline void print_vector(std::vector<char>& _vc, const std::size_t _vSize) {
 	int col = 0;
 
 	for (std::size_t i = 0; i < _vSize; i++) {
@@ -95,7 +108,7 @@ void print_vector(std::vector<char>& _vc, const std::size_t _vSize) {
 }
 
 
-void print_hf_rec(std::vector<HF_REC>& _hfc) {
+inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 	
 	for (const HF_REC& hf : _hfc) {
 		Bit x = 0b1, xc = 0b0;
@@ -120,7 +133,7 @@ void print_hf_rec(std::vector<HF_REC>& _hfc) {
 
 
 // get the total sum of every count bytes in the file
-const std::size_t tot_f_values(std::ifstream& _input, const char* _file = " ") {
+inline const std::size_t tot_f_values(std::ifstream& _input, const char* _file = " ") {
 	int cb = 0,_Count = 0;
 
 	while (_input) {
@@ -135,7 +148,7 @@ const std::size_t tot_f_values(std::ifstream& _input, const char* _file = " ") {
 
 
 // get the total sum of count elements' value in the vector
-const std::size_t vector_values(std::vector<char>& _vc, const std::size_t _vSize) {
+inline const std::size_t vector_values(std::vector<char>& _vc, const std::size_t _vSize) {
 	int _Count = 0;
 
 	for (std::size_t i = 0; i < _vSize; i++)
@@ -146,7 +159,7 @@ const std::size_t vector_values(std::vector<char>& _vc, const std::size_t _vSize
 
 
 // read the content of the file into the vector
-const std::size_t read_v(std::ifstream& _inp, std::vector<char>& _vc) {
+inline const std::size_t read_v(std::ifstream& _inp, std::vector<NODE_T>& _vc) {
 	int ch = 0, _Count = 0;
 
 	while (_inp) {
@@ -163,45 +176,73 @@ const std::size_t read_v(std::ifstream& _inp, std::vector<char>& _vc) {
 
 
 
-// Plot the read data on the tree
-void plot_on_tree(const std::size_t _Size) {
-	d_Tree = (CONST_PTR)ALLOC_N<Byte>((Byte)CSIZE);
-	node::setRoot(ROOT2P(&d_Tree));
-	node::setSize(RAWC.size());
+/* Filter the nodes to a separate vector, to obtain a single unique node in each element of
+   vector */
+inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
+	PRINT("Filtering.. ");
 
-	for (const auto& c : RAWC)
-		d_Tree->Add(c);
+	double _count = 0.000,fc = 0.000;
+	const LongRange LENZ = (LongRange)_src.size();
+	NODE_T nc;
 
+	if (_src.empty()) return;
+
+	nc = _src[0];
+
+	for (LongRange i = 0; i < LENZ; i++) {
+		// comparing value of both side
+		if (VALT<Byte>(nc) == (VALT<Byte>(_src[i]))) {
+			++_count;
+			fc = (_count / CSIZE) * 100.00;
+		}
+		else {
+			nc._freq = fc;
+			_count = 0;
+			fc = 0.00;
+			_dest.emplace_back(nc);
+			nc = _src[i];
+		}
+	}
 }
 
 
 
-// create a vector nodes from data collected from the tree
-void create_frequency_vector_nodes() {
-	for (const auto& c : RAWC)
-		FNODS.emplace_back(ANODE(c));
-
-
-	RAWC.clear();
+// transform into vector node
+inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
+	PRINT("Adding.. ");
+	for (const NODE_T& e : _source)
+		_target.emplace_back(e);
 }
 
 
 
-void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
-	printf("\n sorting.. \n");
+// sort the nodes based on data or frequency
+template < typename T >
+inline void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
+	PRINT("Sorting.. "); RET;
 	
 	if (_vSize > 20)
-		merge_sort<double>(_vn, (LongRange)_vSize);
+		merge_sort<T>(_vn, (LongRange)_vSize);
 	else
-		range_sort<double>(_vn, 0, (LongRange)(_vSize - 1));
+		range_sort<T>(_vn, 0, (LongRange)(_vSize - 1));
 
 
-	sort_Nodes<double>(_vn, (LongRange)_vSize);
+	sort_Nodes<T>(_vn, (LongRange)_vSize);
+}
+
+
+// check the frequqncy of each node in the vector
+inline void check_nodes_frequency(const std::vector<node>& _fNods) {
+	for (const node& e : _fNods) {
+		RPRINT(e.dataValue()); RPRINT("("); RPRINT(e.FrequencyData()); RPRINT(")");
+		RET;
+	}
 }
 
 
 
-void encode_file(std::ifstream& _input) {
+
+inline void encode_file(std::ifstream& _input) {
 	
 
 }
@@ -227,45 +268,38 @@ int main(int argc, const char* argv[4]) {
 		return 0;
 	}
 
-	std::cout << "processing .. " << "\n\n";
-	std::cout << "This could take a few minutes.. " << "\n\n";
+	PRINT("processing .. "); RET;
+	PRINT("This could take a few minutes.. "); RET;
 	
-	CSIZE = read_v(fi, RAWC);
+	CSIZE = (LONGFLOAT)read_v(fi, RAWC);
+	closeF(fi);
 
-	plot_on_tree((Byte)CSIZE);
+	transForm(NODS, RAWC);
+	
+	RAWC.clear();
 
-	create_frequency_vector_nodes();
+	sort_V<Byte>(NODS, NODS.size());
 
-	sort_V(FNODS, FNODS.size());
+	filter_V(READYNODS, NODS);
 
-	filter_Nodes(READYNODS, FNODS);
-
-	FNODS.clear();
-
-	sort_Nodes<double>(READYNODS, READYNODS.size());
-
-
-	PRINT("completed..");
-	PRINT("generating huffman tree structure.. ");
-	RET;
+	NODS.clear();
+	
+	sort_V<double>(READYNODS, READYNODS.size());
+	
+	PRINT("Generating huffman tree structure..");
 
 	std::unique_ptr<node> ht = nullptr;
 	ht.reset((CONST_PTR)huff_tree_create(VNT, READYNODS, READYNODS.size()));
-	
+
 	node* fh = ht.get();
 
 	huffman_encode(HC, fh);
 
 	print_hf_rec(HC);
 
-	
-	closeF(fi);
 
-	
 	RET;
 	RET;
-	RET;
-	node::Dispose();
 
 	return -1;
 };
