@@ -1,11 +1,12 @@
 #pragma once
-/* Using License: GPL v 3.0. */
+/* Using License : GPL v 3.0 */
 
 using Bit = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
 using Byte = unsigned long;
 using LongRange = long long;
+using LONGFLOAT = long double;
 
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
@@ -27,6 +28,7 @@ struct node {
 	
 	node(const Byte); // for data tree
 	node(const double); // for frequency tree
+	node(NODE_T&); // construct from NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
 	node(const NODE_T&); // construct from NODE_T
 	node(node&); // copy
@@ -79,6 +81,7 @@ struct node {
 	static node* _main, *_recent;
 	static node** _ppRoot;
 	static double _totSizes;
+	static std::size_t _nRec;
 	
 private:
 	bool cDir;
@@ -88,6 +91,7 @@ private:
 };
 
 double node::_totSizes = 0.00;
+std::size_t node::_nRec = 0;
 node* node::_main = nullptr;
 node* node::_recent = nullptr;
 node** node::_ppRoot = nullptr;
@@ -215,7 +219,7 @@ ULONG simple_avl::BAL = 0;
 				_p0 = _p0->links[0];
 			}
 
-			for (node* p_ : _nRepo) delete(p_);
+			for (node* p_ : _nRepo) p_->~node();
 		}
 	};
 
@@ -235,7 +239,8 @@ static struct _Deallocator {
 			vi != _repo.end(); vi++) {
 			vi->reset(nullptr);
 			vi->release();
-		}	
+		}
+			
 	}
 
 	 
@@ -260,6 +265,7 @@ static struct _Deallocator {
 	#include <typeinfo>
 #endif
 
+
 // to construct a temporary node object uses this structure for safety reason
 struct NODE_T {
 	Byte _v;
@@ -268,6 +274,11 @@ struct NODE_T {
 	NODE_T() : _v(0), _freq(0.00) {}
 	~NODE_T() {
 		_v = 0;
+		_freq = 0.00;
+	}
+
+	NODE_T(const int _ch) {
+		_v = _ch;
 		_freq = 0.00;
 	}
 
@@ -349,7 +360,7 @@ struct NODE_T {
 
 template <class N>
 constexpr inline const node* const ALLOC_N(N const v) {
-	node* _p = new node((const N)v);
+	node* _p = new node(v);
 	return (_p);
 }
 
@@ -546,11 +557,11 @@ inline double FREQ(const Byte _v) {
 
 
 // evaluates the sum of total elements in the array with '_Count' elements
-template <class T = char* >
-constexpr std::size_t inline total_values(const void* _any, const std::size_t _Count) {
+template <class T >
+constexpr std::size_t inline total_values(const T& _any, const LongRange _Count) {
 	std::size_t nums = 0;
-	for (std::size_t j = 0; j < _Count; j++)
-		nums = nums + (std::size_t)((const T)_any)[j];
+	for (LongRange j = 0; j < _Count; j++)
+		nums = nums + (std::size_t)_any[j];
 
 	return nums;
 }
@@ -670,7 +681,8 @@ inline void COLLECT(const node* const _p) {
 // Add a node as specified by the Byte parameter to the tree 
 void data_tree_add(const node*, const Byte);
 
-// sorts the nodes in ascending order, the size_t argument must be (n - 1 )
+/* sorts nodes in the vector in an increasing order, the size_t
+   argument should be (n - 1). */
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
@@ -696,8 +708,8 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
 #endif
 
 
-/* search a node in the vector container using binary search method.
-This function applied only on a vector node sorted on 'Byte' .*/
+/* search a node in the vector container using binary search method,
+   this function can apply only on a vector node sorted on data value. */
 const bool vector_search(const std::vector<node>&, const NODE_T );
 
 
@@ -781,19 +793,35 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	* construct a node from temporary node object free of any entangled pointers
 	   relations, where only the data & frequency members are taking into consideration
 	*/ 
+
+	node::node(NODE_T& _NodT): xDir(tDir::UNKNOWN),
+		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
+		_visited(0), _deleted(0)
+	{
+		_data = _NodT._v;
+		_fdata = _NodT._freq;
+		this->links[0] = nullptr;
+		this->links[1] = nullptr;
+	}
+
+
 	node::node(const NODE_T& _tmpNod) : xDir(tDir::UNKNOWN),
-		_data(_tmpNod._v), nCount(0.00), freq(0.00), _fdata(_tmpNod._freq), cDir(0),
+		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
+		_data = _tmpNod._v;
+		_fdata = _tmpNod._freq;
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 	}
 
 
 	node::node(NODE_T&& _nodT):xDir(tDir::UNKNOWN),
-		_data(_nodT._v), nCount(0.00), freq(0.00), _fdata(_nodT._freq), cDir(0),
+		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
+		_data = _nodT._v;
+		_fdata = _nodT._freq;
 		this->links[0] = nullptr;
 		this->links[1] = nullptr;
 		_nodT.~NODE_T();
@@ -890,7 +918,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		node* _p = nullptr;
 		_p = (CONST_PTR)(this);
 		data_tree_add(_p, uc);
-		
+
 		simple_avl::reset_data();
 		simple_avl::set_LT(L_HEIGHT(_main));
 		simple_avl::set_RT(R_HEIGHT(_main));
@@ -1137,10 +1165,11 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 	threshold: (m) & (len)
 	*/
 
+
 	for (; i < _len; ) {
 		for (; i < m; i++) {
 			t = i; r = t + 1;
-
+			
 			while (t >= 0) {
 				_v4 = VALT<N>(vn[r]); // supposed as larger
 				_v2 = VALT<N>(vn[t]); // supposed as smaller
@@ -1158,6 +1187,7 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 		m = _len;
 	}	
 }
+
 
 
 template <class N>
@@ -1239,7 +1269,6 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 #endif
 
 
-
 inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _fNod) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
 	LongRange L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
@@ -1279,7 +1308,7 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _
 		
 	} while (Uc != Vc);
 
-	return ( Uc == Vc );	
+	return ( Uc == Vc );
 }
 
 
@@ -1320,18 +1349,20 @@ void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 		_bFound = search_Node(_vec, _Nod._v );
 
 	if (_vSize > 20) {
-		sort_Nodes<Byte>(_vec, _vSize-1);
+		sort_Nodes<Byte>(_vec, _vec.size()-1);
 		_bFound = vector_search(_vec, _Nod._v);
 	}
 
 	if (_bFound) return;
 
-	if (_Nod._v != 0) _vec.emplace_back(ANODE((char)_Nod._v));	
+	if (_Nod._v != 0) _vec.emplace_back(ANODE((char)_Nod._v));
 }
 
 
 
 inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
+	PRINT("filtering .. "); RET;
+
 	LongRange jPos = 0,_Len = 0;
 	NODE_T nc;
 
@@ -1342,7 +1373,7 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 	nc = ANODE(_src[0].dataValue());
 
 	for (LongRange i = 0; i < _Len; i++) {
-		// comparing value of both side
+			// comparing value of both side
 		if (VALT<double>(nc) == (VALT<double>(_src[i]))) {
 			nc = ANODE(_src[i].dataValue());
 			add_Nodes(_dest, nc);
@@ -1362,6 +1393,7 @@ inline const node* huff_tree_create(std::vector<node*>& vnt, const std::vector<n
 	node* ft = nullptr, *f2t = nullptr;
 
 	if (vn.empty()) return nullptr;
+
 
 	while( i < _Len_1 ) {
 		fc = VALT<double>(vn[i]) + VALT<double>(vn[i + 1]);
