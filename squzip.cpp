@@ -1,6 +1,5 @@
 #include <iostream>
 #include <map>
-#include <fstream>
 #include "mixhuff.h"
 
 
@@ -21,7 +20,7 @@ using BPAIR = std::pair<Bit, Byte>;
 */
 
 // the number of bytes read
-static LONGFLOAT CSIZE = 0.000;
+static LONGFLOAT CSIZE = 0.00;
 
 // parameters for main()
 static std::string progName, param1, param2, param3;
@@ -40,46 +39,63 @@ static std::vector<node> NODS,READYNODS;
 
 // a list of mapping between the encoded bit patterns to its correspondence raw byte
 static std::map<Bit, Byte> mbp;
-static node* d_Tree = nullptr;
+
+static std::FILE* _INF = nullptr, *_OUT = nullptr;
 
 
-
-
-void inline save_data(const char* _file,std::vector<node>& _src) {
-	std::ofstream _fo(_file, std::ios::out | std::ios::binary);
-
-	for (const node& e : _src) {
-		_fo.put(e.dataValue());
-	}
-	
-	_fo.close();
-
-}
-
-
+#define ZEROES(var1, var2) var1 = var2 = 0.00
 
 // open a file with a specified file name.
-inline const bool openF(std::ifstream& _inF,const char* _file) {
-	if (_inF.is_open()) _inF.close();
-	_inF.open(_file, std::ios::in | std::ios::binary);
-	return _inF.is_open();
+inline const bool openF(const char* _file, const char* _sMode = "rb") {
+	if (!std::strcmp("rb", _sMode))
+		_INF = fopen(_file, _sMode);
+	else _OUT = fopen(_file, _sMode);
+
+	return (_INF || _OUT);
 }
 
 
 
 // close an opened file
-inline void closeF(std::ifstream& _inpF) {
-	if (_inpF.is_open()) _inpF.close();
+inline void closeF(std::FILE* _inf) {
+	if (_inf) fclose(_inf);
 }
 
 
 
+inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>& _src) {
+	const std::size_t LENX = _src.size();
+	
+	if (!LENX) {
+		PRINT("Error: not a valid number of data size");
+		return 0;
+	}
+
+
+	if (!openF(_file, "wb")) {
+		PRINT("Error: Can't write encoded data to disk.");
+		return 0;
+	}
+
+	fwrite(&_src, sizeof(_src), LENX, _OUT);
+	
+	for (const BPAIR& _bp : mbp)
+		fwrite(&_bp.first, sizeof(Bit), 1, _OUT);
+	
+
+	fclose(_OUT);
+	return LENX;
+}
+
+
+
+
 // print the contents of the file specified by _input
-inline void print_file(std::ifstream& _input) {
+inline void print_file(std::FILE* _input) {
 	int col = 0;
 
-	while (_input) {
-		char ch = _input.get();
+	while ( !feof(_input) ) {
+		char ch = fgetc(_input);
 		col++;
 		if (ch) RPRINT(ch);
 		if (col > 79) {
@@ -88,18 +104,18 @@ inline void print_file(std::ifstream& _input) {
 		}
 	}
 
-	_input.close();
+	fclose(_input);
 }
 
 
 
 // print the contents of the vector data
-inline void print_vector(std::vector<char>& _vc, const std::size_t _vSize) {
+inline void print_vector(std::vector<node>& _vc, const std::size_t _vSize) {
 	int col = 0;
 
 	for (std::size_t i = 0; i < _vSize; i++) {
 		col++;
-		RPRINT(_vc[i]);
+		RPRINT(_vc[i].dataValue());
 		if (col > 79) {
 			col = 0;
 			RET;
@@ -123,48 +139,39 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 	}
 
 	for (const BPAIR& cp : mbp) {
-		printf("% d ,", cp.first);
+		printf("% u ,", cp.first);
 		printf("% c ,", cp.second);
 		RET;
-	}
+	} 
 
 }
 
 
 
 // get the total sum of every count bytes in the file
-inline const std::size_t tot_f_values(std::ifstream& _input, const char* _file = " ") {
-	int cb = 0,_Count = 0;
+inline const std::size_t f_sizes(std::FILE* _inf) {
+	std::size_t _Count = 0;
 
-	while (_input) {
-		cb = _input.get();
-		if (cb) _Count += cb;
-		cb = 0;
+	if (!_inf) return 0;
+	
+	while (!feof(_inf) ) {
+		if ( fgetc(_inf) ) ++_Count;
 	}
-
-	openF(_input, _file); 
+	
 	return _Count;
 }
 
 
-// get the total sum of count elements' value in the vector
-inline const std::size_t vector_values(std::vector<char>& _vc, const std::size_t _vSize) {
-	int _Count = 0;
-
-	for (std::size_t i = 0; i < _vSize; i++)
-		_Count += _vc[i];
-
-	return _Count;
-}
 
 
 // read the content of the file into the vector
-inline const std::size_t read_v(std::ifstream& _inp, std::vector<NODE_T>& _vc) {
-	int ch = 0, _Count = 0;
+inline const std::size_t read_v(std::FILE* _inp, std::vector<NODE_T>& _vc) {
+	char ch = 0; 
+	std::size_t _Count = 0;
 
-	while (_inp) {
-		ch = _inp.get();
-		if (ch) {
+	while ( !feof(_inp) ) {
+		ch = fgetc(_inp);
+		if (ch != 0) {
 			_vc.push_back(ch);
 			_Count++;
 		}
@@ -175,14 +182,38 @@ inline const std::size_t read_v(std::ifstream& _inp, std::vector<NODE_T>& _vc) {
 }
 
 
+inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
+	bool _bFound = 0;
+	const LongRange _vSize = (LongRange)_nodes.size();
+
+	if (_nodes.empty()) {
+		if (_nod._v != 0) _nodes.emplace_back(_nod);
+		return;
+	}
+
+	if (_vSize < 20)
+		_bFound = search_Node(_nodes, _nod._v);
+
+	if (_vSize > 20) {
+		sort_Nodes<Byte>(_nodes, _vSize - 1);
+		_bFound = vector_search(_nodes, _nod._v);
+	}
+
+	if (_bFound) return;
+
+	if (_nod._v != 0) _nodes.emplace_back(_nod);
+}
+
+
+
 
 /* Filter the nodes to a separate vector, to obtain a single unique node in each element of
    vector */
 inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
 	PRINT("Filtering.. ");
 
-	double _count = 0.000,fc = 0.000;
-	const LongRange LENZ = (LongRange)_src.size();
+	double _count = 0.00,fc = 0.00;
+	const LongRange LENZ = (LongRange)(_src.size() + 1);
 	NODE_T nc;
 
 	if (_src.empty()) return;
@@ -191,16 +222,26 @@ inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
 
 	for (LongRange i = 0; i < LENZ; i++) {
 		// comparing value of both side
-		if (VALT<Byte>(nc) == (VALT<Byte>(_src[i]))) {
+		if ( nc._v == _src[i].Value() ) {
 			++_count;
 			fc = (_count / CSIZE) * 100.00;
 		}
 		else {
 			nc._freq = fc;
-			_count = 0;
-			fc = 0.00;
-			_dest.emplace_back(nc);
-			nc = _src[i];
+			ZEROES(_count, fc);
+			add_V(_dest, nc);
+
+			if (_src[i].Value() != _src[i + 1].Value()) {
+				nc = _src[i];
+				nc._freq = (1.00 / CSIZE) * 100.00;
+				add_V(_dest, nc);
+				nc._v = _src[i + 1].Value();
+				continue;
+			}
+			else {
+				nc = _src[i];
+				++_count;
+			}
 		}
 	}
 }
@@ -211,7 +252,7 @@ inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
 inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
 	PRINT("Adding.. ");
 	for (const NODE_T& e : _source)
-		_target.emplace_back(e);
+		if (e._v != 0) _target.emplace_back(e);
 }
 
 
@@ -242,7 +283,7 @@ inline void check_nodes_frequency(const std::vector<node>& _fNods) {
 
 
 
-inline void encode_file(std::ifstream& _input) {
+inline void decode_file(std::FILE* _input, std::FILE* _output) {
 	
 
 }
@@ -253,7 +294,7 @@ int main(int argc, const char* argv[4]) {
 
 	for (std::size_t i = 0; i < 4; i++)
 	{
-		if ( !argv[i] ) argv[i] = " ";
+		if ( !argv[i] ) argv[i] = "\0";
 	}
 
 	progName = argv[0];
@@ -261,9 +302,8 @@ int main(int argc, const char* argv[4]) {
 	param2 = argv[2];
 	param3 = argv[3];
 
-	std::ifstream fi(param2, std::ios::in | std::ios::binary);
 
-	if (!fi.is_open()) {
+	if (!openF(param2.data()) ) {
 		PRINT("ERROR: Can't open file !");
 		return 0;
 	}
@@ -271,8 +311,8 @@ int main(int argc, const char* argv[4]) {
 	PRINT("processing .. "); RET;
 	PRINT("This could take a few minutes.. "); RET;
 	
-	CSIZE = (LONGFLOAT)read_v(fi, RAWC);
-	closeF(fi);
+	CSIZE = (LONGFLOAT)read_v(_INF, RAWC);
+	closeF(_INF);
 
 	transForm(NODS, RAWC);
 	
@@ -286,7 +326,7 @@ int main(int argc, const char* argv[4]) {
 	
 	sort_V<double>(READYNODS, READYNODS.size());
 	
-	PRINT("Generating huffman tree structure..");
+	PRINT("Encoding.."); RET;
 
 	std::unique_ptr<node> ht = nullptr;
 	ht.reset((CONST_PTR)huff_tree_create(VNT, READYNODS, READYNODS.size()));
@@ -298,6 +338,19 @@ int main(int argc, const char* argv[4]) {
 	print_hf_rec(HC);
 
 
+	/*
+	std::string _fName;
+
+	if (param3.empty()) {
+		param3 = param2;
+		_fName = strcat((char*)param3.data(), ".szp");
+	}
+	else
+		_fName = param3;
+
+	const std::size_t LENW = save_encoded_data(_fName.data(), mbp);
+	*/
+	
 	RET;
 	RET;
 
