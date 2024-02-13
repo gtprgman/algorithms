@@ -1,9 +1,11 @@
 #include <iostream>
-#include <map>
 #include "mixhuff.h"
 
 
-using BPAIR = std::pair<Bit, Byte>;
+struct BPAIR {
+	Bit bits;
+	Byte value;
+};
 
 
 /*
@@ -38,7 +40,7 @@ static std::vector<node*> VNT;
 static std::vector<node> NODS,READYNODS;
 
 // a list of mapping between the encoded bit patterns to its correspondence raw byte
-static std::map<Bit, Byte> mbp;
+static std::vector<BPAIR> vbp;
 
 static std::FILE* _INF = nullptr, *_OUT = nullptr;
 
@@ -63,7 +65,7 @@ inline void closeF(std::FILE* _inf) {
 
 
 
-inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>& _src) {
+inline const std::size_t save_encoded_data(const char* _file,std::vector<BPAIR>& _src) {
 	const std::size_t LENX = _src.size();
 	
 	if (!LENX) {
@@ -79,8 +81,8 @@ inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>&
 
 	fwrite(&_src, sizeof(_src), LENX, _OUT);
 	
-	for (const BPAIR& _bp : mbp)
-		fwrite(&_bp.first, sizeof(Bit), 1, _OUT);
+	for (const BPAIR& _bp : vbp)
+		fwrite(&_bp.bits, sizeof(Bit), 1, _OUT);
 	
 
 	fclose(_OUT);
@@ -124,10 +126,16 @@ inline void print_vector(std::vector<node>& _vc, const std::size_t _vSize) {
 }
 
 
+/* translate the encoded bit patterns into binary bits form and
+	print out the translated bits and its mapped data value*/
 inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
-	
-	for (const HF_REC& hf : _hfc) {
+	const std::size_t LENZ = _hfc.size();
+	HF_REC hf;
+	BPAIR bp;
+
+	for (std::size_t i = 0; i < LENZ; i++) {
 		Bit x = 0b1, xc = 0b0;
+		hf = _hfc[i];
 
 		for (std::size_t j = 0; j < hf._bits.size(); j++) {
 			x &= (Bit)hf._bits[j];
@@ -135,15 +143,26 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 			xc |= x;
 			x = 0b1;
 		}
-		mbp.emplace(std::pair<Bit, Byte>(xc, hf._data));
+
+		bp.bits = xc;
+		bp.value = hf._data;
+		vbp.push_back(bp); 
+		hf.reset();
 	}
 
-	for (const BPAIR& cp : mbp) {
-		printf("% u ,", cp.first);
-		printf("% c ,", cp.second);
-		RET;
-	} 
+	for (const BPAIR& _cp : vbp) {
+		RPRINT(_cp.bits); RPRINT("|"); RPRINT((char)_cp.value); RET;
+	}
 
+}
+
+
+// print the encoded bit patterns and its associated data value
+inline void print_encoded_bits(const std::vector<HF_REC>& _hcf) {
+	for (const HF_REC& _hc: _hcf) {
+		RPRINT(_hc.Bits()); RPRINT("|");  RPRINT((char)_hc._data); 
+		RET;
+	}
 }
 
 
@@ -182,6 +201,7 @@ inline const std::size_t read_v(std::FILE* _inp, std::vector<NODE_T>& _vc) {
 }
 
 
+// adding nodes to the vector
 inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 	bool _bFound = 0;
 	const LongRange _vSize = (LongRange)_nodes.size();
@@ -208,19 +228,26 @@ inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 
 
 /* Filter the nodes to a separate vector, to obtain a single unique node in each element of
-   vector */
+   the vector */
 inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
 	PRINT("Filtering.. ");
 
 	double _count = 0.00,fc = 0.00;
-	const LongRange LENZ = (LongRange)(_src.size() + 1);
+	std::size_t i = 0;
+	const std::size_t LENZ = (_src.size() + 1);
 	NODE_T nc;
 
 	if (_src.empty()) return;
 
-	nc = _src[0];
+	for (i = 0; i < LENZ; i++) {
+		if (_src[i].Value() == 0) continue;
+		else {
+			nc = _src[i];
+			break;
+		}
+	}
 
-	for (LongRange i = 0; i < LENZ; i++) {
+	for (; i < LENZ; i++) {
 		// comparing value of both side
 		if ( nc._v == _src[i].Value() ) {
 			++_count;
@@ -252,7 +279,7 @@ inline void filter_V(std::vector<node>& _dest, const std::vector<node>& _src) {
 inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
 	PRINT("Adding.. ");
 	for (const NODE_T& e : _source)
-		if (e._v != 0) _target.emplace_back(e);
+		if (e._v != 0) _target.push_back(e);
 }
 
 
@@ -263,19 +290,19 @@ inline void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
 	PRINT("Sorting.. "); RET;
 	
 	if (_vSize > 20)
-		merge_sort<T>(_vn, (LongRange)_vSize);
+		merge_sort<T>(_vn, _vSize);
 	else
 		range_sort<T>(_vn, 0, (LongRange)(_vSize - 1));
 
 
-	sort_Nodes<T>(_vn, (LongRange)_vSize);
+	sort_Nodes<T>(_vn, (_vSize-1));
 }
 
 
 // check the frequqncy of each node in the vector
 inline void check_nodes_frequency(const std::vector<node>& _fNods) {
 	for (const node& e : _fNods) {
-		RPRINT(e.dataValue()); RPRINT("("); RPRINT(e.FrequencyData()); RPRINT(")");
+		RPRINT(e.dataValue()); RPRINT("["); RPRINT(e.FrequencyData()); RPRINT(" %fqr]");
 		RET;
 	}
 }
@@ -323,20 +350,27 @@ int main(int argc, const char* argv[4]) {
 	filter_V(READYNODS, NODS);
 
 	NODS.clear();
+
+	sort_V<double>(READYNODS, (READYNODS.size()) );
 	
-	sort_V<double>(READYNODS, READYNODS.size());
-	
+	NPRINT(READYNODS);
+	RET2();
+
+	check_nodes_frequency(READYNODS);
+
+	RET;
+	RET;
+
 	PRINT("Encoding.."); RET;
 
-	std::unique_ptr<node> ht = nullptr;
-	ht.reset((CONST_PTR)huff_tree_create(VNT, READYNODS, READYNODS.size()));
+	huff_tree_create(VNT, READYNODS, READYNODS.size());
 
-	node* fh = ht.get();
+	huffman_encode(HC, VNT[vNodeLnk._Last]);
 
-	huffman_encode(HC, fh);
 
-	print_hf_rec(HC);
-
+	print_encoded_bits(HC);
+	//print_hf_rec(HC);
+	
 
 	/*
 	std::string _fName;
@@ -353,6 +387,8 @@ int main(int argc, const char* argv[4]) {
 	
 	RET;
 	RET;
+
+   VNT.clear();
 
 	return -1;
 };
