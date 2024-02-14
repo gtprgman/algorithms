@@ -1,11 +1,10 @@
+/* Using License:  GPL v 3.0 */
 #include <iostream>
+#include <map>
 #include "mixhuff.h"
 
 
-struct BPAIR {
-	Bit bits;
-	Byte value;
-};
+using BPAIR = std::pair<Bit, Byte>;
 
 
 /*
@@ -20,6 +19,27 @@ struct BPAIR {
 	[3]:	Output file, the file that contains the encoded format of the original
 			to which the huffman encoding is being applied on.
 */
+
+
+/* USAGES:
+*   This program is compiled & built with Ms.Visual Studio 2022 targeted on x64 platforms.
+* 
+*	Type the following commands in the cmd shell:
+* 
+*   C:\> squzip -q [File.txt] 
+	  the output compressed file will automatically be generated and named as 'File.szp'.
+
+	C:\> squzip -q [File.txt] [<File.szp>]
+		the output compressed file's name is determined by your choice.
+
+	Examples:
+	 C:\> squzip -q test_essay.txt
+	 C:\> squzip -q test_essay.txt myEssay.txt
+
+	The Decoding / Uncompress funtionality is still being working progress.
+*/
+
+
 
 // the number of bytes read
 static LONGFLOAT CSIZE = 0.00;
@@ -40,14 +60,14 @@ static std::vector<node*> VNT;
 static std::vector<node> NODS,READYNODS;
 
 // a list of mapping between the encoded bit patterns to its correspondence raw byte
-static std::vector<BPAIR> vbp;
+static std::map<Bit,Byte> mbp;
 
 static std::FILE* _INF = nullptr, *_OUT = nullptr;
 
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
-// open a file with a specified file name.
+// open a file with the specified file name.
 inline const bool openF(const char* _file, const char* _sMode = "rb") {
 	if (!std::strcmp("rb", _sMode))
 		_INF = fopen(_file, _sMode);
@@ -58,14 +78,17 @@ inline const bool openF(const char* _file, const char* _sMode = "rb") {
 
 
 
-// close an opened file
+// close the opened file
 inline void closeF(std::FILE* _inf) {
-	if (_inf) fclose(_inf);
+	if (_inf) {
+		fflush(_inf);
+		fclose(_inf);
+	}
 }
 
 
 
-inline const std::size_t save_encoded_data(const char* _file,std::vector<BPAIR>& _src) {
+inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>& _src) {
 	const std::size_t LENX = _src.size();
 	
 	if (!LENX) {
@@ -79,10 +102,11 @@ inline const std::size_t save_encoded_data(const char* _file,std::vector<BPAIR>&
 		return 0;
 	}
 
+	fwrite(&LENX, sizeof(LENX), 1, _OUT);
 	fwrite(&_src, sizeof(_src), LENX, _OUT);
 	
-	for (const BPAIR& _bp : vbp)
-		fwrite(&_bp.bits, sizeof(Bit), 1, _OUT);
+	for (const BPAIR& _bp : mbp)
+		fwrite(&_bp.first, sizeof(Bit), 1, _OUT);
 	
 
 	fclose(_OUT);
@@ -144,25 +168,25 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 			x = 0b1;
 		}
 
-		bp.bits = xc;
-		bp.value = hf._data;
-		vbp.push_back(bp); 
+		bp.first = xc;
+		bp.second = hf._data;
+		mbp.emplace(bp); 
 		hf.reset();
 	}
 
-	for (const BPAIR& _cp : vbp) {
-		RPRINT(_cp.bits); RPRINT("|"); RPRINT((char)_cp.value); RET;
-	}
+	/*
+	for (const BPAIR& _cp : mbp) {
+		RPRINT(_cp.first); RPRINT("|"); RPRINT((char)_cp.second); RET;
+	} */
 
 }
 
 
 // print the encoded bit patterns and its associated data value
 inline void print_encoded_bits(const std::vector<HF_REC>& _hcf) {
-	for (const HF_REC& _hc: _hcf) {
-		RPRINT(_hc.Bits()); RPRINT("|");  RPRINT((char)_hc._data); 
-		RET;
-	}
+	const std::size_t LENC = _hcf.size();
+	for (std::size_t i = 0; i < LENC; i++)
+		RPRINT((char)_hcf[i]._data);
 }
 
 
@@ -284,7 +308,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 
 
 
-// sort the nodes based on data or frequency
+// sort the nodes based on the data or frequency
 template < typename T >
 inline void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
 	PRINT("Sorting.. "); RET;
@@ -299,7 +323,7 @@ inline void sort_V(std::vector<node>& _vn, const std::size_t _vSize) {
 }
 
 
-// check the frequqncy of each node in the vector
+// check the frequency of each node in the vector
 inline void check_nodes_frequency(const std::vector<node>& _fNods) {
 	for (const node& e : _fNods) {
 		RPRINT(e.dataValue()); RPRINT("["); RPRINT(e.FrequencyData()); RPRINT(" %fqr]");
@@ -308,9 +332,73 @@ inline void check_nodes_frequency(const std::vector<node>& _fNods) {
 }
 
 
+// free the memory from a number of occupied nodes generated from the huffman tree.
+inline void release_Vnp(const std::vector<node*>& vNodPtrs) {
+	for (std::vector<node*>::iterator _vit = VNT.begin();
+		_vit != VNT.end(); _vit++)
+		(*_vit)->~node();
+
+}
 
 
-inline void decode_file(std::FILE* _input, std::FILE* _output) {
+inline void Encoding() {
+	CSIZE = (LONGFLOAT)read_v(_INF, RAWC);
+	closeF(_INF);
+
+	transForm(NODS, RAWC);
+
+	RAWC.clear();
+
+	sort_V<Byte>(NODS, NODS.size());
+
+	filter_V(READYNODS, NODS);
+
+	NODS.clear();
+
+	sort_V<double>(READYNODS, (READYNODS.size()));
+
+	huff_tree_create(VNT, READYNODS, READYNODS.size());
+
+	huffman_encode(HC, VNT[vNodeLnk._Last]);
+
+	print_hf_rec(HC);
+
+	PRINT("Completed.");
+
+	READYNODS.clear();
+	release_Vnp(VNT);
+	VNT.clear();
+}
+
+
+inline void Decoding() {
+	PRINT("Decoding implementation is in the working progress.. ");
+}
+
+
+inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput) {
+	
+	if (_sInput.empty() && _sOutput.empty()) {
+		PRINT("Uncomplete path or file name !");
+		PRINT("Could not proceed.. ");
+		return 0;
+	}
+
+	const std::size_t LENZ = std::strlen(_sInput.data());
+
+	if (_sOutput.empty()) {
+		_sOutput = _sInput.substr(0, LENZ - 3);
+		_sOutput = strcat((char*)_sOutput.data(), "szp");
+	}
+	
+	const std::size_t LENF = save_encoded_data(_sOutput.data(), mbp);
+
+	return LENF;
+}
+
+
+
+inline void decode_file(const char* _fEncoded, const char* _fOrig) {
 	
 
 }
@@ -318,8 +406,9 @@ inline void decode_file(std::FILE* _input, std::FILE* _output) {
 
 
 int main(int argc, const char* argv[4]) {
+	int LENC = 0;
 
-	for (std::size_t i = 0; i < 4; i++)
+	for (int i = 0; i < 4; i++)
 	{
 		if ( !argv[i] ) argv[i] = "\0";
 	}
@@ -335,60 +424,19 @@ int main(int argc, const char* argv[4]) {
 		return 0;
 	}
 
-	PRINT("processing .. "); RET;
-	PRINT("This could take a few minutes.. "); RET;
+	PRINT("Processing .. "); RET;
+	PRINT("this could take a few minutes.. "); RET;
 	
-	CSIZE = (LONGFLOAT)read_v(_INF, RAWC);
-	closeF(_INF);
-
-	transForm(NODS, RAWC);
-	
-	RAWC.clear();
-
-	sort_V<Byte>(NODS, NODS.size());
-
-	filter_V(READYNODS, NODS);
-
-	NODS.clear();
-
-	sort_V<double>(READYNODS, (READYNODS.size()) );
-	
-	NPRINT(READYNODS);
-	RET2();
-
-	check_nodes_frequency(READYNODS);
-
-	RET;
-	RET;
-
-	PRINT("Encoding.."); RET;
-
-	huff_tree_create(VNT, READYNODS, READYNODS.size());
-
-	huffman_encode(HC, VNT[vNodeLnk._Last]);
-
-
-	print_encoded_bits(HC);
-	//print_hf_rec(HC);
-	
-
-	/*
-	std::string _fName;
-
-	if (param3.empty()) {
-		param3 = param2;
-		_fName = strcat((char*)param3.data(), ".szp");
+	if (!std::strcmp("-q", argv[1])) {
+		Encoding();
+		LENC = (int)encode_file(param2, param3);
 	}
+	else if (!std::strcmp("-d", argv[1]))
+		Decoding();
 	else
-		_fName = param3;
+		PRINT("ERROR: Unrecognized parameters or command !");
 
-	const std::size_t LENW = save_encoded_data(_fName.data(), mbp);
-	*/
 	
-	RET;
-	RET;
-
-   VNT.clear();
-
-	return -1;
+	RET2();
+	return LENC;
 };
