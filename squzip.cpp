@@ -1,10 +1,17 @@
-/* Using License:  GPL v 3.0 */
 #include <iostream>
+#include <cstdio>
 #include <map>
 #include "mixhuff.h"
 
 
-using BPAIR = std::pair<Bit, Byte>;
+struct BPAIR {
+	Bit _bit;
+	Byte _cdata;
+};
+
+
+using CPAIR = std::pair<Byte,Bit>;
+using UCPAIR = std::pair<Bit, Byte>;
 
 
 /*
@@ -34,7 +41,11 @@ using BPAIR = std::pair<Bit, Byte>;
 
 	Examples:
 	 C:\> squzip -q test_essay.txt
-	 C:\> squzip -q test_essay.txt myEssay.txt
+	 C:\> squzip -q test_essay.txt myEssay.szp
+
+	 During the process, a deniable error messages may promps out, this maybe due to
+	 the 32 bit environment of the cmd shell quite inresponsive to the bunches of data 
+	 with extra bit being streamed in/out from/to stdin/stdout.
 
 	The Decoding / Uncompress funtionality is still being working progress.
 */
@@ -43,6 +54,9 @@ using BPAIR = std::pair<Bit, Byte>;
 
 // the number of bytes read
 static LONGFLOAT CSIZE = 0.00;
+
+// number of data items read
+static std::size_t RECS = 0;
 
 // parameters for main()
 static std::string progName, param1, param2, param3;
@@ -60,35 +74,81 @@ static std::vector<node*> VNT;
 static std::vector<node> NODS,READYNODS;
 
 // a list of mapping between the encoded bit patterns to its correspondence raw byte
-static std::map<Bit,Byte> mbp;
+static std::vector<BPAIR> vbp;
 
-static std::FILE* _INF = nullptr, *_OUT = nullptr;
+// a list of mapping between Bytes and their corresponding Bits pattern
+static std::map<Byte,Bit> mbp;
 
+// a list of mapping between Bits and corresponding Bytes
+static std::map<Bit, Byte> mb2P;
+
+// input & output file pointers
+static std::FILE* _INF = nullptr , *_OUT = nullptr;
+
+// a Bit to Byte data pair of a vector
+static BPAIR bitPair;
+
+// a Byte to Bit data pair of a map
+static CPAIR cPair;
+
+// a Bit to Byte data pair of a map
+static UCPAIR ucPair;
+
+
+// an iterator of Byte to Bit to a map
+static std::map<Byte, Bit>::iterator _foundIt;
+
+// an iterator of Bit to Btye to a map
+static std::map<Bit, Byte>::iterator _foundIt2;
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
+
 // open a file with the specified file name.
 inline const bool openF(const char* _file, const char* _sMode = "rb") {
-	if (!std::strcmp("rb", _sMode))
-		_INF = fopen(_file, _sMode);
-	else _OUT = fopen(_file, _sMode);
+	if (_INF) fclose(_INF);
+	if (_OUT) fclose(_OUT);
 
-	return (_INF || _OUT);
+	if (!std::strcmp(_sMode, "rb"))
+		_INF = fopen(_file, _sMode);
+	else 
+		 _OUT = fopen(_file, _sMode);
+
+
+	return ( _INF || _OUT );
 }
 
 
 
 // close the opened file
-inline void closeF(std::FILE* _inf) {
-	if (_inf) {
-		fflush(_inf);
-		fclose(_inf);
+inline void closeF(std::FILE* _ionf) {
+	if (_ionf)
+		fclose(_ionf);
+}
+
+
+
+
+// convert vector bit data into map bit data
+inline void vector_to_maps(std::map<Byte,Bit>& _mbp, std::map<Bit,Byte>& _mb2p,
+							const std::vector<BPAIR>& _vbp) {
+
+	for (const BPAIR& _bp : _vbp) {
+		cPair.first = _bp._cdata;
+		cPair.second = _bp._bit;
+		_mbp.emplace(cPair);
+
+		ucPair.first = _bp._bit;
+		ucPair.second = _bp._cdata;
+		_mb2p.emplace(ucPair);
+
 	}
 }
 
 
 
-inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>& _src) {
+// Save huffman records 'HC' as header to the output compressed file.
+inline const std::size_t save_encoded_data(const char* _file, const std::vector<BPAIR>& _src) {
 	const std::size_t LENX = _src.size();
 	
 	if (!LENX) {
@@ -98,15 +158,16 @@ inline const std::size_t save_encoded_data(const char* _file,std::map<Bit,Byte>&
 
 
 	if (!openF(_file, "wb")) {
-		PRINT("Error: Can't write encoded data to disk.");
+		PRINT("Error: Can't write data to disk.");
 		return 0;
 	}
 
-	fwrite(&LENX, sizeof(LENX), 1, _OUT);
-	fwrite(&_src, sizeof(_src), LENX, _OUT);
-	
-	for (const BPAIR& _bp : mbp)
-		fwrite(&_bp.first, sizeof(Bit), 1, _OUT);
+	RECS = vbp.size(); 
+	fwrite(&RECS, sizeof(std::size_t), 1, _OUT); // write header's size
+
+	for (const BPAIR& _bp : vbp) // write each huffman record to _OUT
+		fwrite(&_bp, sizeof(BPAIR), 1, _OUT);
+
 	
 
 	fclose(_OUT);
@@ -168,15 +229,23 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 			x = 0b1;
 		}
 
-		bp.first = xc;
-		bp.second = hf._data;
-		mbp.emplace(bp); 
+		bp._bit = xc;
+		bp._cdata = hf._data;
+		vbp.push_back(bp);
 		hf.reset();
 	}
 
+	
+	//int col = 0;
+
 	/*
-	for (const BPAIR& _cp : mbp) {
-		RPRINT(_cp.first); RPRINT("|"); RPRINT((char)_cp.second); RET;
+	for (const BPAIR& _cp : vbp) {
+		++col;
+		RPRINT((char)_cp._cdata); 
+		if (col > 79) {
+			col = 0;
+			RET;
+		}
 	} */
 
 }
@@ -192,15 +261,17 @@ inline void print_encoded_bits(const std::vector<HF_REC>& _hcf) {
 
 
 // get the total sum of every count bytes in the file
-inline const std::size_t f_sizes(std::FILE* _inf) {
+inline const std::size_t f_sizes(std::FILE* _ionf) {
 	std::size_t _Count = 0;
 
-	if (!_inf) return 0;
+	if (!_ionf) return 0;
 	
-	while (!feof(_inf) ) {
-		if ( fgetc(_inf) ) ++_Count;
+	while ( !feof(_ionf)  ) {
+		if ( fgetc(_ionf) ) ++_Count;
 	}
 	
+
+	fclose(_ionf);
 	return _Count;
 }
 
@@ -221,6 +292,7 @@ inline const std::size_t read_v(std::FILE* _inp, std::vector<NODE_T>& _vc) {
 		ch = 0;
 	}
 
+	fclose(_inp);
 	return _Count;
 }
 
@@ -231,7 +303,7 @@ inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 	const LongRange _vSize = (LongRange)_nodes.size();
 
 	if (_nodes.empty()) {
-		if (_nod._v != 0) _nodes.emplace_back(_nod);
+		if (_nod._v != 0) _nodes.push_back(_nod);
 		return;
 	}
 
@@ -245,7 +317,7 @@ inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 
 	if (_bFound) return;
 
-	if (_nod._v != 0) _nodes.emplace_back(_nod);
+	if (_nod._v != 0) _nodes.push_back(_nod);
 }
 
 
@@ -341,6 +413,8 @@ inline void release_Vnp(const std::vector<node*>& vNodPtrs) {
 }
 
 
+
+// using huffman algorithm to encode data read from external media
 inline void Encoding() {
 	CSIZE = (LONGFLOAT)read_v(_INF, RAWC);
 	closeF(_INF);
@@ -363,6 +437,8 @@ inline void Encoding() {
 
 	print_hf_rec(HC);
 
+	RET2();
+
 	PRINT("Completed.");
 
 	READYNODS.clear();
@@ -371,13 +447,29 @@ inline void Encoding() {
 }
 
 
-inline void Decoding() {
-	PRINT("Decoding implementation is in the working progress.. ");
+
+// decode the compressed format of a data read from external media
+inline void Decoding(std::string& _fOriginal) {
+	std::size_t LENF = std::strlen(_fOriginal.data());
+	_fOriginal = _fOriginal.substr(0, LENF - 3);
+	_fOriginal = strcat((char*)_fOriginal.data(), ".dat");
+
+	if (!openF(_fOriginal.data())) {
+		PRINT("ERROR: Can't open decoded file.");
+		return;
+	}
+
+	print_file(_INF);
+	closeF(_INF);
 }
 
 
+
+// encode an original source file to the targeted output compressed format
 inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput) {
-	
+	char ch = 0;
+	std::size_t LENF = 0;
+
 	if (_sInput.empty() && _sOutput.empty()) {
 		PRINT("Uncomplete path or file name !");
 		PRINT("Could not proceed.. ");
@@ -391,19 +483,109 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 		_sOutput = strcat((char*)_sOutput.data(), "szp");
 	}
 	
-	const std::size_t LENF = save_encoded_data(_sOutput.data(), mbp);
+	// save huffman records 'HC' as header to the ouput file.
+	LENF = save_encoded_data(_sOutput.data(), vbp);
 
+	vector_to_maps(mbp, mb2P,vbp);
+
+	vbp.clear();
+
+
+	if (!openF(_sInput.data() ) ) {  // read to _INF
+		PRINT("ERROR: Can't open original source file.");
+		return 0;
+	}
+
+	if (!openF(_sOutput.data(), "wa")) {  // write append to _OUT
+		PRINT("ERROR: Can't write data to disk.");
+		return 0;
+	}
+
+	while (!feof(_INF)) {
+		ch = fgetc(_INF);
+		_foundIt = mbp.find(ch);
+		if (_foundIt->first == ch) // write huffman bits to _OUT
+			LENF += fwrite(&_foundIt->second, sizeof(Bit), 1, _OUT);
+		
+	}
+
+	fclose(_INF);
+	fclose(_OUT);
 	return LENF;
 }
 
 
 
-inline void decode_file(const char* _fEncoded, const char* _fOrig) {
-	
+// open a compressed file and decodes it to the original .dat format
+inline const std::size_t decode_file(std::string& _fEnc) {
+	char uc = 0;
+	std::string _fOrig;
+	std::size_t LEN_ORIG = 0,_FSIZE = 0;
 
+	// _fEnc refers to any *.szp files
+	if (_fEnc.empty()) {
+		PRINT("ERROR : Encoded source file not found !");
+		PRINT("Could not proceed..");
+		return 0;
+	}
+
+	LEN_ORIG = std::strlen(_fEnc.data());
+	_fOrig = _fEnc.substr(0, LEN_ORIG - 3);
+	_fOrig = strcat((char*)_fOrig.data(), "dat");
+
+
+	// _INF is a pointer to a *.szp opened file
+	if (!openF(_fEnc.data() ) ) {
+		PRINT("ERROR: Can't open file !");
+		PRINT("Make sure the source paths & file's name are correct.");
+		return 0;
+	}
+
+	// read huffman records into vbp
+	if (_INF) {
+		if (!vbp.empty()) vbp.clear();
+
+		_FSIZE += fread(&RECS,sizeof(std::size_t),1, _INF); // Read header's size
+		
+		for (std::size_t i = 0; i < RECS; i++)
+		{  // read each huffman record into bitPair and saved it to a vector
+			_FSIZE += fread(&bitPair, sizeof(BPAIR), 1, _INF);
+			vbp.push_back(bitPair);
+		}
+	}
+	else
+	{
+		PRINT("ERROR: invalid or unrecognized data format.");
+		PRINT("Could not read to end of file !");
+		fclose(_INF);
+		return 0;
+	}
+
+
+	// Now, we've got the header's data, next we would
+	// create a new file that's used to be written with the original data.
+	if (!openF(_fOrig.data(), "wb")) { // opened as _OUT
+		PRINT("ERROR: Can't create original output file.");
+		closeF(_INF);
+		return 0;
+	}
+
+	while (!feof(_INF)) {
+		uc = fgetc(_INF); // read each huffman bit into ch
+		_foundIt2 = mb2P.find(uc); 
+		if (_foundIt2->first == uc)
+			_FSIZE += fwrite(&_foundIt2->second, sizeof(Byte), 1, _OUT); // write Byte to _OUT
+	}
+
+	closeF(_INF);
+	closeF(_OUT);
+
+	return _FSIZE;
 }
 
 
+
+/*  SQUZIP's MAIN FUNCTION */
 
 int main(int argc, const char* argv[4]) {
 	int LENC = 0;
@@ -419,24 +601,36 @@ int main(int argc, const char* argv[4]) {
 	param3 = argv[3];
 
 
-	if (!openF(param2.data()) ) {
-		PRINT("ERROR: Can't open file !");
-		return 0;
-	}
+		if (!openF(param2.data())) {
+			PRINT("ERROR: Can't open file !");
+			return 0;
+		}
+		else {
 
-	PRINT("Processing .. "); RET;
-	PRINT("this could take a few minutes.. "); RET;
+			PRINT("Processing .. ");
+			PRINT("this could take a few minutes.. "); RET;
+		}
 	
+
 	if (!std::strcmp("-q", argv[1])) {
 		Encoding();
 		LENC = (int)encode_file(param2, param3);
 	}
-	else if (!std::strcmp("-d", argv[1]))
-		Decoding();
+	else if (!std::strcmp("-d", argv[1])) {
+		decode_file(param2);
+		RPRINT("Number of records: "); RPRINT(RECS); RET;
+		Decoding(param2);
+	}
+	
 	else
 		PRINT("ERROR: Unrecognized parameters or command !");
 
 	
+
+	
+	closeF(_INF);
+	closeF(_OUT);
+
 	RET2();
 	return LENC;
 };
