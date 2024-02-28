@@ -1,18 +1,7 @@
+
 #include <iostream>
 #include <cstdio>
-#include <map>
 #include "mixhuff.h"
-
-
-struct BPAIR {
-	Bit _bit;
-	Byte _cdata;
-};
-
-
-using CPAIR = std::pair<Byte,Bit>;
-using UCPAIR = std::pair<Bit, Byte>;
-
 
 /*
 	Parameters for main()
@@ -41,7 +30,7 @@ using UCPAIR = std::pair<Bit, Byte>;
 
 	Examples:
 	 C:\> squzip -q test_essay.txt
-	 C:\> squzip -q test_essay.txt myEssay.szp
+	 C:\> squzip -q test_essay.txt myEssay.txt
 
 	 During the process, a deniable error messages may promps out, this maybe due to
 	 the 32 bit environment of the cmd shell quite inresponsive to the bunches of data 
@@ -76,30 +65,12 @@ static std::vector<node> NODS,READYNODS;
 // a list of mapping between the encoded bit patterns to its correspondence raw byte
 static std::vector<BPAIR> vbp;
 
-// a list of mapping between Bytes and their corresponding Bits pattern
-static std::map<Byte,Bit> mbp;
-
-// a list of mapping between Bits and corresponding Bytes
-static std::map<Bit, Byte> mb2P;
-
 // input & output file pointers
 static std::FILE* _INF = nullptr , *_OUT = nullptr;
 
 // a Bit to Byte data pair of a vector
 static BPAIR bitPair;
 
-// a Byte to Bit data pair of a map
-static CPAIR cPair;
-
-// a Bit to Byte data pair of a map
-static UCPAIR ucPair;
-
-
-// an iterator of Byte to Bit to a map
-static std::map<Byte, Bit>::iterator _foundIt;
-
-// an iterator of Bit to Btye to a map
-static std::map<Bit, Byte>::iterator _foundIt2;
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
@@ -126,24 +97,6 @@ inline void closeF(std::FILE* _ionf) {
 		fclose(_ionf);
 }
 
-
-
-
-// convert vector bit data into map bit data
-inline void vector_to_maps(std::map<Byte,Bit>& _mbp, std::map<Bit,Byte>& _mb2p,
-							const std::vector<BPAIR>& _vbp) {
-
-	for (const BPAIR& _bp : _vbp) {
-		cPair.first = _bp._cdata;
-		cPair.second = _bp._bit;
-		_mbp.emplace(cPair);
-
-		ucPair.first = _bp._bit;
-		ucPair.second = _bp._cdata;
-		_mb2p.emplace(ucPair);
-
-	}
-}
 
 
 
@@ -182,7 +135,7 @@ inline void print_file(std::FILE* _input) {
 	int col = 0;
 
 	while ( !feof(_input) ) {
-		char ch = fgetc(_input);
+		Byte ch = fgetc(_input);
 		col++;
 		if (ch) RPRINT(ch);
 		if (col > 79) {
@@ -301,6 +254,7 @@ inline const std::size_t read_v(std::FILE* _inp, std::vector<NODE_T>& _vc) {
 inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 	bool _bFound = 0;
 	const LongRange _vSize = (LongRange)_nodes.size();
+	node _tmp;
 
 	if (_nodes.empty()) {
 		if (_nod._v != 0) _nodes.push_back(_nod);
@@ -312,7 +266,7 @@ inline void add_V(std::vector<node>& _nodes, const NODE_T _nod) {
 
 	if (_vSize > 20) {
 		sort_Nodes<Byte>(_nodes, _vSize - 1);
-		_bFound = vector_search(_nodes, _nod._v);
+		_bFound = vector_search(_nodes, _nod._v, _tmp);
 	}
 
 	if (_bFound) return;
@@ -435,6 +389,7 @@ inline void Encoding() {
 
 	huffman_encode(HC, VNT[vNodeLnk._Last]);
 
+	//print_encoded_bits(HC); // use for debugging
 	print_hf_rec(HC);
 
 	RET2();
@@ -452,7 +407,7 @@ inline void Encoding() {
 inline void Decoding(std::string& _fOriginal) {
 	std::size_t LENF = std::strlen(_fOriginal.data());
 	_fOriginal = _fOriginal.substr(0, LENF - 3);
-	_fOriginal = strcat((char*)_fOriginal.data(), ".dat");
+	_fOriginal = strcat((char*)_fOriginal.data(), "dat");
 
 	if (!openF(_fOriginal.data())) {
 		PRINT("ERROR: Can't open decoded file.");
@@ -467,7 +422,7 @@ inline void Decoding(std::string& _fOriginal) {
 
 // encode an original source file to the targeted output compressed format
 inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput) {
-	char ch = 0;
+	Byte ch = 0;
 	std::size_t LENF = 0;
 
 	if (_sInput.empty() && _sOutput.empty()) {
@@ -486,8 +441,6 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 	// save huffman records 'HC' as header to the ouput file.
 	LENF = save_encoded_data(_sOutput.data(), vbp);
 
-	vector_to_maps(mbp, mb2P,vbp);
-
 	vbp.clear();
 
 
@@ -501,11 +454,12 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 		return 0;
 	}
 
-	while (!feof(_INF)) {
+	while (!feof(_INF)) { //_INF refers to original source file
 		ch = fgetc(_INF);
-		_foundIt = mbp.find(ch);
-		if (_foundIt->first == ch) // write huffman bits to _OUT
-			LENF += fwrite(&_foundIt->second, sizeof(Bit), 1, _OUT);
+		if (vector_search(vbp, ch,bitPair)) { // Searches a Byte data value
+			// Write the encoded bit to a '*.szp' file
+			LENF += fwrite(&bitPair._bit, sizeof(Bit), 1, _OUT);
+		}
 		
 	}
 
@@ -518,7 +472,7 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 
 // open a compressed file and decodes it to the original .dat format
 inline const std::size_t decode_file(std::string& _fEnc) {
-	char uc = 0;
+	Bit uc = 0;
 	std::string _fOrig;
 	std::size_t LEN_ORIG = 0,_FSIZE = 0;
 
@@ -542,7 +496,7 @@ inline const std::size_t decode_file(std::string& _fEnc) {
 	}
 
 	// read huffman records into vbp
-	if (_INF) {
+	if (_INF) { // _INF refers to a *.szp file
 		if (!vbp.empty()) vbp.clear();
 
 		_FSIZE += fread(&RECS,sizeof(std::size_t),1, _INF); // Read header's size
@@ -570,11 +524,14 @@ inline const std::size_t decode_file(std::string& _fEnc) {
 		return 0;
 	}
 
-	while (!feof(_INF)) {
+	while (!feof(_INF)) { 
+		// _INF is now pointing to any location in the *.szp file
 		uc = fgetc(_INF); // read each huffman bit into ch
-		_foundIt2 = mb2P.find(uc); 
-		if (_foundIt2->first == uc)
-			_FSIZE += fwrite(&_foundIt2->second, sizeof(Byte), 1, _OUT); // write Byte to _OUT
+		if (vector_search(vbp, uc, bitPair)) { // searches a Bit value
+			// Write the corresponding Byte data to _OUT
+			_FSIZE += fwrite(&bitPair._cdata, sizeof(Byte), 1, _OUT);
+		}
+		
 	}
 
 	closeF(_INF);
@@ -595,10 +552,10 @@ int main(int argc, const char* argv[4]) {
 		if ( !argv[i] ) argv[i] = "\0";
 	}
 
-	progName = argv[0];
-	param1 = argv[1];
-	param2 = argv[2];
-	param3 = argv[3];
+	progName = argv[0]; // program's name
+	param1 = argv[1];  // parameter for main()
+	param2 = argv[2];  // input file
+	param3 = argv[3];  // output file
 
 
 		if (!openF(param2.data())) {
@@ -606,7 +563,6 @@ int main(int argc, const char* argv[4]) {
 			return 0;
 		}
 		else {
-
 			PRINT("Processing .. ");
 			PRINT("this could take a few minutes.. "); RET;
 		}
@@ -626,7 +582,6 @@ int main(int argc, const char* argv[4]) {
 		PRINT("ERROR: Unrecognized parameters or command !");
 
 	
-
 	
 	closeF(_INF);
 	closeF(_OUT);
