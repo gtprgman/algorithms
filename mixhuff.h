@@ -1,6 +1,5 @@
+/* Using License: GPL v 3.0. */
 #pragma once
-
-/* Using License : GPL v 3.0 */
 
 using Bit = unsigned char;
 using UINT = unsigned int;
@@ -30,6 +29,37 @@ struct LINK_ID {
 } vNodeLnk;
 
 struct NODE_T;
+
+
+// a data structure of a Pair of Bit and Byte
+struct BPAIR {
+	Bit _bit;
+	Byte _cdata;
+
+	const Bit operator~ () const {
+		return _bit;
+	}
+
+	const Byte operator()(void) const {
+		return _cdata;
+	}
+
+	const bool operator< (const BPAIR& _bPair) {
+		return (_cdata < _bPair._cdata);
+	}
+
+	const bool operator== (const BPAIR& _bPair) {
+		return (_cdata == _bPair._cdata);
+	}
+
+	const bool operator> (const BPAIR& _bPair) {
+		return (_cdata > _bPair._cdata);
+	}
+
+	const bool operator != (const BPAIR& _bPair) {
+		return (_cdata != _bPair._cdata);
+	}
+};
 
 
 struct node {
@@ -81,6 +111,13 @@ struct node {
 	
 	//Implicit conversion
 	operator NODE_T() const;
+
+	const Byte operator()(void) const;
+	const bool operator< (const node&);
+	const bool operator> (const node&);
+	const bool operator!= (const node&);
+	const bool operator== (const node&);
+
 	void Print() const;
 	static void Dispose();
 
@@ -201,13 +238,13 @@ ULONG simple_avl::BAL = 0;
 				if (_bits[j]) strcat((char*)_cb.c_str(), "1"); else
 					strcat((char*)_cb.c_str(), "0"); 
 
-			return _cb.c_str();
+			return _cb.data();
 		}
 
 
 		void reset() {
 			if (!_bits.empty()) _bits.clear();
-			_cb.clear();
+			if (!_cb.empty()) _cb.clear();
 			this->_data = 0;
 		}
 
@@ -348,6 +385,26 @@ struct NODE_T {
 		return std::move(*this);
 	}
 
+	const Byte operator()(void) const {
+		return _v;
+	}
+
+	const bool operator < (const NODE_T& rNodT) {
+		return (_v < rNodT._v);
+	}
+
+	const bool operator != (const NODE_T& rNodT) {
+		return (_v != rNodT._v);
+	}
+
+	const bool operator == (const NODE_T& rNodT) {
+		return (_v == rNodT._v);
+	}
+
+	const bool operator > (const NODE_T& rNodT) {
+		return (_v > rNodT._v);
+	}
+	
 };
 
 #define RET std::cout << "\n";
@@ -721,7 +778,8 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
 
 /* search a node in the vector container using binary search method,
    this function can apply only on a vector node sorted on data value. */
-const bool vector_search(const std::vector<node>&, const NODE_T );
+template < class T , class E = NODE_T>
+const bool vector_search(const std::vector<T>&, const E ,T&);
 
 
 /* search a node in the vector using linear search method,
@@ -1105,6 +1163,28 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
+	const Byte node::operator()(void) const {
+		return _data;
+	}
+
+	const bool node::operator< (const node& _rNod) {
+		return (_data < _rNod._data);
+	}
+
+
+	const bool node::operator> (const node& _rNod) {
+		return (_data > _rNod._data);
+	}
+
+
+	const bool node::operator== (const node& _rNod) {
+		return (_data == _rNod._data);
+	}
+
+	const bool node::operator != (const node& _rNod) {
+		return (_data != _rNod._data);
+	}
+
 
 	void node::Print() const {
 		std::cout << "Root:   "; 
@@ -1284,10 +1364,12 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 #endif
 
 
-inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _fNod) {
+template < class T, class E>
+inline const bool vector_search(const std::vector<T>& _vecNod, const E _fNod, T& _vElem) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
 	LongRange L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
-	Byte Vc, Uc; // Vc : vector's value; Uc: user's value
+	E Uc; // Uc: user's value
+	T Vc; // Vector's value
 
 	if (_vecNod.empty()) return 0;
 
@@ -1297,21 +1379,24 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _
 	M = (L + R) / 2;
 	
 
-	Uc = _fNod._v;
+	Uc = _fNod; // user's value
 
 	do {
-		Vc = _vecNod[M].Value();
+		Vc = _vecNod[M];  // vector's value
 
-		if (Uc > Vc) {
+		if (Uc > Vc() ) {
 			L = M;
 			R = R1;
 		}
-		else if (Uc < Vc) {
+		else if (Uc < Vc() ) {
 			L = L1;
 			R = M;
 		}
 
-		else if (Uc == Vc) break;
+		else if (Uc == Vc() ) {
+			_vElem = _vecNod.at(M);
+			break;
+		}
 
 		L1 = L;
 		R1 = R;
@@ -1321,10 +1406,9 @@ inline const bool vector_search(const std::vector<node>& _vecNod, const NODE_T _
 		if ((M < 0) || (M > vecSize )) break;
 		if (nSeek > vecSize) break; 
 		
-	} while (Uc != Vc);
+	} while (Uc != Vc());
 
-
-	return ( Uc == Vc );
+	return ( Uc == Vc() );
 }
 
 
@@ -1355,6 +1439,7 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 	bool _bFound = 0;
 	const std::size_t _vSize = _vec.size();
+	node _tmp;
 
 	if (_vec.empty()) {
 		if (_Nod._v != 0 )_vec.emplace_back(ANODE((char)_Nod._v));
@@ -1366,7 +1451,7 @@ void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 
 	if (_vSize > 20) {
 		sort_Nodes<Byte>(_vec, _vSize-1);
-		_bFound = vector_search(_vec, _Nod._v);
+		_bFound = vector_search(_vec, _Nod._v,_tmp);
 	}
 
 	if (_bFound) return;
