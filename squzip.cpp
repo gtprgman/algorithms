@@ -3,6 +3,8 @@
 #include <cstdio>
 #include "mixhuff.h"
 
+
+
 /*
 	Parameters for main()
 	[0]:	Program executable name.
@@ -14,8 +16,8 @@
 
 	[3]:	Output file, the file that contains the encoded format of the original
 			to which the huffman encoding is being applied on.
-*/
 
+*/
 
 /* USAGES:
 *   This program is compiled & built with Ms.Visual Studio 2022 targeted on x64 platforms.
@@ -31,10 +33,6 @@
 	Examples:
 	 C:\> squzip -q test_essay.txt
 	 C:\> squzip -q test_essay.txt myEssay.txt
-
-	 During the process, a deniable error messages may promps out, this maybe due to
-	 the 32 bit environment of the cmd shell quite inresponsive to the bunches of data 
-	 with extra bit being streamed in/out from/to stdin/stdout.
 
 	The Decoding / Uncompress funtionality is still being working progress.
 */
@@ -100,7 +98,7 @@ inline void closeF(std::FILE* _ionf) {
 
 
 
-// Save huffman records 'HC' as header to the output compressed file.
+// Save huffman records 'HC' as a header to the output compressed file.
 inline const std::size_t save_encoded_data(const char* _file, const std::vector<BPAIR>& _src) {
 	const std::size_t LENX = _src.size();
 	
@@ -172,35 +170,22 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 	BPAIR bp;
 
 	for (std::size_t i = 0; i < LENZ; i++) {
-		Bit x = 0b1, xc = 0b0;
 		hf = _hfc[i];
-
+		std::string cBit;
+		
 		for (std::size_t j = 0; j < hf._bits.size(); j++) {
-			x &= (Bit)hf._bits[j];
-			x <<= (7 - j);
-			xc |= x;
-			x = 0b1;
+			if (hf._bits[j])
+				cBit = strcat((char*)cBit.c_str(), "1");
+			else
+				cBit = strcat((char*)cBit.c_str(), "0");
 		}
 
-		bp._bit = xc;
+		bp._bitStr.assign(cBit);
 		bp._cdata = hf._data;
 		vbp.push_back(bp);
 		hf.reset();
+		bp._bitStr.clear();
 	}
-
-	
-	//int col = 0;
-
-	/*
-	for (const BPAIR& _cp : vbp) {
-		++col;
-		RPRINT((char)_cp._cdata); 
-		if (col > 79) {
-			col = 0;
-			RET;
-		}
-	} */
-
 }
 
 
@@ -208,9 +193,20 @@ inline void print_hf_rec(std::vector<HF_REC>& _hfc) {
 inline void print_encoded_bits(const std::vector<HF_REC>& _hcf) {
 	const std::size_t LENC = _hcf.size();
 	for (std::size_t i = 0; i < LENC; i++)
-		RPRINT((char)_hcf[i]._data);
+		RPRINT(_hcf[i].Bits());
 }
 
+
+// print the transformed bit pattern stored in the vector
+inline void print_vector_bits(const std::vector<BPAIR>& _Vbp) {
+	RET;
+
+	for (const BPAIR& _bp : _Vbp) {
+		RPRINT(_bp._bitStr.data()); RPRINT(" ");
+	}
+	RET;
+
+}
 
 
 // get the total sum of every count bytes in the file
@@ -385,12 +381,16 @@ inline void Encoding() {
 
 	sort_V<double>(READYNODS, (READYNODS.size()));
 
+	check_nodes_frequency(READYNODS);
+
 	huff_tree_create(VNT, READYNODS, READYNODS.size());
 
 	huffman_encode(HC, VNT[vNodeLnk._Last]);
 
 	//print_encoded_bits(HC); // use for debugging
-	print_hf_rec(HC);
+	print_hf_rec(HC);    
+
+	print_vector_bits(vbp); // use for debugging
 
 	RET2();
 
@@ -443,7 +443,7 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 
 	vbp.clear();
 
-
+	/*
 	if (!openF(_sInput.data() ) ) {  // read to _INF
 		PRINT("ERROR: Can't open original source file.");
 		return 0;
@@ -462,6 +462,7 @@ inline const std::size_t encode_file(std::string& _sInput, std::string& _sOutput
 		}
 		
 	}
+	*/
 
 	fclose(_INF);
 	fclose(_OUT);
@@ -540,6 +541,37 @@ inline const std::size_t decode_file(std::string& _fEnc) {
 	return _FSIZE;
 }
 
+// Debugging Functions..
+inline const std::size_t read_szp(const char* _szpFile) {
+	if (!openF(_szpFile)) {
+		PRINT("ERROR: Can't open file.");
+		return 0;
+	}
+
+	if (!vbp.empty()) vbp.clear();
+
+	int col = 0;
+	std::size_t _Count = 0;
+	_Count += fread(&RECS, sizeof(size_t), 1, _INF);
+
+	while (!feof(_INF)) {
+		_Count += fread(&bitPair, sizeof(BPAIR), 1, _INF);
+		vbp.push_back(bitPair);
+	}
+
+	fclose(_INF);
+
+	for (const BPAIR& bp : vbp) {
+		col++;
+		RPRINT((int)bp._bit);
+		if (col > 79) {
+			col = 0;
+			RET;
+		}
+	}
+	return _Count;
+}
+
 
 
 /*  SQUZIP's MAIN FUNCTION */
@@ -563,6 +595,7 @@ int main(int argc, const char* argv[4]) {
 			return 0;
 		}
 		else {
+
 			PRINT("Processing .. ");
 			PRINT("this could take a few minutes.. "); RET;
 		}
@@ -570,19 +603,20 @@ int main(int argc, const char* argv[4]) {
 
 	if (!std::strcmp("-q", argv[1])) {
 		Encoding();
-		LENC = (int)encode_file(param2, param3);
+		//LENC = (int)encode_file(param2, param3);
 	}
-	else if (!std::strcmp("-d", argv[1])) {
+	else if (!std::strcmp("-d", argv[1])) { /*
 		decode_file(param2);
 		RPRINT("Number of records: "); RPRINT(RECS); RET;
 		Decoding(param2);
+	 */
 	}
 	
 	else
 		PRINT("ERROR: Unrecognized parameters or command !");
 
 	
-	
+
 	closeF(_INF);
 	closeF(_OUT);
 
