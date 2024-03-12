@@ -1,4 +1,4 @@
-/* Using License: GPL v 3.0. */
+/* Using License: GPL v 3.0 */
 #pragma once
 
 using Bit = unsigned char;
@@ -13,12 +13,13 @@ enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
 
 enum class tDir : std::int8_t {
 	UNKNOWN = -1,
-	LEFT = static_cast<std::int8_t>(huffDir::ZERO),
-	RIGHT = static_cast<std::int8_t>(huffDir::ONE)
+	LEFT = static_cast<std::int8_t>(huffDir::ONE),
+	RIGHT = static_cast<std::int8_t>(huffDir::ZERO)
 };
 
-constexpr std::int8_t ZERO = static_cast<std::int8_t>(tDir::LEFT);
-constexpr std::int8_t ONE = static_cast<std::int8_t>(tDir::RIGHT);
+constexpr std::int8_t R = static_cast<std::int8_t>(tDir::RIGHT);
+constexpr std::int8_t L = static_cast<std::int8_t>(tDir::LEFT);
+constexpr std::int8_t ROOT = static_cast<std::int8_t>(tDir::UNKNOWN);
 
 
 /* this structure is used to note the index to the first and the last address of a
@@ -26,6 +27,7 @@ constexpr std::int8_t ONE = static_cast<std::int8_t>(tDir::RIGHT);
 struct LINK_ID {
 	std::size_t _First;
 	std::size_t _Last;
+	std::size_t _Size;
 } vNodeLnk;
 
 struct NODE_T;
@@ -35,10 +37,8 @@ struct NODE_T;
 struct BPAIR {
 	Bit _bit;
 	Byte _cdata;
-
-	const Bit operator~ () const {
-		return _bit;
-	}
+	std::string _bitStr;
+	
 
 	const Byte operator()(void) const {
 		return _cdata;
@@ -80,6 +80,7 @@ struct node {
 
 
 	void Add(const Byte);
+	void Add(const double);
 	
 	static void setSize(std::size_t const);
 	static void setRoot(const node** const);
@@ -113,10 +114,10 @@ struct node {
 	operator NODE_T() const;
 
 	const Byte operator()(void) const;
-	const bool operator< (const node&);
-	const bool operator> (const node&);
-	const bool operator!= (const node&);
-	const bool operator== (const node&);
+	const bool operator< (const node&) const;
+	const bool operator> (const node&) const;
+	const bool operator!= (const node&) const;
+	const bool operator== (const node&) const;
 
 	void Print() const;
 	static void Dispose();
@@ -179,8 +180,11 @@ ULONG simple_avl::BAL = 0;
 #ifndef _DEALLOCS_H
 #define _DEALLOCS_H
 
-#ifndef HUFF_TREE
+#ifndef HUFF_TREE 
 	#include <vector>
+	
+	#define NUM_BITS(_X_) (const int)_X_
+
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
 
@@ -234,6 +238,7 @@ ULONG simple_avl::BAL = 0;
 		
 		const char* Bits() const {
 			std::size_t sz = _bits.size();
+			
 			for (std::size_t j = 0; j < sz; j++)
 				if (_bits[j]) strcat((char*)_cb.c_str(), "1"); else
 					strcat((char*)_cb.c_str(), "0"); 
@@ -312,7 +317,7 @@ static struct _Deallocator {
 #endif
 
 
-// to construct a temporary node object uses this structure for safety reason
+// to construct a temporary node object, uses this structure for safety reason
 struct NODE_T {
 	Byte _v;
 	double _freq;
@@ -389,19 +394,19 @@ struct NODE_T {
 		return _v;
 	}
 
-	const bool operator < (const NODE_T& rNodT) {
+	const bool operator < (const NODE_T& rNodT) const {
 		return (_v < rNodT._v);
 	}
 
-	const bool operator != (const NODE_T& rNodT) {
+	const bool operator != (const NODE_T& rNodT) const {
 		return (_v != rNodT._v);
 	}
 
-	const bool operator == (const NODE_T& rNodT) {
+	const bool operator == (const NODE_T& rNodT) const {
 		return (_v == rNodT._v);
 	}
 
-	const bool operator > (const NODE_T& rNodT) {
+	const bool operator > (const NODE_T& rNodT) const {
 		return (_v > rNodT._v);
 	}
 	
@@ -444,12 +449,12 @@ inline bool ASSERT_P(const node* _ptr = nullptr) {
 
 
 inline node* const LEFT(const node* const _any) {
-	return ISNULL(_any)? nullptr : _any->links[0];
+	return ISNULL(_any)? nullptr : _any->links[L];
 }
 
 
 inline node* const RIGHT(const node* const _any) { 
-	return ISNULL(_any)? nullptr : _any->links[1];
+	return ISNULL(_any)? nullptr : _any->links[R];
 }
 
 
@@ -748,6 +753,8 @@ inline void COLLECT(const node* const _p) {
 
 // Add a node as specified by the Byte parameter to the tree 
 void data_tree_add(const node*, const Byte);
+void freq_add_from_node(const node*, const node&);
+void build_huffman_tree(const std::vector<node*>&);
 
 /* sorts nodes in the vector in an increasing order, the size_t
    argument should be (n - 1). */
@@ -837,16 +844,16 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
 		nCount(0.00), freq(0.00),cDir(0), _visited(0), _deleted(0)
 	{
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 	}
 
 
 	node::node(const double frq_data):xDir(tDir::UNKNOWN), _fdata(frq_data),
 		_data(0),nCount(0.00), freq(0.00), cDir(0), _visited(0), _deleted(0)
 	{
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 	}
 
 
@@ -854,12 +861,12 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),  
 		_visited(0), _deleted(0)
 	{
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 	}
 
 	/*
-	* construct a node from temporary node object free of any entangled pointers
+	* construct a node from a temporary node object free of any entangled pointers
 	   relations, where only the data & frequency members are taking into consideration
 	*/ 
 
@@ -869,8 +876,8 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	{
 		_data = _NodT._v;
 		_fdata = _NodT._freq;
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 	}
 
 
@@ -880,8 +887,8 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	{
 		_data = _tmpNod._v;
 		_fdata = _tmpNod._freq;
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 	}
 
 
@@ -891,8 +898,8 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	{
 		_data = _nodT._v;
 		_fdata = _nodT._freq;
-		this->links[0] = nullptr;
-		this->links[1] = nullptr;
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
 		_nodT.~NODE_T();
 	}
 
@@ -997,33 +1004,33 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 			const Byte _Vr = _curr->Value();
 
 			if ((_Vr) > (uc))
-				if (ASSERT_P(_curr->links[0])) {
-					_curr = _curr->links[0];
+				if (ASSERT_P(_curr->links[L])) {
+					_curr = _curr->links[L];
 					_curr->Add(uc);
 					node::_recent = (CONST_PTR)_curr->Find<Byte>(uc);
 				}
 				else {
-					_curr->links[0] = (CONST_PTR)ALLOC_N<const Byte>(uc);
-					(_curr->links[0])->setCode(0);
-					(_curr->links[0])->setCount((_curr->links[0])->Count() + 1.0);
-					nParts = ((_curr->links[0])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[0])->setFreq(nParts);
-					node::_recent = _curr->links[0];
+					_curr->links[L] = (CONST_PTR)ALLOC_N<const Byte>(uc);
+					(_curr->links[L])->setCode(L);
+					(_curr->links[L])->setCount((_curr->links[L])->Count() + 1.0);
+					nParts = ((_curr->links[L])->Count() / node::_totSizes) * 100.00;
+					(_curr->links[L])->setFreq(nParts);
+					node::_recent = _curr->links[L];
 				}
 
 			else if ((_Vr) < (uc))
-				if (ASSERT_P(_curr->links[1])) {
-					_curr = _curr->links[1];
+				if (ASSERT_P(_curr->links[R])) {
+					_curr = _curr->links[R];
 					_curr->Add(uc);
 					node::_recent = (CONST_PTR)_curr->Find<Byte>(uc);
 				}
 				else {
-					_curr->links[1] = (CONST_PTR)ALLOC_N<const Byte>(uc);
-					(_curr->links[1])->setCode(1);
-					(_curr->links[1])->setCount((_curr->links[1])->Count() + 1.0);
-					nParts = ((_curr->links[1])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[1])->setFreq(nParts);
-					node::_recent = _curr->links[1];
+					_curr->links[R] = (CONST_PTR)ALLOC_N<const Byte>(uc);
+					(_curr->links[R])->setCode(R);
+					(_curr->links[R])->setCount((_curr->links[R])->Count() + 1.0);
+					nParts = ((_curr->links[R])->Count() / node::_totSizes) * 100.00;
+					(_curr->links[R])->setFreq(nParts);
+					node::_recent = _curr->links[R];
 				}
 
 			else if ((_Vr) == (uc)) {
@@ -1050,6 +1057,15 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
+	void node::Add(const double _fv) {
+		node* _p = nullptr;
+		_p = (CONST_PTR)(this);
+		node nodTmp = node(_fv);
+		std::thread tfAdd = std::thread{ [_p, &nodTmp]() {freq_add_from_node(_p,nodTmp); } };
+		tfAdd.join();
+		++node::_nRec;
+		NULLP(_p);
+	}
 	
 	// the total size of a data source
 	void node::setSize(std::size_t const _sizes) {
@@ -1060,7 +1076,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	void node::setRoot(const node** const _uRoot = nullptr) {
 		if (node::_ppRoot == nullptr) node::_ppRoot = (node**)_uRoot;
 		if (*_ppRoot != *_uRoot) *_ppRoot = (node*)*_uRoot;
-		(*node::_ppRoot)->setCode(0);
+		(*node::_ppRoot)->setCode(L);
 		_main = (CONST_PTR)*_ppRoot;
 	}
 
@@ -1167,21 +1183,21 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		return _data;
 	}
 
-	const bool node::operator< (const node& _rNod) {
+	const bool node::operator< (const node& _rNod) const {
 		return (_data < _rNod._data);
 	}
 
 
-	const bool node::operator> (const node& _rNod) {
+	const bool node::operator> (const node& _rNod) const {
 		return (_data > _rNod._data);
 	}
 
 
-	const bool node::operator== (const node& _rNod) {
+	const bool node::operator== (const node& _rNod) const{
 		return (_data == _rNod._data);
 	}
 
-	const bool node::operator != (const node& _rNod) {
+	const bool node::operator != (const node& _rNod) const {
 		return (_data != _rNod._data);
 	}
 
@@ -1211,10 +1227,10 @@ inline void simple_avl::rotate_Right() {
 	node* _nRoot = nullptr;
 	_nRoot = *node::_ppRoot;
 	_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
-	_nRoot->links[0] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
-	_nRoot->links[0]->setCode(0);
-	_root1->links[1] = _nRoot;
-	_root1->links[1]->setCode(1);
+	_nRoot->links[L] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
+	_nRoot->links[L]->setCode(L);
+	_root1->links[R] = _nRoot;
+	_root1->links[R]->setCode(R);
 	node::setRoot((const node** const)(&_root1));
 
 	NULL2P(_nRoot, _root1);
@@ -1225,10 +1241,10 @@ inline void simple_avl::rotate_Left() {
 	node* _nRoot = nullptr;
 	_nRoot = *node::_ppRoot;
 	_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
-	_nRoot->links[1] = (CONST_PTR)ALLOC_N(LEFT(_root2));
-	_nRoot->links[1]->setCode(1);
-	_root2->links[0] = _nRoot;
-	_root2->links[0]->setCode(0);
+	_nRoot->links[R] = (CONST_PTR)ALLOC_N(LEFT(_root2));
+	_nRoot->links[R]->setCode(R);
+	_root2->links[L] = _nRoot;
+	_root2->links[L]->setCode(L);
 	node::setRoot((const node** const)(&_root2));
 
 	NULL2P(_nRoot, _root2);
@@ -1240,6 +1256,61 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 }
 
 
+inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
+	node* _fCurr = (CONST_PTR)_fRoot;
+
+	/* in the frequency tree, we don't need any further the frequency value of
+		any data frequency obtained earlier from the data tree */
+
+	if (_fCurr->FrequencyData() > _dNod.FrequencyData())
+		if (ASSERT_P(_fCurr->links[L])) {
+			_fCurr = _fCurr->links[L];
+			_fCurr->Add(_dNod.FrequencyData());
+			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
+		}
+		else {
+			_fCurr->links[L] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
+			(_fCurr->links[L])->setCode(L);
+			(_fCurr->links[L])->setCount((_fCurr->links[L])->Count() + 1.0);
+			node::_recent = _fCurr->links[L];
+		}
+
+	else if (_fCurr->FrequencyData() < _dNod.FrequencyData())
+		if (ASSERT_P(_fCurr->links[R])) {
+			_fCurr = _fCurr->links[R];
+			_fCurr->Add(_dNod.FrequencyData());
+			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
+		}
+		else {
+			_fCurr->links[R] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
+			(_fCurr->links[R])->setCode(R);
+			(_fCurr->links[R])->setCount((_fCurr->links[R])->Count() + 1.0);
+			node::_recent = _fCurr->links[R];
+		}
+
+	else if (_fCurr->FrequencyData() == _dNod.FrequencyData()) {
+		/* we need to enforce unique the frequency value of each data unit
+			to distinguish any different data with the same frequency value.
+		*/
+		const double fcNew = (_dNod.FrequencyData() + (_dNod.FrequencyData() / 100.00)); // to enforce unique
+		node::_totSizes += 1.0;
+		_fCurr->Add(fcNew);
+		node::_recent = (CONST_PTR)PNODE<double>(fcNew);
+		_fCurr = node::_recent;
+	}
+
+	// automatically add to garbage collector
+	_Deleter.push(node::_recent);
+	_fCurr = nullptr;
+}
+
+
+inline void build_huffman_tree(const std::vector<node*>& _Vnt) {
+	node* hfNode = (CONST_PTR)ALLOC_N<double>(100.00);
+	node::setRoot(ROOT2P(&hfNode));
+	const std::size_t _totF = (vNodeLnk._First * 2) + (vNodeLnk._Last * 2);
+	node::setSize(_totF);
+}
 
 
 template <class N >
@@ -1462,8 +1533,6 @@ void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
-	PRINT("filtering .. "); RET;
-
 	LongRange jPos = 0,_Len = 0;
 	NODE_T nc;
 
@@ -1487,7 +1556,7 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 
 
 inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn, 
-									const std::size_t _Len) {
+				const std::size_t _Len) {
 
 	node* ft = nullptr, *f2t = nullptr;
 	double fc = 0.00;
@@ -1496,13 +1565,13 @@ inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn
 		fc = VALT<double>(vn[i]) + ((i + 1) == _Len)? 0.00 : VALT<double>(vn[i + 1]);
 		ft = new node(fc);
 
-		ft->links[0] =  (CONST_PTR)(&vn[i]);
-		ft->links[0]->setCode(0);
+		ft->links[L] =  (CONST_PTR)(&vn[i]);
+		ft->links[L]->setCode(L);
 
-		ft->links[1] = ((i+1)== _Len)? nullptr : (CONST_PTR)(&vn[i + 1]);
-		ft->links[1]->setCode(1);
+		ft->links[R] = ((i+1)== _Len)? nullptr : (CONST_PTR)(&vn[i + 1]);
+		if (ASSERT_P(ft->links[R])) ft->links[R]->setCode(R);
 		fc = 0.00;
-
+	
 		vnt.push_back(ft);
 	}
 
@@ -1514,11 +1583,11 @@ inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn
 	fc = VALT<double>(*vnt[0]) + VALT<double>(*vnt[1]);
 	ft = new node(fc);
 
-	ft->links[0] = vnt[0];
-	ft->links[0]->setCode(0);
+	ft->links[L] = vnt[0];
+	ft->links[L]->setCode(L);
 
-	ft->links[1] = vnt[1];
-	ft->links[1]->setCode(1);
+	ft->links[R] = vnt[1];
+	ft->links[R]->setCode(R);
 
 	f2t = ft;
 	vnt.push_back(ft);
@@ -1528,11 +1597,11 @@ inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn
 		fc = fc + VALT<double>(*vnt[j]);
 		ft = new node(fc);
 
-		ft->links[0] = f2t;
-		ft->links[0]->setCode(0);
+		ft->links[L] = f2t;
+		ft->links[L]->setCode(L);
 		
-		ft->links[1] = vnt[j];
-		ft->links[1]->setCode(1);
+		ft->links[R] = vnt[j];
+		ft->links[R]->setCode(R);
 
 		f2t = ft;
 		vnt.push_back(ft);
@@ -1541,7 +1610,7 @@ inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn
 	ft = nullptr;
 	f2t = nullptr;
 
-	vNodeLnk._First = _Len2;
+	vNodeLnk._First = _Len2 - 1;
 	vNodeLnk._Last = vnt.size() - 1;
 
 }
@@ -1555,61 +1624,61 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 	
 	const std::size_t LT = L_HEIGHT(_f0t);
 
-	_hc._bits.push_back(1);
-	_hc._bits.push_back(1);
-	_hc._data = _f0t->links[1]->links[1]->Value();
+	//_hc._bits.push_back(R);
+	//_hc._bits.push_back(R);
+	//_hc._data = _f0t->links[R]->links[R]->Value();
+
+	//_tab.push_back(_hc);
+	//_hc.reset();
+
+	_hc._bits.push_back(R);
+	_hc._bits.push_back(L);
+	_hc._data = _f0t->links[R]->links[L]->Value();
 
 	_tab.push_back(_hc);
 	_hc.reset();
 
-	_hc._bits.push_back(1);
-	_hc._bits.push_back(0);
-	_hc._data = _f0t->links[1]->links[0]->Value();
-
-	_tab.push_back(_hc);
-	_hc.reset();
-
-	if (nullptr != _f0t->links[0])
-		_ft = _f0t->links[0];
+	if (nullptr != _f0t->links[L])
+		_ft = _f0t->links[L];
 	else
 		return;
 
-	_hc._bits.push_back(0); // outer '0' first branch
+	_hc._bits.push_back(L); // outer left first branch
 
 	for (std::size_t i = 1; i < LT; i++) {
 
 		if ((i + 1) == LT) {
-			_hc._bits.push_back(1);
-			_hc._data = _ft->links[1]->Value();
+			_hc._bits.push_back(R);
+			_hc._data = _ft->links[R]->Value();
 
 			_tab.push_back(_hc);
 
 			_hc._bits.pop_back();
-			_hc._bits.push_back(0);
-			_hc._data = _ft->links[0]->Value();
+			_hc._bits.push_back(L);
+			_hc._data = _ft->links[L]->Value();
 
 			_tab.push_back(_hc);
 			_hc.reset();
 			continue;
 		}
 
-		_hc._bits.push_back(1);
-		_hc._bits.push_back(1);
-		_hc._data = _ft->links[1]->links[1]->Value();
+		_hc._bits.push_back(R);
+		_hc._bits.push_back(R);
+		_hc._data = _ft->links[R]->links[R]->Value();
 
 		_tab.push_back(_hc);
 
 		_hc._bits.pop_back();
-		_hc._bits.push_back(0);
-		_hc._data = _ft->links[1]->links[0]->Value();
+		_hc._bits.push_back(L);
+		_hc._data = _ft->links[R]->links[L]->Value();
 
 		_tab.push_back(_hc);
 
 		_hc._bits.pop_back();
 		_hc._bits.pop_back();
-		_hc._bits.push_back(0);
+		_hc._bits.push_back(L);
 
-		_ft = _ft->links[0];
+		_ft = _ft->links[L];
 		if (nullptr == _ft) break;	
 	}
 }
