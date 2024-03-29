@@ -1,5 +1,6 @@
-/* Using License: GPL v 3.0 */
+/* Debugging State */
 #pragma once
+
 
 using Bit = unsigned char;
 using UINT = unsigned int;
@@ -8,6 +9,7 @@ using Byte = unsigned long;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
+static LONGFLOAT CSIZE = 0.00;
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
 
@@ -44,19 +46,19 @@ struct BPAIR {
 		return _cdata;
 	}
 
-	const bool operator< (const BPAIR& _bPair) {
+	const bool operator< (const BPAIR& _bPair) const {
 		return (_cdata < _bPair._cdata);
 	}
 
-	const bool operator== (const BPAIR& _bPair) {
+	const bool operator== (const BPAIR& _bPair) const {
 		return (_cdata == _bPair._cdata);
 	}
 
-	const bool operator> (const BPAIR& _bPair) {
+	const bool operator> (const BPAIR& _bPair) const {
 		return (_cdata > _bPair._cdata);
 	}
 
-	const bool operator != (const BPAIR& _bPair) {
+	const bool operator != (const BPAIR& _bPair) const {
 		return (_cdata != _bPair._cdata);
 	}
 };
@@ -69,7 +71,7 @@ struct node {
 	node(const double); // for frequency tree
 	node(NODE_T&); // construct from NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
-	node(const NODE_T&); // construct from NODE_T
+	node(const NODE_T&); // construct from a ref to NODE_T
 	node(node&); // copy
 	node(const node&); // overloaded copy
 	node(node&&) noexcept;	// move
@@ -80,7 +82,7 @@ struct node {
 
 
 	void Add(const Byte);
-	void Add(const double);
+	void Add(node&);
 	
 	static void setSize(std::size_t const);
 	static void setRoot(const node** const);
@@ -303,7 +305,6 @@ static struct _Deallocator {
 
 
 
-
 #ifndef HUFF_TREE
 #define HUFF_TREE
 
@@ -314,6 +315,13 @@ static struct _Deallocator {
 #ifndef _TYPE_INFO_H
 #define _TYPE_INFO_H
 	#include <typeinfo>
+
+struct _TREE {
+	static node* _Root;
+};
+
+node* _TREE::_Root;
+
 #endif
 
 
@@ -430,6 +438,7 @@ struct NODE_T {
 #define ROOT2P(_p) (NODE2P)(_p)
 
 
+// allocate a new node
 template <class N>
 constexpr inline const node* const ALLOC_N(N const v) {
 	node* _p = new node(v);
@@ -437,6 +446,7 @@ constexpr inline const node* const ALLOC_N(N const v) {
 }
 
 
+// allocate a new node by transferring resources from the old node
 inline const node* const ALLOC_N(node* _nod) {
 	node* tmp = new node(_nod->Release());
 	return (tmp);
@@ -506,6 +516,7 @@ template < class N >
 constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
+	if (nullptr == _p) return 0;
 	_v = (std::strcmp("unsigned long", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
 	return std::remove_all_extents_t<N>(_v);
@@ -564,7 +575,7 @@ inline const node TO_NODE(const Byte _c) {
 
 // convert a specified node to the frequency node
 inline const node TO_FREQ_NODE(const node& _nod) {
-	node _fNod = _nod.Freq(); // construct frequency node
+	node _fNod = _nod.FrequencyData(); // construct frequency node
 	_fNod.setData(_nod.Value());
 	return _fNod;
 }
@@ -578,7 +589,6 @@ template < class N >
 constexpr inline void NODE(const N _v) {
 	return (node::_main)->Find<N>(_v)->Print(); RET;
 }
-
 
 
 
@@ -621,7 +631,7 @@ inline const node* RECENT() {
 */ 
 inline double FREQ(const Byte _v) {
 	node* tmp = (CONST_PTR)node::_main;
-	double fqr = (tmp->Find<Byte>(_v))->Freq();
+	double fqr = (tmp->Find<Byte>(_v))->FrequencyData();
 	NULLP(tmp);
 	return fqr;
 }
@@ -655,7 +665,7 @@ inline void print_vf(const node* const _p) {
 
 
 
-// searchs a particular node's value relative to the root node
+// searches a particular node's value relative to the root node
 template < class N >
 constexpr inline const node* seek_n(const node* const uRoot, const N uc) {
 	node* tmp = (node* const)uRoot;
@@ -714,12 +724,15 @@ inline void RET2() {
    as argument to the vector_search function */
 #define nodeY(_ch) (Byte)_ch
 
+#define ZEROES(var1, var2) var1 = var2 = 0.00
+
 // Print a collection of nodes from the vector
 inline void NPRINT(const std::vector<node>& _vn) {
 	int col = 0;
 	for (const node& _ne : _vn) {
 		col++;
-		RPRINT(_ne.dataValue());
+		RPRINT(_ne.dataValue()); RPRINT(" ");
+		RPRINT(_ne.FrequencyData()); RET;
 		if (col > 79) {
 			col = 0;
 			RET;
@@ -728,9 +741,7 @@ inline void NPRINT(const std::vector<node>& _vn) {
 }
 
 
-
 #endif
-
 
 
 
@@ -751,17 +762,26 @@ inline void COLLECT(const node* const _p) {
 }
 
 
-// Add a node as specified by the Byte parameter to the tree 
-void data_tree_add(const node*, const Byte);
-void freq_add_from_node(const node*, const node&);
-void build_huffman_tree(const std::vector<node*>&);
+// transform into vector node
+inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
+	PRINT("Adding.. ");
+	for (const auto& e : _source)
+		if (e._v != 0) _target.push_back(e);
+}
 
-/* sorts nodes in the vector in an increasing order, the size_t
-   argument should be (n - 1). */
+
+// Add a node as a Byte data value to the tree 
+void data_tree_add(const node*, const Byte);
+
+// construct a complete huffman tree data structure
+void build_huffman_tree(node* , const node*);
+
+/* sorts nodes in the vector in the decreasing order, the size_t
+   argument should be the total size of the vector. */
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
 
-/* sort the nodes in ascending order using partial sort methods,
+/* sort the nodes in decreasing order using partial sort methods,
   the first element's pos should be 0 and the last element should be (n - 1), 
   you should precede the call to this one before calling any subsequent sorting
   mechanism */ 
@@ -784,7 +804,7 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
 
 
 /* search a node in the vector container using binary search method,
-   this function can apply only on a vector node sorted on data value. */
+   this function can apply only to a vector node sorted on data value. */
 template < class T , class E = NODE_T>
 const bool vector_search(const std::vector<T>&, const E ,T&);
 
@@ -803,10 +823,10 @@ void filter_Nodes(std::vector<node>&, const std::vector<node>&);
 */ 
 void add_Nodes(std::vector<node>&, const NODE_T);
 
-/* generate a huffman tree from the vector nodes data,
+/* generate a huffman tree branches from the vector nodes data,
    the nodes in the vector must be sorted on frequency before use
 */
-const void huff_tree_create(std::vector<node*>&, const std::vector<node>&, const std::size_t);
+const void huff_tree_create(const std::vector<node>&, const std::size_t);
 
 // Huffman Encoding initiated by this function
 void huffman_encode(std::vector<HF_REC>&,const node* const);
@@ -1014,7 +1034,7 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 					(_curr->links[L])->setCode(L);
 					(_curr->links[L])->setCount((_curr->links[L])->Count() + 1.0);
 					nParts = ((_curr->links[L])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[L])->setFreq(nParts);
+					(_curr->links[L])->setFrequencyData(nParts);
 					node::_recent = _curr->links[L];
 				}
 
@@ -1029,14 +1049,14 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 					(_curr->links[R])->setCode(R);
 					(_curr->links[R])->setCount((_curr->links[R])->Count() + 1.0);
 					nParts = ((_curr->links[R])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[R])->setFreq(nParts);
+					(_curr->links[R])->setFrequencyData(nParts);
 					node::_recent = _curr->links[R];
 				}
 
 			else if ((_Vr) == (uc)) {
 				_curr->setCount(_curr->Count() + 1.0);
 				nParts = (_curr->Count() / node::_totSizes) * 100.00;
-				_curr->setFreq(nParts);
+				_curr->setFrequencyData(nParts);
 				node::_recent = _curr;
 			}
 
@@ -1057,16 +1077,55 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
-	void node::Add(const double _fv) {
-		node* _p = nullptr;
-		_p = (CONST_PTR)(this);
-		node nodTmp = node(_fv);
-		std::thread tfAdd = std::thread{ [_p, &nodTmp]() {freq_add_from_node(_p,nodTmp); } };
-		tfAdd.join();
-		++node::_nRec;
-		NULLP(_p);
+
+	void node::Add(node& _fv) {
+		node* _pNode = nullptr;
+		double fc = 0.00;
+
+		if (nullptr == this) return;
+
+		{
+			node* _pThis = (CONST_PTR)this;
+			if (_pThis->FrequencyData() > _fv.FrequencyData() ) {
+				if (ASSERT_P(_pThis->links[L])) {
+					_pNode = _pThis->links[L];
+					_pNode->Add(_fv);
+				}
+				else {
+					_pThis->links[L] = (CONST_PTR)ALLOC_N(_fv);
+					(_pThis->links[L])->setCode(L);
+					(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
+					node::_recent = _pThis->links[L];
+
+				}
+			}
+			else if (_pThis->FrequencyData() < _fv.FrequencyData() ) {
+				if (ASSERT_P(_pThis->links[R])) {
+					_pNode = _pThis->links[R];
+					_pNode->Add(_fv);
+				}
+				else {
+					_pThis->links[R] = (CONST_PTR)ALLOC_N(_fv);
+					(_pThis->links[R])->setCode(R);
+					(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
+					node::_recent = _pThis->links[R];
+				}
+
+			}
+			else if (_pThis->FrequencyData() == _fv.FrequencyData() ) {
+				fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00) );
+				node::_totSizes += 1.0;
+				_fv.setFrequencyData(fc);
+				_pThis->Add(_fv);
+				node::_recent = (CONST_PTR)PNODE<double>(fc);
+			}
+			// automatically add to garbage collector
+			_Deleter.push(node::_recent); NULLP(_pThis);
+		}
+		NULLP(_pNode);
 	}
 	
+
 	// the total size of a data source
 	void node::setSize(std::size_t const _sizes) {
 		_totSizes = (const double)_sizes;
@@ -1256,102 +1315,78 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 }
 
 
-inline void freq_add_from_node(const node* _fRoot, const node& _dNod) {
-	node* _fCurr = (CONST_PTR)_fRoot;
 
-	/* in the frequency tree, we don't need any further the frequency value of
-		any data frequency obtained earlier from the data tree */
-
-	if (_fCurr->FrequencyData() > _dNod.FrequencyData())
-		if (ASSERT_P(_fCurr->links[L])) {
-			_fCurr = _fCurr->links[L];
-			_fCurr->Add(_dNod.FrequencyData());
-			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
-		}
-		else {
-			_fCurr->links[L] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
-			(_fCurr->links[L])->setCode(L);
-			(_fCurr->links[L])->setCount((_fCurr->links[L])->Count() + 1.0);
-			node::_recent = _fCurr->links[L];
-		}
-
-	else if (_fCurr->FrequencyData() < _dNod.FrequencyData())
-		if (ASSERT_P(_fCurr->links[R])) {
-			_fCurr = _fCurr->links[R];
-			_fCurr->Add(_dNod.FrequencyData());
-			node::_recent = (CONST_PTR)PNODE<double>(_dNod.FrequencyData());
-		}
-		else {
-			_fCurr->links[R] = (CONST_PTR)ALLOC_N<double>(_dNod.FrequencyData());
-			(_fCurr->links[R])->setCode(R);
-			(_fCurr->links[R])->setCount((_fCurr->links[R])->Count() + 1.0);
-			node::_recent = _fCurr->links[R];
-		}
-
-	else if (_fCurr->FrequencyData() == _dNod.FrequencyData()) {
-		/* we need to enforce unique the frequency value of each data unit
-			to distinguish any different data with the same frequency value.
-		*/
-		const double fcNew = (_dNod.FrequencyData() + (_dNod.FrequencyData() / 100.00)); // to enforce unique
-		node::_totSizes += 1.0;
-		_fCurr->Add(fcNew);
-		node::_recent = (CONST_PTR)PNODE<double>(fcNew);
-		_fCurr = node::_recent;
-	}
-
-	// automatically add to garbage collector
-	_Deleter.push(node::_recent);
-	_fCurr = nullptr;
-}
-
-
-inline void build_huffman_tree(const std::vector<node*>& _Vnt) {
-	node* hfNode = (CONST_PTR)ALLOC_N<double>(100.00);
-	node::setRoot(ROOT2P(&hfNode));
-	const std::size_t _totF = (vNodeLnk._First * 2) + (vNodeLnk._Last * 2);
-	node::setSize(_totF);
+inline void build_huffman_tree(node* _fRoot, const node* _f0t) {
+	node _tmp = *_f0t;
+	_fRoot->Add( _tmp );
 }
 
 
 template <class N >
 inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
-	LongRange i = 0, m = 0, t = 0, r = 0;
-	LongRange mid = 0, _len = (LongRange)_Len;
-	N _v2, _v4;
-	NODE_T _n2, _n4;
+	LongRange j = 0, k = 0, r = 0, t = 0;
+	const LongRange	_Max = (LongRange)_Len;
+	N _v1, _v3, _v2, _v4;
+	NODE_T _n1, _n3, _n2, _n4;
 
 	if (vn.empty()) return;
 
-	mid = (_len / 2);
-	m = mid;
+	// apply quick sort on each half of the set
+	for (std::size_t n = 0, e = (_Len / 2), u = _Len, d = e, l = e;
+		(n < e) && (u > e); n++, l++, d--, u--) {
 
-	/*
-	index: (t) & (r)
-	accumulator: (i)
-	threshold: (m) & (len)
-	*/
+		_v1 = VALT<N>(vn[n]);
+		_v3 = VALT<N>(vn[d]);
 
-
-	for (; i < _len; ) {
-		for (; i < m; i++) {
-			t = i; r = t + 1;
-			
-			while (t >= 0) {
-				_v4 = VALT<N>(vn[r]); // supposed as larger
-				_v2 = VALT<N>(vn[t]); // supposed as smaller
-
-				if (_v2 > _v4) { // if [t] > [r]
-					_n2 = vn[r]; // conserved the smaller
-					vn[r] = vn[t]; // replace the smaller with the greater in the proper slot
-					vn[t] = _n2; // replace the correct slot with the proper cardinal value
-				}
-				--t; r = t + 1;
-			}
+		if (_v1 < _v3) {
+			_n1 = vn[n];
+			vn[n] = vn[d];
+			vn[d] = _n1;
 		}
-		/* i' is likely approaching 'm' ; lim( 'i->m' )
-			'mid < _len' for the next iterations of the inner 'for..loop' */
-		m = _len;
-	}	
+
+		_v2 = VALT<N>(vn[l]);
+		_v4 = VALT<N>(vn[u]);
+
+		if (_v2 < _v4) {
+			_n2 = vn[l];
+			vn[l] = vn[u];
+			vn[u] = _n2;
+		}
+
+	}
+
+
+// apply n times insertion sort to each half of the set
+ for(std::size_t g = 0; g < _Len; g++) 
+	for (LongRange i = 0, m = (_Max / 2); (i < m) && (m < _Max); i++, m++) {
+		t = i; r = t + 1;
+		j = m; k = j + 1;
+
+		_v1 = VALT<N>(vn[t]); // smaller
+		_v3 = VALT<N>(vn[r]); // greater
+
+		_v2 = VALT<N>(vn[j]); // smaller
+		_v4 = VALT<N>(vn[k]); // greater
+
+
+		while (t >= 0 && j >= m) {
+
+			if (_v1 < _v3) {
+				_n1 = vn[t]; // preserve the smaller
+				vn[t] = vn[r];  // assign greater to the predecessor position
+				vn[r] = _n1;
+			}
+
+			if (_v2 < _v4) {
+				_n2 = vn[j];
+				vn[j] = vn[k];
+				vn[k] = _n2;
+			}
+
+			--t; r = t + 1;
+			--j; k = j + 1;
+		}
+	}
 }
 
 
@@ -1372,16 +1407,16 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 		q = i; p = q + 1;
 
 		while (q >= 0) {
-			if ( VALT<N>(_vn[q]) > VALT<N>(_vn[p]) ) {
-				tiny = _vn[p];
-				_vn[p] = _vn[q];
-				_vn[q] = tiny;
+			if ( VALT<N>(_vn[q]) < VALT<N>(_vn[p]) ) {
+				tiny = _vn[q];
+				_vn[q] = _vn[p];
+				_vn[p] = tiny;
 			}
 
-			if ( VALT<N>(_vn[q]) > VALT<N>(_vn[lim]) ) {
-				tiny = _vn[lim];
-				_vn[lim] = _vn[q];
-				_vn[q] = tiny;
+			if ( VALT<N>(_vn[q]) < VALT<N>(_vn[lim]) ) {
+				tiny = _vn[q];
+				_vn[q] = _vn[lim];
+				_vn[lim] = tiny;
 			}
 
 			q--; p--;
@@ -1395,16 +1430,16 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 		if (lim < 0) break;
 
-		if ( VALT<N>(_vn[p]) > VALT<N>(_vn[q]) ) {
-			tiny = _vn[q];
-			_vn[q] = _vn[p];
-			_vn[p] = tiny;
+		if ( VALT<N>(_vn[p]) < VALT<N>(_vn[q]) ) {
+			tiny = _vn[p];
+			_vn[p] = _vn[q];
+			_vn[q] = tiny;
 		}
 
-		if (VALT<N>(_vn[p]) > VALT<N>(_vn[lim]) ) {
-			tiny = _vn[lim];
-			_vn[lim] = _vn[p];
-			_vn[p] = tiny;
+		if (VALT<N>(_vn[p]) < VALT<N>(_vn[lim]) ) {
+			tiny = _vn[p];
+			_vn[p] = _vn[lim];
+			_vn[lim] = tiny;
 		}
 	}
 }
@@ -1507,112 +1542,102 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 
-void add_Nodes(std::vector<node>& _vec, const NODE_T _Nod) {
+void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) {
 	bool _bFound = 0;
-	const std::size_t _vSize = _vec.size();
+	const LongRange _vSize = (LongRange)_nodes.size();
 	node _tmp;
 
-	if (_vec.empty()) {
-		if (_Nod._v != 0 )_vec.emplace_back(ANODE((char)_Nod._v));
+	if (_nodes.empty()) {
+		if (_nod._v != 0) _nodes.push_back(_nod);
 		return;
 	}
-	
+
 	if (_vSize < 20)
-		_bFound = search_Node(_vec, _Nod._v );
+		_bFound = search_Node(_nodes, _nod._v);
 
 	if (_vSize > 20) {
-		sort_Nodes<Byte>(_vec, _vSize-1);
-		_bFound = vector_search(_vec, _Nod._v,_tmp);
+		sort_Nodes<Byte>(_nodes, _vSize);
+		_bFound = vector_search(_nodes, _nod._v, _tmp);
 	}
 
 	if (_bFound) return;
 
-	if (_Nod._v != 0) _vec.emplace_back(ANODE((char)_Nod._v));
+	if (_nod._v != 0) _nodes.push_back(_nod);
 }
 
 
 
 inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
-	LongRange jPos = 0,_Len = 0;
+	PRINT("Filtering.. "); RET;
+
+	double _count = 0.00, fc = 0.00;
+	std::size_t i = 0;
+	const std::size_t LENZ = _src.size();
 	NODE_T nc;
+	CSIZE = (LONGFLOAT)LENZ;
 
 	if (_src.empty()) return;
 
-	_Len = (LongRange)_src.size();
-
-	nc = ANODE(_src[0].dataValue());
-
-	for (LongRange i = 0; i < _Len; i++) {
-			// comparing value of both side
-		if (VALT<double>(nc) == (VALT<double>(_src[i]))) {
-			nc = ANODE(_src[i].dataValue());
-			add_Nodes(_dest, nc);
+	for (i = 0; i < LENZ; i++) {
+		if (_src[i].Value() == 0) continue;
+		else {
+			nc = _src[i];
+			break;
 		}
-		else
-			nc = ANODE(_src[i].dataValue());
+	}
+
+	for (; i < LENZ; i++) {
+		// comparing value of both side
+		if (nc._v == _src[i].Value()) {
+			++_count;
+			fc = (_count / CSIZE) * 100.00;
+		}
+		else {
+			nc._freq = fc;
+			ZEROES(_count, fc);
+			add_Nodes(_dest, nc);
+
+			if (_src[i].Value() != _src[i + 1].Value()) {
+				nc = _src[i];
+				nc._freq = (1.00 / CSIZE) * 100.00;
+				add_Nodes(_dest, nc);
+				nc._v = _src[i + 1].Value();
+				continue;
+			}
+			else {
+				nc = _src[i];
+				++_count;
+			}
+		}
 	}
 }
 
 
 
-inline const void huff_tree_create(std::vector<node*>& vnt,std::vector<node>& vn, 
-				const std::size_t _Len) {
+inline const void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
 
 	node* ft = nullptr, *f2t = nullptr;
 	double fc = 0.00;
 
+	_TREE::_Root = (CONST_PTR)ALLOC_N<double>(50.00);
+	node::setRoot(ROOT2P(&_TREE::_Root));
+
+
 	for (std::size_t i = 0; i < _Len; i += 2) {
-		fc = VALT<double>(vn[i]) + ((i + 1) == _Len)? 0.00 : VALT<double>(vn[i + 1]);
+		if (!ASSERT_P(&vn[i])) return;
+		fc = (vn[i].FrequencyData() ) + ((i + 1) >= _Len)? 0.00 : (vn[i + 1].FrequencyData());
 		ft = new node(fc);
+		PRINT(ft->FrequencyData());
 
 		ft->links[L] =  (CONST_PTR)(&vn[i]);
 		ft->links[L]->setCode(L);
 
-		ft->links[R] = ((i+1)== _Len)? nullptr : (CONST_PTR)(&vn[i + 1]);
+		ft->links[R] = ((i+1) >= _Len)? nullptr : (CONST_PTR)(&vn[i + 1]);
 		if (ASSERT_P(ft->links[R])) ft->links[R]->setCode(R);
 		fc = 0.00;
 	
-		vnt.push_back(ft);
+		build_huffman_tree(_TREE::_Root, ft);
 	}
-
-	ft = nullptr; fc = 0.00;
-
-	if (vnt.empty()) return;
-	const std::size_t _Len2 = vnt.size();
-
-	fc = VALT<double>(*vnt[0]) + VALT<double>(*vnt[1]);
-	ft = new node(fc);
-
-	ft->links[L] = vnt[0];
-	ft->links[L]->setCode(L);
-
-	ft->links[R] = vnt[1];
-	ft->links[R]->setCode(R);
-
-	f2t = ft;
-	vnt.push_back(ft);
-
-
-	for (std::size_t j = 2; j < _Len2; j++) {
-		fc = fc + VALT<double>(*vnt[j]);
-		ft = new node(fc);
-
-		ft->links[L] = f2t;
-		ft->links[L]->setCode(L);
-		
-		ft->links[R] = vnt[j];
-		ft->links[R]->setCode(R);
-
-		f2t = ft;
-		vnt.push_back(ft);
-	}
-
-	ft = nullptr;
-	f2t = nullptr;
-
-	vNodeLnk._First = _Len2 - 1;
-	vNodeLnk._Last = vnt.size() - 1;
-
 }
 
 
@@ -1632,8 +1657,8 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 	//_hc.reset();
 
 	_hc._bits.push_back(R);
-	_hc._bits.push_back(L);
-	_hc._data = _f0t->links[R]->links[L]->Value();
+	_hc._bits.push_back(R);
+	_hc._data = _f0t->links[R]->links[R]->Value();
 
 	_tab.push_back(_hc);
 	_hc.reset();
