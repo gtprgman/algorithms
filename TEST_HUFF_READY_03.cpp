@@ -1,60 +1,26 @@
 #include <iostream>
-#include "mixhuff.h"
-
-
+#include "D:\MIXUTIL\User\Libs\mixhuff.h"
 
 int main() {
-	std::string s = "Ada Ate Apple.";
-	std::vector<NODE_T> nods;
-	std::vector<node> bulk, refine;
+	
+	node* ft = (CONST_PTR)ALLOC_N<double>(50.00);
+	node::setRoot(ROOT2P(&ft));
+	node::setSize(3);
 
-	for (const auto& x : s)
-		nods.push_back(x);
+	if (!vNods.empty()) vNods.clear();
 
-	transForm(bulk, nods);
-	nods.clear();
+	ft->Add(NODE_T(65, 21.12));
+	ft->Add(NODE_T(112, 14.2857));
+	ft->Add(NODE_T(107, 65.0119));
 
-	sort_Nodes<Byte>(bulk, bulk.size());
 
-	filter_Nodes(refine, bulk);
-	bulk.clear();
-
-	for (const auto& e : refine) {
-		RPRINT(e.FrequencyData()); RPRINT(" | ");
-		RPRINT(e.dataValue());
+	for (const auto& e : vNods) {
+		RPRINT(e.dataValue()); RPRINT("|"); RPRINT(e.FrequencyData());
 		RET;
-	};
+	}
 
-	RET;
-
-	RPRINT("Filtered length: "); RPRINT(refine.size()); RET;
-
-	range_sort<double>(refine, 0, refine.size()-1);
-	sort_Nodes<double>(refine, refine.size());
-
-	RPRINT("Sorted Length:"); RPRINT(refine.size()); RET2();
-
-	for (const auto& e : refine) {
-		RPRINT(e.FrequencyData()); RPRINT(" | ");
-		RPRINT(e.dataValue());
-		RET;
-	};
 	RET2();
-
-	huff_tree_create(refine, refine.size());
-
-
-	_TREE::_Root->Print();
-
-	LCOUNT(_TREE::_Root);
-	RCOUNT(_TREE::_Root);
-	
-	
-	refine.clear();
 	node::Dispose();
-	
-
-	RET2();
 
 	return -1;
 }
