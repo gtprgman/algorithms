@@ -1,4 +1,4 @@
-/* Debugging State */
+/* Debugging Stages */
 #pragma once
 
 
@@ -35,6 +35,7 @@ struct LINK_ID {
 struct NODE_T;
 
 
+
 // a data structure of a Pair of Bit and Byte
 struct BPAIR {
 	Bit _bit;
@@ -69,10 +70,11 @@ struct node {
 	
 	node(const Byte); // for data tree
 	node(const double); // for frequency tree
+	node(const Byte, const double);
 	node(NODE_T&); // construct from NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
 	node(const NODE_T&); // construct from a ref to NODE_T
-	node(node&); // copy
+	node(node&); // simple copy
 	node(const node&); // overloaded copy
 	node(node&&) noexcept;	// move
 
@@ -81,8 +83,7 @@ struct node {
 	~node();
 
 
-	void Add(const Byte);
-	void Add(node&);
+	void Add(node&&);
 	
 	static void setSize(std::size_t const);
 	static void setRoot(const node** const);
@@ -112,8 +113,9 @@ struct node {
 	const bool Deleted() const;
 	const node Release() const;
 	
-	//Implicit conversion
+	// user explicit conversion
 	operator NODE_T() const;
+	operator NODE_T* () const;
 
 	const Byte operator()(void) const;
 	const bool operator< (const node&) const;
@@ -147,38 +149,6 @@ node** node::_ppRoot = nullptr;
 
 
 
-struct simple_avl {
-	static ULONG const LT_Count();
-	static ULONG const RT_Count();
-	static ULONG const balance_value();
-
-	static void set_LT(ULONG const);
-	static void set_RT(ULONG const);
-	static void reset_data();
-	static void compute_balance();
-	static void make_balance();
-
-	static void rotate_Right();
-	static void rotate_Left();
-
-
-	static node*_root1, *_root2;
-
-private:
-	static ULONG LT;
-	static ULONG RT;
-	static ULONG BAL;
-};
-
-node* simple_avl::_root1 = nullptr;
-node* simple_avl::_root2 = nullptr;
-
-ULONG simple_avl::LT = 0;
-ULONG simple_avl::RT = 0;
-ULONG simple_avl::BAL = 0;
-
-
-
 #ifndef _DEALLOCS_H
 #define _DEALLOCS_H
 
@@ -189,6 +159,7 @@ ULONG simple_avl::BAL = 0;
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
+	std::vector<node> vNods;
 
 	struct HF_REC {
 		HF_REC() {
@@ -265,10 +236,10 @@ ULONG simple_avl::BAL = 0;
 	// custom deleter for std::unique_ptr<node>
 	struct N_DELETER {
 		void operator()(node* _p0) {
-			_nRepo.emplace_back(_p0->links[1]);
+			_nRepo.emplace_back(_p0->links[R]);
 			
 			while (nullptr != _p0) {
-				_nRepo.emplace_back(_p0->links[0]);
+				_nRepo.emplace_back(_p0->links[L]);
 				_p0 = _p0->links[0];
 			}
 
@@ -302,6 +273,7 @@ static struct _Deallocator {
 
 
 #endif
+
 
 
 
@@ -345,6 +317,11 @@ struct NODE_T {
 	NODE_T(const Byte _vc) {
 		_v = _vc;
 		_freq = 0.00;
+	}
+
+	NODE_T(const double _fc) {
+		_v = 0;
+		_freq = _fc;
 	}
 
 	NODE_T(const Byte _vc, const double _fc) {
@@ -398,8 +375,31 @@ struct NODE_T {
 		return std::move(*this);
 	}
 
+
+	const NODE_T& operator*() const {
+		return *this;
+	}
+
+
+	const NODE_T* operator->() const {
+		return this;
+	}
+
+
 	const Byte operator()(void) const {
 		return _v;
+	}
+
+	// user explicit conversion
+	operator node() const {
+		node _nd(_v, _freq);
+		return _nd;
+	}
+
+
+	operator node* () const {
+		node* _np = new node(_v, _freq);
+		return (_np);
 	}
 
 	const bool operator < (const NODE_T& rNodT) const {
@@ -441,13 +441,14 @@ struct NODE_T {
 // allocate a new node
 template <class N>
 constexpr inline const node* const ALLOC_N(N const v) {
-	node* _p = new node(v);
+	node* _p = (CONST_PTR)ALLOC_N( new node(v) );
 	return (_p);
 }
 
 
 // allocate a new node by transferring resources from the old node
-inline const node* const ALLOC_N(node* _nod) {
+template <>
+inline const node* const ALLOC_N<node*>(node* _nod) {
 	node* tmp = new node(_nod->Release());
 	return (tmp);
 }
@@ -567,7 +568,7 @@ inline const char DATAC(const node& _fNod) {
 
 
 // create an instantaneous node object from a specified Byte value '_c'
-inline const node TO_NODE(const Byte _c) {
+inline const NODE_T TO_NODE(const Byte _c) {
 	node _Nod = _c;
 	return _Nod;
 }
@@ -629,7 +630,7 @@ inline const node* RECENT() {
 /* returns the frequency of a data node's value '_v',
   'setRoot()' must be initiated first before use
 */ 
-inline double FREQ(const Byte _v) {
+inline const double FREQ(const Byte _v) {
 	node* tmp = (CONST_PTR)node::_main;
 	double fqr = (tmp->Find<Byte>(_v))->FrequencyData();
 	NULLP(tmp);
@@ -637,8 +638,11 @@ inline double FREQ(const Byte _v) {
 }
 
 
+inline const double FREQX(const node* _Nod) {
+	return _Nod->FrequencyData();
+}
 
-// evaluates the sum of total elements in the array with '_Count' elements
+// evaluates the sum of total elements' value in the array with '_Count' elements
 template <class T >
 constexpr std::size_t inline total_values(const T& _any, const LongRange _Count) {
 	std::size_t nums = 0;
@@ -659,7 +663,7 @@ inline void passed_by(const node* const _p = nullptr ) {
 
 inline void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
-		printf("(%u.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->Freq()));
+		printf("(%u.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
 
@@ -668,28 +672,30 @@ inline void print_vf(const node* const _p) {
 // searches a particular node's value relative to the root node
 template < class N >
 constexpr inline const node* seek_n(const node* const uRoot, const N uc) {
-	node* tmp = (node* const)uRoot;
-	node* bckup = tmp;
+	node* tmp = (CONST_PTR)uRoot;
+	node* bckup = nullptr;
 
 	while (nullptr != tmp) {
 		if (VALX<N>(tmp) > uc) tmp = LEFT(tmp);
 		else if (VALX<N>(tmp) < uc) tmp = RIGHT(tmp);
 
-		else if ISNULL(tmp) {
-			bckup = nullptr;
-			break;
-		}
 		else if (VALX<N>(tmp) == uc) {
 			bckup = tmp;
 			break;
 		}
 
+		else if ISNULL(tmp) {
+			bckup = nullptr;
+			break;
+		}
+		
 	}
 
-	bckup = tmp;
 	NULLP(tmp);
 	return (bckup);
 }
+
+
 
 inline void RET2() {
 	RET;
@@ -832,32 +838,6 @@ const void huff_tree_create(const std::vector<node>&, const std::size_t);
 void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
-// simple_avl class Impl..
-	ULONG const simple_avl::LT_Count() { return LT;  }
-	ULONG const simple_avl::RT_Count() { return RT;  }
-	ULONG const simple_avl::balance_value() { return BAL;  }
-
-	void simple_avl::set_LT(ULONG const _lc) {
-		LT = _lc;
-	}
-
-	void simple_avl::set_RT(ULONG const _rc) {
-		RT = _rc;
-	}
-
-	void simple_avl::reset_data() {
-		LT = 0; RT = 0; BAL = 0;
-	}
-
-	void simple_avl::compute_balance() {
-		BAL = (LT > RT)? LT - RT : RT - LT;
-	}
-
-	void simple_avl::make_balance() {
-		if (LT > RT) rotate_Right();
-		else rotate_Left();
-	}
-
 	
 
 	// Node Class Impl..
@@ -884,6 +864,16 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
 	}
+
+
+	node::node(const Byte _c, const double _fv) : xDir(tDir::UNKNOWN),
+		_data(_c), _fdata(_fv), nCount(0.00), freq(0.00), cDir(0),
+		_visited(0), _deleted(0) 
+	{
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
+	}
+
 
 	/*
 	* construct a node from a temporary node object free of any entangled pointers
@@ -954,8 +944,11 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		_visited = rNod._visited;
 		_deleted = rNod._deleted;
 
-		links[0] = rNod.links[0];
-		links[1] = rNod.links[1];
+		links[L]->~node();
+		links[R]->~node();
+
+		links[L] = rNod.links[L];
+		links[R] = rNod.links[R];
 
 		return (*this);
 	}
@@ -973,8 +966,11 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		_visited = rvNod._visited;
 		_deleted = rvNod._deleted;
 
-		links[0] = rvNod.links[0];
-		links[1] = rvNod.links[1];
+		if (ASSERT_P(links[L])) delete links[L];
+		if (ASSERT_P(links[R])) delete links[R];
+
+		links[L] = rvNod.links[L];
+		links[R] = rvNod.links[R];
 
 		rvNod.cDir = 0;
 		rvNod.nCount = 0.00;
@@ -986,8 +982,8 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 		rvNod._visited = 0;
 		rvNod._deleted = 0;
 
-		rvNod.links[0] = nullptr;
-		rvNod.links[1] = nullptr;
+		rvNod.links[L] = nullptr;
+		rvNod.links[R] = nullptr;
 		rvNod.~node();
 
 		return std::move(*this);
@@ -995,141 +991,78 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	node::~node() {
-		 cDir = 0;
-		 nCount = 0.00;
-		 _data = 0;
-		 freq = 0.00;
-		 _fdata = 0.00;
-		 xDir = tDir::UNKNOWN;
-
-		 _visited = 0;
-		 _deleted = 0;
-
-		 this->links[0] = nullptr;
-		 this->links[1] = nullptr;
+		
 	}
 
 
 
-	void node::Add(const Byte uc) {
-		node* _p = nullptr;
-		_p = (CONST_PTR)(this);
-
+	
+	void node::Add(node&& _fv) {
 		{
-			node* _curr = (CONST_PTR)_p;
-			double nParts = 0.00;
+			node* _pNode = nullptr;
+			double fc = 0.00;
 
-			if (nullptr == _curr) return;
+			if (nullptr == this) return;
 
-			const Byte _Vr = _curr->Value();
+			{
+				node* _pThis = (CONST_PTR)this;
+				if (_pThis->FrequencyData() > _fv.FrequencyData()) {
+					if (ASSERT_P(_pThis->links[L])) {
+						_pNode = _pThis->links[L];
+						_pNode->Add(std::forward<node>(_fv) );
+						node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+					}
+					else {
+						_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
+						(_pThis->links[L])->setCode(L);
+						(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
+						node::_recent = _pThis->links[L];
 
-			if ((_Vr) > (uc))
-				if (ASSERT_P(_curr->links[L])) {
-					_curr = _curr->links[L];
-					_curr->Add(uc);
-					node::_recent = (CONST_PTR)_curr->Find<Byte>(uc);
+					}
 				}
-				else {
-					_curr->links[L] = (CONST_PTR)ALLOC_N<const Byte>(uc);
-					(_curr->links[L])->setCode(L);
-					(_curr->links[L])->setCount((_curr->links[L])->Count() + 1.0);
-					nParts = ((_curr->links[L])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[L])->setFrequencyData(nParts);
-					node::_recent = _curr->links[L];
-				}
+				else if (_pThis->FrequencyData() < _fv.FrequencyData()) {
+					if (ASSERT_P(_pThis->links[R])) {
+						_pNode = _pThis->links[R];
+						_pNode->Add( std::forward<node>(_fv) );
+						node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+					}
+					else {
+						_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
+						(_pThis->links[R])->setCode(R);
+						(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
+						node::_recent = _pThis->links[R];
+					}
 
-			else if ((_Vr) < (uc))
-				if (ASSERT_P(_curr->links[R])) {
-					_curr = _curr->links[R];
-					_curr->Add(uc);
-					node::_recent = (CONST_PTR)_curr->Find<Byte>(uc);
 				}
-				else {
-					_curr->links[R] = (CONST_PTR)ALLOC_N<const Byte>(uc);
-					(_curr->links[R])->setCode(R);
-					(_curr->links[R])->setCount((_curr->links[R])->Count() + 1.0);
-					nParts = ((_curr->links[R])->Count() / node::_totSizes) * 100.00;
-					(_curr->links[R])->setFrequencyData(nParts);
-					node::_recent = _curr->links[R];
+				else if (_pThis->FrequencyData() == _fv.FrequencyData()) {
+					fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00));
+					node::_totSizes += 1.0;
+					_fv.setFrequencyData(fc);
+					_pThis->Add( std::forward<node>(_fv) );
+					node::_recent = (CONST_PTR)PNODE<double>(fc);
 				}
-
-			else if ((_Vr) == (uc)) {
-				_curr->setCount(_curr->Count() + 1.0);
-				nParts = (_curr->Count() / node::_totSizes) * 100.00;
-				_curr->setFrequencyData(nParts);
-				node::_recent = _curr;
+				// add to vector<NODE_T> for later reference uses
+				NODE_T _nodTmp = std::move(_fv);
+				vNods.push_back(_nodTmp);
+			
+				if (vNods.size() > 20) sort_Nodes<Byte>(vNods, vNods.size());
+				
+				// automatically add to garbage collector
+				_Deleter.push(node::_recent); NULLP(_pThis);				
 			}
-
-			// automatically add to garbage collector
-			_Deleter.push(node::_recent);
-			_curr = nullptr;
+			NULLP(_pNode);
 		}
-
-		simple_avl::reset_data();
-		simple_avl::set_LT(L_HEIGHT(_main));
-		simple_avl::set_RT(R_HEIGHT(_main));
-		simple_avl::compute_balance();
-
-		if (simple_avl::balance_value() > 1)
-			simple_avl::make_balance();
-
-		NULLP(_p);
-	}
-
-
-
-	void node::Add(node& _fv) {
-		node* _pNode = nullptr;
-		double fc = 0.00;
-
-		if (nullptr == this) return;
-
-		{
-			node* _pThis = (CONST_PTR)this;
-			if (_pThis->FrequencyData() > _fv.FrequencyData() ) {
-				if (ASSERT_P(_pThis->links[L])) {
-					_pNode = _pThis->links[L];
-					_pNode->Add(_fv);
-				}
-				else {
-					_pThis->links[L] = (CONST_PTR)ALLOC_N(_fv);
-					(_pThis->links[L])->setCode(L);
-					(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
-					node::_recent = _pThis->links[L];
-
-				}
-			}
-			else if (_pThis->FrequencyData() < _fv.FrequencyData() ) {
-				if (ASSERT_P(_pThis->links[R])) {
-					_pNode = _pThis->links[R];
-					_pNode->Add(_fv);
-				}
-				else {
-					_pThis->links[R] = (CONST_PTR)ALLOC_N(_fv);
-					(_pThis->links[R])->setCode(R);
-					(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
-					node::_recent = _pThis->links[R];
-				}
-
-			}
-			else if (_pThis->FrequencyData() == _fv.FrequencyData() ) {
-				fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00) );
-				node::_totSizes += 1.0;
-				_fv.setFrequencyData(fc);
-				_pThis->Add(_fv);
-				node::_recent = (CONST_PTR)PNODE<double>(fc);
-			}
-			// automatically add to garbage collector
-			_Deleter.push(node::_recent); NULLP(_pThis);
-		}
-		NULLP(_pNode);
 	}
 	
+
+
 
 	// the total size of a data source
 	void node::setSize(std::size_t const _sizes) {
 		_totSizes = (const double)_sizes;
 	}
+
+
 
 
 	void node::setRoot(const node** const _uRoot = nullptr) {
@@ -1149,9 +1082,19 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 	template < class N>
 	constexpr const node* node::Find(const N uc) {
+		node _foundNod;
+
+		if (!std::strcmp("unsigned long", typeid(uc).name()))
+		{
+			NODE_T userValue = uc;
+			if (vector_search(vNods, userValue, _foundNod))
+				return seek_n<double>(this, userValue._freq);
+		}
+
 		return seek_n<N>(this, uc);
 	}
 		
+
 	
 	void node::setData(const Byte uc) {
 		_data = uc;
@@ -1224,11 +1167,16 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 	const bool node::Deleted() const { return _deleted;  }
 
-	// implicit conversion
+	// user explicit conversion
 	node::operator NODE_T() const {
-		node _nc = _data;
-		_nc.setFrequencyData(_fdata);
-		return _nc;
+		NODE_T nc(_data, _fdata);
+		
+		return nc;
+	}
+
+	node::operator NODE_T* () const {
+		NODE_T* _nt = new NODE_T(_data, _fdata);
+		return _nt;
 	}
 
 	const node node::Release() const {
@@ -1276,38 +1224,10 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 	void node::Dispose() {
 		_Deleter.dispose_all();
+		if (!vNods.empty()) vNods.clear();
 	}
 
 
-
-
-// AVL Implementations
-inline void simple_avl::rotate_Right() {
-	node* _nRoot = nullptr;
-	_nRoot = *node::_ppRoot;
-	_root1 = (CONST_PTR)ALLOC_N(LEFT(_nRoot));
-	_nRoot->links[L] = (CONST_PTR)ALLOC_N(RIGHT(_root1));
-	_nRoot->links[L]->setCode(L);
-	_root1->links[R] = _nRoot;
-	_root1->links[R]->setCode(R);
-	node::setRoot((const node** const)(&_root1));
-
-	NULL2P(_nRoot, _root1);
-}
-
-
-inline void simple_avl::rotate_Left() {
-	node* _nRoot = nullptr;
-	_nRoot = *node::_ppRoot;
-	_root2 = (CONST_PTR)ALLOC_N(RIGHT(_nRoot));
-	_nRoot->links[R] = (CONST_PTR)ALLOC_N(LEFT(_root2));
-	_nRoot->links[R]->setCode(R);
-	_root2->links[L] = _nRoot;
-	_root2->links[L]->setCode(L);
-	node::setRoot((const node** const)(&_root2));
-
-	NULL2P(_nRoot, _root2);
-}
 
 
 inline void data_tree_add(const node* const _p, const Byte _v) {
@@ -1318,8 +1238,10 @@ inline void data_tree_add(const node* const _p, const Byte _v) {
 
 inline void build_huffman_tree(node* _fRoot, const node* _f0t) {
 	node _tmp = *_f0t;
-	_fRoot->Add( _tmp );
+	_fRoot->Add( std::forward<node>(_tmp) );
 }
+
+
 
 
 template <class N >
@@ -1470,6 +1392,8 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 #endif
 
 
+
+
 template < class T, class E>
 inline const bool vector_search(const std::vector<T>& _vecNod, const E _fNod, T& _vElem) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
@@ -1519,6 +1443,7 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const E _fNod, T&
 
 
 
+
 const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 	bool _xFound = 0;
 	Byte _v0, _v1;
@@ -1544,7 +1469,7 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) {
 	bool _bFound = 0;
-	const LongRange _vSize = (LongRange)_nodes.size();
+	const std::size_t _vSize = _nodes.size();
 	node _tmp;
 
 	if (_nodes.empty()) {
@@ -1564,6 +1489,7 @@ void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) {
 
 	if (_nod._v != 0) _nodes.push_back(_nod);
 }
+
 
 
 
@@ -1639,6 +1565,7 @@ inline const void huff_tree_create(const std::vector<node>& vn, const std::size_
 		build_huffman_tree(_TREE::_Root, ft);
 	}
 }
+
 
 
 
