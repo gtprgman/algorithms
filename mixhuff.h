@@ -281,16 +281,14 @@ static struct _Deallocator {
 			vi != _repo.end(); vi++) {
 			vi->reset(nullptr);
 			vi->release();
-		}	
+		}
+		_repo.clear();
 	}
 
 	 
 } _Deleter;
 
-
-
 #endif
-
 
 
 
@@ -722,13 +720,15 @@ inline void RET2() {
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
+
 // Print a collection of nodes from the vector
-inline void NPRINT(const std::vector<node>& _vn) {
+template <class T>
+inline void NPRINT(const std::vector<T>& _vn) {
 	int col = 0;
-	for (const node& _ne : _vn) {
+	for (const T& _ne : _vn) {
 		col++;
-		RPRINT(_ne.dataValue()); RPRINT(" ");
-		RPRINT(_ne.FrequencyData()); RET;
+		RPRINT( (char)VALT<Byte>((node)_ne)); RPRINT(" ");
+		RPRINT(VALT<double>((node)_ne)); RET;
 		if (col > 79) {
 			col = 0;
 			RET;
@@ -766,8 +766,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 }
 
 
-// Add a complete node (data & freq values) to the tree.
-void freq_tree_add(const node* const, node&&);
+
 
 // construct a complete huffman tree data structure
 void build_huffman_tree(node* , const node*);
@@ -801,8 +800,8 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
 
 /* search a node in the vector container using binary search method,
    this function can apply only to a vector node sorted on data value. */
-template < class T , class E = NODE_T>
-const bool vector_search(const std::vector<T>&, const E ,T&);
+template < class T>
+const bool vector_search(const std::vector<T>&, const NODE_T& ,T&);
 
 
 /* search a node in the vector using linear search method,
@@ -829,6 +828,14 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 	
+// transform std::vector<unique_ptr<node>> into std::vector<node>
+inline void transForm2(std::vector<node>& _vNods) {
+	for (std::size_t i = 0; i < _repo.size(); i++) {
+		add_Nodes(_vNods, (NODE_T)*_repo[i]);
+	}
+}
+
+
 
 	// Node Class Impl..
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
@@ -993,20 +1000,67 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 
 
 
+	
 	void node::Add(node&& _fv) 
 	{
-			
-		freq_tree_add(this,std::forward<node>( _fv) );
+		node* _pNode = nullptr;
+		double fc = 0.00;
+
+		if (nullptr == this) return;
+
+		node* _pThis = (node* const)this;
+
+		if (_pThis->FrequencyData() > _fv.FrequencyData())
+		{
+			if (ASSERT_P(_pThis->links[L])) {
+				_pNode = _pThis->links[L];
+				_pNode->Add(std::forward<node>(_fv));
+				node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+			}
+			else {
+				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
+				(_pThis->links[L])->setCode(L);
+				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
+				node::_recent = _pThis->links[L];
+			}
+
+		}
+		else if (_pThis->FrequencyData() < _fv.FrequencyData())
+		{
+			if (ASSERT_P(_pThis->links[R])) {
+				_pNode = _pThis->links[R];
+				_pNode->Add(std::forward<node>(_fv));
+				node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+			}
+			else {
+				_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
+				(_pThis->links[R])->setCode(R);
+				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
+				node::_recent = _pThis->links[R];
+			}
+
+		}
+		else if (_pThis->FrequencyData() == _fv.FrequencyData())
+		{
+			fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00));
+			node::_totSizes += 1.0;
+			_fv.setFrequencyData(fc);
+			_pThis->Add(std::forward<node>(_fv));
+			node::_recent = (CONST_PTR)PNODE<double>(fc);
+		}
+	
 		// automatically add to garbage collector
 		_Deleter.push(node::_recent);
-		PRINT(DATAC(_fv));
 	}
 	
+
+
 
 	// the total size of a data source
 	void node::setSize(std::size_t const _sizes) {
 		_totSizes = (const double)_sizes;
 	}
+
 
 
 
@@ -1162,56 +1216,6 @@ void huffman_encode(std::vector<HF_REC>&,const node* const);
 	}
 
 
-
-
-inline void freq_tree_add(const node* const _p, node&& _fv) {
-	node* _pNode = nullptr;
-	double fc = 0.00;
-
-	if (nullptr == _p) return;
-
-	node* _pThis = (node*)_p;
-
-	if (_pThis->FrequencyData() > _fv.FrequencyData())
-	{
-		if (ASSERT_P(_pThis->links[L])) {
-			_pNode = _pThis->links[L];
-			_pNode->Add(std::forward<node>(_fv));
-			node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
-		}
-		else {
-			_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
-			(_pThis->links[L])->setCode(L);
-			(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
-			node::_recent = _pThis->links[L];
-		}
-
-	}
-	else if (_pThis->FrequencyData() < _fv.FrequencyData())
-	{
-		if (ASSERT_P(_pThis->links[R])) {
-			_pNode = _pThis->links[R];
-			_pNode->Add(std::forward<node>(_fv));
-			node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
-		}
-		else {
-			_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
-			(_pThis->links[R])->setCode(R);
-			(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
-			node::_recent = _pThis->links[R];
-		}
-
-	}
-	else if (_pThis->FrequencyData() == _fv.FrequencyData())
-	{
-		fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00));
-		node::_totSizes += 1.0;
-		_fv.setFrequencyData(fc);
-		_pThis->Add(std::forward<node>(_fv));
-		node::_recent = (CONST_PTR)PNODE<double>(fc);
-	}
-
-}
 
 
 
@@ -1373,36 +1377,36 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 
 
-template < class T, class E>
-inline const bool vector_search(const std::vector<T>& _vecNod, const E _fNod, T& _vElem) {
-	LongRange vecSize = 0, M = 0, L = 0, R = 0; 
+template < class T >
+inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fNod, T& _vElem) {
+	LongRange vecSize = 0, M = 0, L = 0, R = 0;
 	LongRange L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
-	E Uc; // Uc: user's value
+	NODE_T Uc; // Uc: user's value
 	T Vc; // Vector's value
 
 	if (_vecNod.empty()) return 0;
 
 	vecSize = (LongRange)_vecNod.size();
-	R = vecSize; 
+	R = vecSize;
 	R1 = R;
 	M = (L + R) / 2;
-	
+
 
 	Uc = _fNod; // user's value
 
 	do {
 		Vc = _vecNod[M];  // vector's value
 
-		if (Uc > Vc() ) {
+		if (Uc() < Vc()) {
 			L = M;
 			R = R1;
 		}
-		else if (Uc < Vc() ) {
+		else if (Uc() > Vc()) {
 			L = L1;
 			R = M;
 		}
 
-		else if (Uc == Vc() ) {
+		else if (Uc() == Vc()) {
 			_vElem = _vecNod.at(M);
 			break;
 		}
@@ -1412,12 +1416,12 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const E _fNod, T&
 		M = (L + R) / 2;
 
 		++nSeek;
-		if ((M < 0) || (M > vecSize )) break;
-		if (nSeek > vecSize) break; 
-		
-	} while (Uc != Vc());
+		if ((M < 0) || (M > vecSize)) break;
+		if (nSeek > vecSize) break;
 
-	return ( Uc == Vc() );
+	} while (Uc() != Vc());
+
+	return (Uc() == Vc());
 }
 
 
@@ -1446,27 +1450,34 @@ const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
 
 
 
-void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) {
+void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
+{
 	bool _bFound = 0;
 	const std::size_t _vSize = _nodes.size();
 	node _tmp;
 
 	if (_nodes.empty()) {
-		if (_nod._v != 0) _nodes.push_back(_nod);
+		if (_nod() != 0) _nodes.push_back(_nod);
 		return;
 	}
 
-	if (_vSize < 20)
-		_bFound = search_Node(_nodes, _nod._v);
+	if (_nodes.size() < 20)
+	{
+		//PRINT("Linear search..");
+		_bFound = search_Node(_nodes, _nod);
 
-	if (_vSize > 20) {
-		sort_Nodes<Byte>(_nodes, _vSize);
-		_bFound = vector_search(_nodes, _nod._v, _tmp);
 	}
-
+	else if (_nodes.size() > 20)
+	{
+		//PRINT("Vector search..");
+		_bFound = vector_search(_nodes, _nod, _tmp);
+	}
+		
 	if (_bFound) return;
-
-	if (_nod._v != 0) _nodes.push_back(_nod);
+	else {
+		if (_nod() != 0) _nodes.push_back(_nod);
+		if (_nodes.size() > 20) sort_Nodes<Byte>(_nodes,_nodes.size());
+	}
 }
 
 
