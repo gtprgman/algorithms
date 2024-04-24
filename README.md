@@ -23,6 +23,10 @@ TEST_HUFF_00.cpp : testing unit for 'mixhuff.h' (pre-built).
 TEST_HUFF_READY_03.cpp : Unit test for 'mixhuff.h' library.
 squzip.cpp : Program for compressing data using the 'mixhuff.h' library.
 
+mixhash.h : a library for hashing functionality.
+hash_main.cpp : a test unit for mixhash.h.
+
+
 
 
 
