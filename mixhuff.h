@@ -412,7 +412,11 @@ struct NODE_T {
 		return _nd;
 	}
 
-	
+	// implicit conversion
+	operator bool() const
+	{
+		return (this->_v != NULL);
+	}
 
 	const bool operator < (const NODE_T& rNodT) const {
 		return (_v < rNodT._v);
