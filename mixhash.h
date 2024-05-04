@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef REQUIRE_H
+	using namespace mix::ptr_type;
+	using namespace mix::smart_ptr;
+
+#endif
+
 
 const std::size_t factorial(const std::size_t);
 const std::size_t permute(const std::size_t);
@@ -7,7 +13,7 @@ const std::size_t permute(const std::size_t);
 
 #ifndef MX_HASH
 #define MX_HASH
-
+ 
 
 inline const UINT factorial(const UINT n)
 {
@@ -28,23 +34,55 @@ inline const std::size_t permute(const std::size_t _TMinusOne)
 template <class T>
 struct cElem
 {
-	cElem() {}
+	cElem() : KeyC(0), DataC(0), _Extra(nullptr) {}
 
-	cElem(T&& _instance) : DataC(_instance)
+	cElem(T&& _instance) : KeyC(0),DataC(std::move(_instance)), _Extra(nullptr)
 	{
 
 	}
 	
+	~cElem()
+	{
+		_Extra = nullptr;
+	}
+
+	
+
+	// move ctor
+	cElem(cElem<T>&& _iElem)
+	{
+		if (this == &_iElem) return;
+		*this = std::move(_iElem);
+	}
+
+
+	cElem<T>&& operator= (cElem<T>&& _mElem)
+	{
+		if (this == &_mElem)
+			return std::move(*this);
+
+		this->DataC = std::move(_mElem.DataC);
+		this->KeyC = _mElem.KeyC;
+		this->_Extra = std::move(_mElem._Extra);
+
+	
+		_mElem.~cElem();
+		return std::move(*this);
+	}
+
+
 	T DataC;
-	cElem<T>* _head = nullptr;
-	cElem<T>* _next = nullptr;
+	LongRange KeyC;
+
+	UNIQUE_ARRAY<cElem<T>> _Extra;
 
 	const LongRange operator()() const {
 		_Counter++;
 		return _Counter;
 	}
 
-	const LongRange i() const {
+	// returns the i position of the item
+	const LongRange i()  {
 		return _Counter;
 	}
 
@@ -54,8 +92,14 @@ struct cElem
 		return ( DataC() != T());
 	}
 	
+	
+	// disabling old-style manner
+	cElem(const cElem<T>&) = delete;
+	const cElem<T>& operator= (const cElem<T>&) = delete;
+
 private:
 	static LongRange _Counter;
+
 };
 
 
@@ -65,14 +109,22 @@ LongRange cElem<T>::_Counter = 0;
 
 
 
-template < class T >
-class cHash
+
+template <class T>
+class cHash;
+
+
+
+template < class Ty > /* partial template specialization for cHash<T>, 
+  where T = cElem<Ty>; Ty depends on user supplied type */
+
+class cHash<cElem<Ty>>
 {
 public:
-	cHash() {};
-	cHash(const std::size_t _sz) :_M(_sz), _pList(std::make_unique<cElem<T>[]>(_sz))
+	cHash() : _pList{nullptr} {}
+	cHash(const std::size_t _sz) :_M(_sz)
 	{
-
+		_pList = _Master.create(_sz);
 	}
 
 
@@ -84,56 +136,67 @@ public:
 		return hash(_K);
 	}
 
+
 	// Returns a recalculated hash by means of linear probing
 	const std::size_t operator()(const LongRange _K, const LongRange _c) const {
 		return probe(_K, _c);
 	}
 
-	const cElem<T>& operator[](const std::size_t _idx) const
+	 
+	// returns the '_i' element of the internal array
+	cElem<Ty>&& elements(const std::size_t _i) const
 	{
-		return _pList[_idx];
+		return std::move(_pList[_i] );
 	}
 
 
-	void operator= (cElem<T>&& _rElem)
+	void operator= (cElem<Ty>&& _rElem)
 	{
-		Add(std::forward<cElem<T>>(_rElem) );
+		const LongRange _key = _rElem();
+		std::size_t nPos = hash(_key);
+
+		if (!Exist(nPos)) {
+			_rElem.KeyC = _rElem.i();
+			_pList[nPos] = std::move(_rElem);
+		}
+		else
+		{
+			nPos = probe(nPos, (_rElem.i() / _M) * _rElem.i());
+			if (Exist(nPos))
+			{
+			/*
+				
+
+			*/
+			}
+
+		}
 	}
 
 	
 	const bool Exist(const std::size_t _hPos)
 	{
-		return ( _pList[_hPos] );
+		return _pList[_hPos];
 	}
 
 private:
 	std::size_t _M;
-	std::unique_ptr<cElem<T>[]> _pList;
+	UNIQUE_ARRAY<cElem<Ty>> _pList;
+	unique_array_ptr<cElem<Ty>> _Master;
 
 
-	const std::size_t hash(const LongRange& _Key)
+	const std::size_t hash(const LongRange& _Key) const
 	{
 		return _Key % (LongRange)_M;
 	}
 
-	const std::size_t probe(const LongRange& _Key, const LongRange& _ci)
+
+	const std::size_t probe(const LongRange& _Key, const LongRange& _ci) const
 	{
 		LongRange _home = (LongRange)hash(_Key);
 		return (_home + _ci) % _M;
 	}
 
-	void Add(const cElem<T>& rElem_)
-	{
-		std::size_t nPos = hash(rElem_());
-
-		if (!Exist(nPos))
-			_pList[nPos] = rElem_;
-		else
-		{
-			nPos = probe(nPos, (rElem_.i() / _M) * rElem_.i());
-		}
-		
-	}
 };
 
 #endif
