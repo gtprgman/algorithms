@@ -43,6 +43,8 @@ struct cElem
 	
 	~cElem()
 	{
+		_head = nullptr;
+		_next = nullptr;
 		_Extra = nullptr;
 	}
 
@@ -63,6 +65,9 @@ struct cElem
 
 		this->DataC = std::move(_mElem.DataC);
 		this->KeyC = _mElem.KeyC;
+
+		this->_head = std::move(_mElem._head);
+		this->_next = std::move(_mElem._next);
 		this->_Extra = std::move(_mElem._Extra);
 
 	
@@ -73,6 +78,8 @@ struct cElem
 
 	T DataC;
 	LongRange KeyC;
+	uniqueP<cElem> _head;
+	uniqueP<cElem> _next;
 
 	UNIQUE_ARRAY<cElem<T>> _Extra;
 
@@ -121,10 +128,10 @@ template < class Ty > /* partial template specialization for cHash<T>,
 class cHash<cElem<Ty>>
 {
 public:
-	cHash() : _pList{nullptr} {}
-	cHash(const std::size_t _sz) :_M(_sz)
+	cHash() : _elemPtr(nullptr), _pList{nullptr} {}
+	cHash(const std::size_t _sz) : _elemPtr(nullptr), _M(_sz)
 	{
-		_pList = _Master.create(_sz);
+		_pList = MK_U_ARRAY<cElem<Ty>>((UINT)_sz);
 	}
 
 
@@ -164,12 +171,24 @@ public:
 			nPos = probe(nPos, (_rElem.i() / _M) * _rElem.i());
 			if (Exist(nPos))
 			{
-			/*
-				
+				if (_pList[nPos]._next == nullptr)
+				{
+					_pList[nPos]._next = up_create<cElem<Ty>>();
+					_pList[nPos]._next->_head = std::unique_ptr<cElem<Ty>>(&_pList[nPos]);
+				}	
+				else
+				{   
+					int kPos = next_N_Links_of(&_pList[nPos]);
+					_elemPtr = &_pList[nPos]; // get the first offset Ptr of _pList
 
-			*/
+					for (int j = 0; j < kPos; j++)
+					{
+						_elemPtr = _elemPtr->_next.get();
+					}
+					_elemPtr->_next = up_create<cElem<NODE_T>>();
+				}
+			 NULLP(_elemPtr);
 			}
-
 		}
 	}
 
@@ -181,8 +200,11 @@ public:
 
 private:
 	std::size_t _M;
+
+	// a raw pointer to each linked element of _pList
+	cElem<Ty>* _elemPtr;
+
 	UNIQUE_ARRAY<cElem<Ty>> _pList;
-	unique_array_ptr<cElem<Ty>> _Master;
 
 
 	const std::size_t hash(const LongRange& _Key) const
@@ -197,6 +219,30 @@ private:
 		return (_home + _ci) % _M;
 	}
 
+
+	const bool subExist(const cElem<Ty>& _eLem)
+	{
+		return _eLem;
+	}
+
+
+	// Take the N number of successive next Ptrs from the _pList[_Offset].
+	const int next_N_Links_of(const cElem<Ty>* _Offset)
+	{
+		int nSkip = -1;
+		_elemPtr = (cElem<Ty>*)_Offset;
+
+		if (_elemPtr == nullptr) return -1;
+
+		do
+		{
+			_elemPtr = _elemPtr->_next.get();
+			++nSkip;
+		} while (_elemPtr == nullptr);
+			
+		return nSkip;
+	}
+	
 };
 
 #endif
