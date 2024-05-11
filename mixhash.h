@@ -1,3 +1,5 @@
+/* Using License: GPL v 3.0 */
+
 #pragma once
 
 #ifdef REQUIRE_H
@@ -34,21 +36,40 @@ inline const std::size_t permute(const std::size_t _TMinusOne)
 template <class T>
 struct cElem
 {
-	cElem() : KeyC(0), DataC(0), _Extra(nullptr) {}
+	cElem() : KeyC(0), DataC(0) {}
 
-	cElem(T&& _instance) : KeyC(0),DataC(std::move(_instance)), _Extra(nullptr)
+	cElem(T&& _instance) : KeyC(0), DataC(std::move(_instance))
 	{
 
 	}
-	
+
 	~cElem()
 	{
 		_head = nullptr;
 		_next = nullptr;
-		_Extra = nullptr;
 	}
 
-	
+
+	// Copy Ctor
+	cElem(const cElem<T>& _rElm)
+	{
+		if (this == &_rElm) return;
+		*this = _rElm;
+	}
+
+
+	// Copy Assignment operator
+	const cElem<T>& operator= (const cElem<T>& _rElm)
+	{
+		if (this == &_rElm) return *this;
+
+		this->KeyC = _rElm.KeyC;
+		this->DataC = _rElm.DataC;
+
+
+		return *this;
+	}
+
 
 	// move ctor
 	cElem(cElem<T>&& _iElem)
@@ -68,9 +89,8 @@ struct cElem
 
 		this->_head = std::move(_mElem._head);
 		this->_next = std::move(_mElem._next);
-		this->_Extra = std::move(_mElem._Extra);
 
-	
+
 		_mElem.~cElem();
 		return std::move(*this);
 	}
@@ -78,42 +98,20 @@ struct cElem
 
 	T DataC;
 	LongRange KeyC;
-	uniqueP<cElem> _head;
-	uniqueP<cElem> _next;
+	uniqueP<cElem<T>> _head;
+	uniqueP<cElem<T>> _next;
 
-	UNIQUE_ARRAY<cElem<T>> _Extra;
-
-	const LongRange operator()() const {
-		_Counter++;
-		return _Counter;
-	}
-
-	// returns the i position of the item
-	const LongRange i()  {
-		return _Counter;
-	}
-
-	
 	operator bool() const
 	{
-		return ( DataC() != T());
+		return (DataC() != T());
 	}
-	
-	
-	// disabling old-style manner
-	cElem(const cElem<T>&) = delete;
-	const cElem<T>& operator= (const cElem<T>&) = delete;
 
-private:
-	static LongRange _Counter;
+	const bool Empty() const
+	{
+		return (DataC() == T());
+	}
 
 };
-
-
-template < class T >
-LongRange cElem<T>::_Counter = 0;
-
-
 
 
 
@@ -150,31 +148,58 @@ public:
 	}
 
 	 
-	// returns the '_i' element of the internal array
+	// returns the '_i' element of the internal array of cHash object
 	cElem<Ty>&& elements(const std::size_t _i) const
 	{
 		return std::move(_pList[_i] );
 	}
 
 
+	/* get the data element of a specific key '_uKey',
+	   the key specified as '_uKey' must be the core data object/value
+	   not the index or reference to the data object.
+	*/
+	const Ty operator[](const LongRange _uKey)
+	{
+		Ty _DataObj;
+
+		std::size_t nPos = hash(_uKey);
+		if( !elements(nPos).Empty() ) nPos = probe(nPos, 1);
+
+		_elemPtr = _pList[nPos]._next.get(); 
+		
+		while (_elemPtr != nullptr)
+		{
+			if (_elemPtr->KeyC == _uKey)
+			{
+				_DataObj = _elemPtr->DataC;
+				_elemPtr = nullptr;
+			}
+		}
+
+		return _DataObj;
+	}
+
+
 	void operator= (cElem<Ty>&& _rElem)
 	{
-		const LongRange _key = _rElem();
+		const LongRange _key = _rElem.DataC();
 		std::size_t nPos = hash(_key);
-
+		
 		if (!Exist(nPos)) {
-			_rElem.KeyC = _rElem.i();
+			_rElem.KeyC = _rElem.DataC();
 			_pList[nPos] = std::move(_rElem);
 		}
 		else
 		{
-			nPos = probe(nPos, (_rElem.i() / _M) * _rElem.i());
+			nPos = probe(nPos, 1);
 			if (Exist(nPos))
 			{
 				if (_pList[nPos]._next == nullptr)
 				{
 					_pList[nPos]._next = up_create<cElem<Ty>>();
 					_pList[nPos]._next->_head = std::unique_ptr<cElem<Ty>>(&_pList[nPos]);
+					*_pList[nPos]._next = _rElem;
 				}	
 				else
 				{   
@@ -186,6 +211,7 @@ public:
 						_elemPtr = _elemPtr->_next.get();
 					}
 					_elemPtr->_next = up_create<cElem<NODE_T>>();
+					*_elemPtr->_next = _rElem;
 				}
 			 NULLP(_elemPtr);
 			}
@@ -220,7 +246,7 @@ private:
 	}
 
 
-	const bool subExist(const cElem<Ty>& _eLem)
+	const bool subExist(cElem<Ty>&& _eLem)
 	{
 		return _eLem;
 	}
