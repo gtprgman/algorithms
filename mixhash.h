@@ -210,10 +210,10 @@ public:
 					{
 						_elemPtr = _elemPtr->_next.get();
 					}
-					_elemPtr->_next = up_create<cElem<NODE_T>>();
+					_elemPtr->_next = up_create<cElem<Ty>>();
 					*_elemPtr->_next = _rElem;
 				}
-			 NULLP(_elemPtr);
+			 _elemPtr = nullptr;
 			}
 		}
 	}
