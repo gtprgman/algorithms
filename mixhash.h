@@ -1,4 +1,3 @@
-/* Using License: GPL v 3.0 */
 
 #pragma once
 
@@ -38,11 +37,12 @@ struct cElem
 {
 	cElem() : KeyC(0), DataC(0) {}
 
-	cElem(T&& _instance) : KeyC(0), DataC(std::move(_instance))
+	cElem(T&& _instance) : KeyC(0), DataC(std::forward<T>(_instance))
 	{
 
 	}
 
+	
 	~cElem()
 	{
 		_head = nullptr;
@@ -65,7 +65,7 @@ struct cElem
 
 		this->KeyC = _rElm.KeyC;
 		this->DataC = _rElm.DataC;
-
+		
 
 		return *this;
 	}
@@ -79,6 +79,7 @@ struct cElem
 	}
 
 
+	// Move assignment
 	cElem<T>&& operator= (cElem<T>&& _mElem)
 	{
 		if (this == &_mElem)
@@ -111,6 +112,7 @@ struct cElem
 		return (DataC() == T());
 	}
 
+	
 };
 
 
@@ -164,19 +166,29 @@ public:
 		Ty _DataObj;
 
 		std::size_t nPos = hash(_uKey);
-		if( !elements(nPos).Empty() ) nPos = probe(nPos, 1);
-
-		_elemPtr = _pList[nPos]._next.get(); 
 		
-		while (_elemPtr != nullptr)
+		if (elements(nPos).KeyC != _uKey)
 		{
-			if (_elemPtr->KeyC == _uKey)
+			nPos = probe(nPos, 1);
+			_elemPtr = &_pList[nPos];
+			while (_elemPtr != nullptr)
 			{
-				_DataObj = _elemPtr->DataC;
-				_elemPtr = nullptr;
+				if (_elemPtr->KeyC == _uKey)
+				{
+					_DataObj = _elemPtr->DataC;
+					_elemPtr = nullptr;
+				}
+				else
+				{
+					_elemPtr = _elemPtr->_next.get();
+				}
 			}
 		}
-
+		else
+		{
+			_DataObj = elements(nPos).DataC;
+		}
+		
 		return _DataObj;
 	}
 
@@ -185,36 +197,39 @@ public:
 	{
 		const LongRange _key = _rElem.DataC();
 		std::size_t nPos = hash(_key);
-		
+
+		if (nPos > _M) --nPos;
+
 		if (!Exist(nPos)) {
 			_rElem.KeyC = _rElem.DataC();
 			_pList[nPos] = std::move(_rElem);
+			return;
 		}
-		else
+		
+		if (Exist(nPos))
 		{
 			nPos = probe(nPos, 1);
-			if (Exist(nPos))
+			if (elements(nPos).Empty())
+			{
+				_rElem.KeyC = _rElem.DataC();
+				_pList[nPos] = std::move(_rElem);
+				return;
+			}
+			else
 			{
 				if (_pList[nPos]._next == nullptr)
-				{
 					_pList[nPos]._next = up_create<cElem<Ty>>();
-					_pList[nPos]._next->_head = std::unique_ptr<cElem<Ty>>(&_pList[nPos]);
-					*_pList[nPos]._next = _rElem;
-				}	
-				else
-				{   
-					int kPos = next_N_Links_of(&_pList[nPos]);
-					_elemPtr = &_pList[nPos]; // get the first offset Ptr of _pList
 
-					for (int j = 0; j < kPos; j++)
-					{
-						_elemPtr = _elemPtr->_next.get();
-					}
-					_elemPtr->_next = up_create<cElem<Ty>>();
-					*_elemPtr->_next = _rElem;
-				}
-			 _elemPtr = nullptr;
+				int kPos = next_N_Links_of(&_pList[nPos]);
+				_elemPtr = &_pList[nPos]; // get the first offset Ptr of _pList
+
+				for (int i = 0; i < kPos; i++)
+				{
+					_elemPtr = _elemPtr->_next.get();
+				} 
+				*_elemPtr = _rElem;
 			}
+			_elemPtr = nullptr;
 		}
 	}
 
@@ -260,12 +275,14 @@ private:
 
 		if (_elemPtr == nullptr) return -1;
 
-		do
+		while (_elemPtr != nullptr)
 		{
 			_elemPtr = _elemPtr->_next.get();
 			++nSkip;
-		} while (_elemPtr == nullptr);
-			
+		}
+		
+		_elemPtr = nullptr;
+
 		return nSkip;
 	}
 	
