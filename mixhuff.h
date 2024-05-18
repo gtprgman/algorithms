@@ -1,15 +1,19 @@
 /* Debugging Stages --> in Progress */
 #pragma once
 
+#ifndef REQUIRE_H
+#include "mixutil.h"
+#endif
 
-using Bit = unsigned char;
-using UINT = unsigned int;
-using ULONG = unsigned long;
-using Byte = unsigned long;
-using LongRange = long long;
-using LONGFLOAT = long double;
 
 static LONGFLOAT CSIZE = 0.00;
+
+
+#ifndef MX_HASH
+#include "mixhash.h"
+#endif
+
+
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
 
