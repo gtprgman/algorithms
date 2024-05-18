@@ -18,7 +18,17 @@ be implemented in the any time of the future.
 		
 		#include <initializer_list>
 		#include <forward_list>
-		#include "mixtree.h"
+		/*
+		   include any functional headers here..
+		*/
+
+using Bit = unsigned char;
+using UINT = unsigned int;
+using ULONG = unsigned long;
+using Byte = unsigned long;
+using LongRange = long long;
+using LONGFLOAT = long double;
+
 #endif
 
 
