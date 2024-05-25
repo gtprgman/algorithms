@@ -1,4 +1,4 @@
-
+/* Using License: GPL v. 3.0 */
 #pragma once
 
 #ifdef REQUIRE_H
@@ -35,39 +35,24 @@ inline const std::size_t permute(const std::size_t _TMinusOne)
 template <class T>
 struct cElem
 {
-	cElem() : KeyC(0), DataC(0) {}
+	cElem() : KeyC(0), DataC(0), _head{ nullptr}, _next{ nullptr } {}
 
 	cElem(T&& _instance) : KeyC(0), DataC(std::forward<T>(_instance))
-	{
-
-	}
-
-	
-	~cElem()
 	{
 		_head = nullptr;
 		_next = nullptr;
 	}
 
-
-	// Copy Ctor
-	cElem(const cElem<T>& _rElm)
+	cElem(const T& _instance) : KeyC(0), DataC(_instance)
 	{
-		if (this == &_rElm) return;
-		*this = _rElm;
+		_head = nullptr;
+		_next = nullptr;
 	}
 
-
-	// Copy Assignment operator
-	const cElem<T>& operator= (const cElem<T>& _rElm)
+	~cElem()
 	{
-		if (this == &_rElm) return *this;
-
-		this->KeyC = _rElm.KeyC;
-		this->DataC = _rElm.DataC;
-		
-
-		return *this;
+		_head = nullptr;
+		_next = nullptr;
 	}
 
 
@@ -99,6 +84,7 @@ struct cElem
 
 	T DataC;
 	LongRange KeyC;
+
 	uniqueP<cElem<T>> _head;
 	uniqueP<cElem<T>> _next;
 
@@ -113,6 +99,8 @@ struct cElem
 	}
 
 	
+	cElem(const cElem<T>&) = delete;
+	const cElem<T>& operator= (const cElem<T>&) = delete;
 };
 
 
@@ -150,10 +138,10 @@ public:
 	}
 
 	 
-	// returns the '_i' element of the internal array of cHash object
-	cElem<Ty>&& elements(const std::size_t _i) const
+	// get the element at '_i' position of the internal array
+	const cElem<Ty>& elements(const std::size_t _i) const
 	{
-		return std::move(_pList[_i] );
+		return _pList[_i];
 	}
 
 
@@ -161,7 +149,7 @@ public:
 	   the key specified as '_uKey' must be the core data object/value
 	   not the index or reference to the data object.
 	*/
-	const Ty operator[](const LongRange _uKey)
+	const Ty get(const LongRange _uKey)
 	{
 		Ty _DataObj;
 
@@ -200,41 +188,38 @@ public:
 
 		if (nPos > _M) --nPos;
 
+		// if the returned slot position hasn't been occupied by other..
 		if (!Exist(nPos)) {
-			_rElem.KeyC = _rElem.DataC();
+			_rElem.KeyC = _key;
 			_pList[nPos] = std::move(_rElem);
 			return;
 		}
 		
+		// if the slot is not empty..
 		if (Exist(nPos))
 		{
-			nPos = probe(nPos, 1);
-			if (elements(nPos).Empty())
+			nPos = probe(nPos, 1); // searches other possible empty slot..
+			if (!Exist(nPos) ) // if any found slot has not been occupied..
 			{
-				_rElem.KeyC = _rElem.DataC();
+				_rElem.KeyC = _key;
 				_pList[nPos] = std::move(_rElem);
 				return;
 			}
 			else
 			{
-				if (_pList[nPos]._next == nullptr)
-					_pList[nPos]._next = up_create<cElem<Ty>>();
+				_rElem.KeyC = _key;
+				_elemPtr = (cElem<Ty>*)add_next_links(&_pList[nPos]);
 
-				int kPos = next_N_Links_of(&_pList[nPos]);
-				_elemPtr = &_pList[nPos]; // get the first offset Ptr of _pList
-
-				for (int i = 0; i < kPos; i++)
+				if ( _elemPtr != nullptr )
 				{
-					_elemPtr = _elemPtr->_next.get();
-				} 
-				*_elemPtr = _rElem;
+					*_elemPtr = std::move(_rElem);
+				}
 			}
-			_elemPtr = nullptr;
 		}
 	}
 
 	
-	const bool Exist(const std::size_t _hPos)
+	const cElem<Ty>& Exist(const std::size_t _hPos) const
 	{
 		return _pList[_hPos];
 	}
@@ -261,30 +246,27 @@ private:
 	}
 
 
-	const bool subExist(cElem<Ty>&& _eLem)
+
+	/* Add next pointer to the current Linked-List chain. */
+	const cElem<Ty>* add_next_links(const cElem<Ty>* _ptr)
 	{
-		return _eLem;
-	}
+		 _elemPtr = (cElem<Ty>*)_ptr;
 
-
-	// Take the N number of successive next Ptrs from the _pList[_Offset].
-	const int next_N_Links_of(const cElem<Ty>* _Offset)
-	{
-		int nSkip = -1;
-		_elemPtr = (cElem<Ty>*)_Offset;
-
-		if (_elemPtr == nullptr) return -1;
-
-		while (_elemPtr != nullptr)
+		if (_elemPtr->_next == nullptr)
 		{
-			_elemPtr = _elemPtr->_next.get();
-			++nSkip;
+			_elemPtr->_next = up_create<cElem<Ty>>();
+			return (_elemPtr->_next.get());
 		}
-		
-		_elemPtr = nullptr;
 
-		return nSkip;
+
+		while (_elemPtr->_next != nullptr)
+			_elemPtr = _elemPtr->_next.get();
+
+		_elemPtr->_next = up_create<cElem<Ty>>();
+
+		return (_elemPtr->_next.get());
 	}
+
 	
 };
 
