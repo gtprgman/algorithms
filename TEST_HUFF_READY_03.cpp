@@ -1,48 +1,32 @@
-#include <iostream>
+#ifndef REQUIRE_H
+	#include "mixutil.h"
+#endif
+
 #include "mixhuff.h"
 
 
 
 int main() {
-	std::string s = "She Sells Shells in the Sea Shore.";
-	std::vector<NODE_T> nodT;
-	std::vector<node> nods, ordered, treeNods;
+	std::string s = "Ada Ate Apple.";
+	const std::size_t SZ = s.size();
+	std::vector<node> nod, fNod;
 
-	for (const auto& x : s)
-		nodT.push_back(x);
+	for (const int i : s)
+		nod.push_back(NODE_T(i));
 
-	transForm(nods, nodT); nodT.clear();
-
-	sort_Nodes<Byte>(nods,nods.size());
-
-	filter_Nodes(ordered, nods); nods.clear();
+	sort_Nodes<Byte>(nod, SZ);
 	
-	node* ft = (CONST_PTR)ALLOC_N(50.00);
-	node::setRoot(ROOT2P(&ft));
+	filter_Nodes(fNod, nod);
 
-	for (auto& e : ordered)
-		ft->Add(std::forward<node>(e) );
+	nod.clear();
 
-	transForm2(treeNods); ordered.clear();
-
-	//sort_Nodes<double>(treeNods, treeNods.size());
-
-	sort_Nodes<Byte>(treeNods, treeNods.size());
-
-	NPRINT(treeNods); RET;
-
-	NODE_T nf = 't';
-	node ndf;
+	NPRINT(fNod);
 
 
-	RPRINT("Found: ");  RPRINT(vector_search(treeNods, nf, ndf));
-	RPRINT((char)ndf());
-	
-	
 
 	RET2();
 
-	treeNods.clear();
-	node::Dispose();
+	
+
 	return -1;
 }
