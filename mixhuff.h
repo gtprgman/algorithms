@@ -6,13 +6,15 @@
 #endif
 
 
+
 static LONGFLOAT CSIZE = 0.00;
 
 
 #ifndef MX_HASH
-#include "mixhash.h"
+	#include "mixhash.h"
+	template <class Ty>
+	cHash<cElem<Ty>> HS(4096); // a preset of 4K size
 #endif
-
 
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
@@ -90,7 +92,7 @@ struct node {
 
 	void Add(node&&);
 	
-	static void setSize(std::size_t const);
+	static void setSize(const std::size_t);
 	static void setRoot(const node** const);
 	static void setRoot_stack(const node*);
 
@@ -292,7 +294,10 @@ static struct _Deallocator {
 	 
 } _Deleter;
 
+
+
 #endif
+
 
 
 
@@ -416,7 +421,7 @@ struct NODE_T {
 		return _nd;
 	}
 
-	// implicit conversion
+	
 	operator bool() const
 	{
 		return (this->_v != NULL);
@@ -437,7 +442,7 @@ struct NODE_T {
 	const bool operator > (const NODE_T& rNodT) const {
 		return (_v > rNodT._v);
 	}
-	
+
 };
 
 #define RET std::cout << "\n";
@@ -745,6 +750,8 @@ inline void NPRINT(const std::vector<T>& _vn) {
 }
 
 
+
+
 #endif
 
 
@@ -810,11 +817,6 @@ void range_sort(std::vector<node>&, const LongRange, const LongRange);
    this function can apply only to a vector node sorted on data value. */
 template < class T>
 const bool vector_search(const std::vector<T>&, const NODE_T& ,T&);
-
-
-/* search a node in the vector using linear search method,
-  argument to the second parameter must be supplied with ' nodeX(_ch)' macro. */ 
-const bool search_Node(const std::vector<node>&, const NODE_T);
 
 /*  Filter nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
@@ -1065,7 +1067,7 @@ inline void transForm2(std::vector<node>& _vNods) {
 
 
 	// the total size of a data source
-	void node::setSize(std::size_t const _sizes) {
+	void node::setSize(const std::size_t _sizes) {
 		_totSizes = (const double)_sizes;
 	}
 
@@ -1435,57 +1437,29 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fN
 
 
 
-const bool search_Node(const std::vector<node>& _vec, const NODE_T _Nod) {
-	bool _xFound = 0;
-	Byte _v0, _v1;
-
-	if (_vec.empty()) return 0;
-
-	_v0 = _Nod._v;
-
-	for (const node& e : _vec) {
-		_v1 = e.Value();
-
-		if (_v0 == _v1) {
-			_xFound = 1;
-			break;
-		}
-	}
-
-	return _xFound;
-}
-
-
-
-
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
 {
-	bool _bFound = 0;
+	LongRange val = _nod._v;
 	const std::size_t _vSize = _nodes.size();
 	node _tmp;
 
 	if (_nodes.empty()) {
-		if (_nod() != 0) _nodes.push_back(_nod);
+		if (_nod() != 0)
+		{
+			HS<NODE_T> = cElem<NODE_T>(_nod._v);
+			_nodes.push_back(_nod);
+		}
 		return;
 	}
 
-	if (_nodes.size() < 20)
+	// if an element has been added before..
+	if (HS<NODE_T>.get(val)._v > 0) return;
+	else
 	{
-		//PRINT("Linear search..");
-		_bFound = search_Node(_nodes, _nod);
-
-	}
-	else if (_nodes.size() > 20)
-	{
-		//PRINT("Vector search..");
-		_bFound = vector_search(_nodes, _nod, _tmp);
+		_nodes.push_back(_nod);
 	}
 		
-	if (_bFound) return;
-	else {
-		if (_nod() != 0) _nodes.push_back(_nod);
-		if (_nodes.size() > 20) sort_Nodes<Byte>(_nodes,_nodes.size());
-	}
+	return;
 }
 
 
