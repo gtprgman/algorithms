@@ -224,14 +224,27 @@ public:
 		return _pList[_hPos];
 	}
 
+
+
+	// erases all the data elements in the array
+	void Sweep() const
+	{
+		for (std::size_t i = 0; i < _M; i++)
+			_pList[i].~cElem();
+	}
+
+
+
+	
 private:
 	std::size_t _M;
 
 	// a raw pointer to each linked element of _pList
 	cElem<Ty>* _elemPtr;
 
-	UNIQUE_ARRAY<cElem<Ty>> _pList;
+	U_ARRAY<cElem<Ty>> _pList;
 
+	
 
 	const std::size_t hash(const LongRange& _Key) const
 	{
