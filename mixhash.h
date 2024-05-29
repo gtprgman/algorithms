@@ -1,4 +1,11 @@
-/* Using License: GPL v. 3.0 */
+/* Using License: GPL v. 3.0 
+
+   This work is partly inspired from the 
+   material taken from 'A Practical Introduction to
+   Data Structre & Algorithm Analysis 3rd Edition (C++ Version)' 
+   (ebook) by Clifford A. Shaffer.
+
+*/
 #pragma once
 
 #ifdef REQUIRE_H
