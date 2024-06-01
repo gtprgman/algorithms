@@ -6,7 +6,6 @@
 #endif
 
 
-
 static LONGFLOAT CSIZE = 0.00;
 
 
@@ -15,6 +14,33 @@ static LONGFLOAT CSIZE = 0.00;
 	template <class Ty>
 	cHash<cElem<Ty>> HS(4096); // a preset of 4K size
 #endif
+
+// Forward Declaration of Any Immediate Required Elements..
+	struct node;
+
+	const ULONG L_HEIGHT(const node* const);
+	const ULONG R_HEIGHT(const node* const);
+
+#define RET std::cout << "\n";
+
+#define PRINT(_t) std::cout << (_t) << "\n";
+#define RPRINT(_t) std::cout << (_t) << ", ";
+
+	inline void RET2() {
+		RET;
+		RET;
+	}
+
+
+#define ISNULL(p) ( p == nullptr )
+
+#define NULLP(p) ( p = nullptr )
+
+#define NULL2P(p1,p2) {\
+	p1 = nullptr; \
+	p2 = nullptr; \
+}
+
 
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
@@ -90,14 +116,13 @@ struct node {
 	~node();
 
 
-	void Add(node&&);
+	void Add(node&);
 	
 	static void setSize(const std::size_t);
 	static void setRoot(const node** const);
 	static void setRoot_stack(const node*);
 
-	template < class N >
-	constexpr const node* Find(const N);
+	constexpr const node* Find(const double,const Byte);
 
 	void setCode(const bool);
 	void setData(const Byte);
@@ -299,6 +324,9 @@ static struct _Deallocator {
 #endif
 
 
+#define LCOUNT(_p) std::cout << "L_H: " << L_HEIGHT(_p) << "\n";
+#define RCOUNT(_p) std::cout << "R_H: " << R_HEIGHT(_p) << "\n";
+
 
 
 #ifndef HUFF_TREE
@@ -314,9 +342,17 @@ static struct _Deallocator {
 
 struct _TREE {
 	static node* _Root;
+
+	static inline void Info()
+	{
+		RET2();
+		LCOUNT(_Root);
+		RCOUNT(_Root);
+		RET2();
+	}
 };
 
-node* _TREE::_Root;
+node* _TREE::_Root = nullptr;
 
 #endif
 
@@ -445,18 +481,6 @@ struct NODE_T {
 
 };
 
-#define RET std::cout << "\n";
-
-#define PRINT(_t) std::cout << (_t) << "\n";
-#define RPRINT(_t) std::cout << (_t) << ", ";
-#define ISNULL(p) ( p == nullptr )
-
-#define NULLP(p) ( p = nullptr )
-
-#define NULL2P(p1,p2) {\
-	p1 = nullptr; \
-	p2 = nullptr; \
-}
 
 #define CONST_PTR node* const
 #define NODE2P const node** const
@@ -480,7 +504,7 @@ inline node* const RIGHT(const node* const _any) {
 }
 
 
-inline ULONG L_HEIGHT(const node* const _pRoot ) {
+inline const ULONG L_HEIGHT(const node* const _pRoot ) {
 	ULONG cnt = 0;
 	node* _Curr = (node* const)_pRoot;
 	if (nullptr == _Curr) return 0;
@@ -495,7 +519,7 @@ inline ULONG L_HEIGHT(const node* const _pRoot ) {
 }
 
 
-inline ULONG R_HEIGHT(const node* const _pRoot) {
+inline const ULONG R_HEIGHT(const node* const _pRoot) {
 	ULONG nums = 0;
 	node* _curr = (node* const)_pRoot;
 	if (nullptr == _curr) return 0;
@@ -536,47 +560,6 @@ constexpr inline const N VALX(const node* const _p) {
 
 
 
-/* returns the bit code of a specified node's value '_v',
- 'setRoot()' must be initiated first before use
-*/ 
-template <class N>
-constexpr inline const char BIT(const N _v) {
-	node* tmp = (CONST_PTR)node::_main;
-	char ch = (tmp->Find<N>(_v))->Code();
-	NULLP(tmp);
-	return ch;
-}
-
-
-
-/* returns the data representation of a specified node's value '_v',
- 'setRoot()' must be initiated first before use. This function is valid
- only on a data or frequency tree but before plotted to a huffman tree.
-*/
-template <class N>
-constexpr inline const char DATA(const N _v) {
-	node* tmp = (CONST_PTR)node::_main;
-	const Byte data_value = tmp->Find<N>(_v)->Value();
-	NULLP(tmp);
-	return (char)data_value;
-}
-
-/* returns the data representation of any node in the huffman tree.
-*/
-inline const char DATAX(const node* _ft) {
-	return (char)_ft->Value();
-}
-
-
-/* returns the data representation of a node, which
-  node is already converted to a frequency node.
-*/
-inline const char DATAC(const node& _fNod) {
-	return (char)_fNod.Value();
-}
-
-
-
 // create an instantaneous node object from a specified Byte value '_c'
 inline const NODE_T TO_NODE(const Byte _c) {
 	node _Nod = _c;
@@ -593,12 +576,11 @@ inline const node TO_FREQ_NODE(const node& _nod) {
 
 
 
-/* extracts information of a node with a specified value '_v'
-   ,this function needs to initiate the call to 'setRoot()' before use
+/* extracts information of a node with a frequency value '_fv'
+   ,this function needs to be initiated with a call to 'setRoot()' before used.
 */ 
-template < class N >
-constexpr inline void NODE(const N _v) {
-	return (node::_main)->Find<N>(_v)->Print(); RET;
+constexpr const node* NODE(const double _fv) {
+	return (node::_main)->Find(_fv,0);
 }
 
 
@@ -606,11 +588,9 @@ constexpr inline void NODE(const N _v) {
 /* Get a pointer to any node of the tree with a specified value '_v'
   'setRoot()' must be called first before use
 */ 
-template < class N >
-constexpr const node* PNODE(const N _v) {
-	return (node::_main)->Find<N>(_v);
+constexpr const node* PNODE(const double _fv) {
+	return (node::_main)->Find(_fv,0);
 }
-
 
 
 
@@ -619,17 +599,6 @@ inline const node* RECENT() {
 	return (node::_recent);
 }
 
-
-
-/* returns the frequency of a data node's value '_v',
-  'setRoot()' must be initiated first before use
-*/ 
-inline const double FREQ(const Byte _v) {
-	node* tmp = (CONST_PTR)node::_main;
-	double fqr = (tmp->Find<Byte>(_v))->FrequencyData();
-	NULLP(tmp);
-	return fqr;
-}
 
 
 
@@ -671,16 +640,21 @@ inline void print_vf(const node* const _p) {
 
 
 // searches a particular node's value relative to the root node
-template < class N >
-constexpr inline const node* seek_n(const node* const uRoot, const N uc) {
+constexpr inline const node* seek_n(const node* const uRoot, const double fv, const Byte c) {
 	node* tmp = (CONST_PTR)uRoot;
 	node* bckup = nullptr;
 
 	while (nullptr != tmp) {
-		if (VALX<N>(tmp) > uc) tmp = LEFT(tmp);
-		else if (VALX<N>(tmp) < uc) tmp = RIGHT(tmp);
+		if (VALX<double>(tmp) > fv && c != tmp->Value() ) tmp = LEFT(tmp);
 
-		else if (VALX<N>(tmp) == uc) {
+		else if (VALX<double>(tmp) < fv && c != tmp->Value() ) tmp = RIGHT(tmp);
+
+		else if (VALX<double>(tmp) == fv || c == tmp->Value()) {
+			bckup = tmp;
+			break;
+		}
+
+		else if (VALX<double>(tmp) != fv || c == tmp->Value()) {
 			bckup = tmp;
 			break;
 		}
@@ -692,19 +666,12 @@ constexpr inline const node* seek_n(const node* const uRoot, const N uc) {
 		
 	}
 
-	NULLP(tmp);
+	tmp = nullptr;
 	return (bckup);
 }
 
 
 
-inline void RET2() {
-	RET;
-	RET;
-}
-
-#define LCOUNT(_p) std::cout << "L_H: " << L_HEIGHT(_p) << "\n";
-#define RCOUNT(_p) std::cout << "R_H: " << R_HEIGHT(_p) << "\n";
 
 #define ROW_FDATA_PRINT(_p) {\
 	RPRINT(_p->FrequencyData()); RPRINT(","); RPRINT(_p->Freq());\
@@ -784,7 +751,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 
 
 // construct a complete huffman tree data structure
-void build_huffman_tree(node* , const node*);
+void build_huffman_tree(std::vector<node>&);
 
 /* sorts nodes in the vector in the decreasing order, the size_t
    argument should be the total size of the vector. */
@@ -827,24 +794,6 @@ void filter_Nodes(std::vector<node>&, const std::vector<node>&);
    entered twice.
 */ 
 void add_Nodes(std::vector<node>&, const NODE_T);
-
-/* generate a huffman tree branches from the vector nodes data,
-   the nodes in the vector must be sorted on frequency before use
-*/
-const void huff_tree_create(const std::vector<node>&, const std::size_t);
-
-// Huffman Encoding initiated by this function
-void huffman_encode(std::vector<HF_REC>&,const node* const);
-
-
-	
-// transform std::vector<unique_ptr<node>> into std::vector<node>
-inline void transForm2(std::vector<node>& _vNods) {
-	for (std::size_t i = 0; i < _repo.size(); i++) {
-		add_Nodes(_vNods, (NODE_T)*_repo[i]);
-	}
-}
-
 
 
 	// Node Class Impl..
@@ -1011,7 +960,7 @@ inline void transForm2(std::vector<node>& _vNods) {
 
 
 	
-	void node::Add(node&& _fv) 
+	void node::Add(node& _fv) 
 	{
 		node* _pNode = nullptr;
 		double fc = 0.00;
@@ -1024,8 +973,8 @@ inline void transForm2(std::vector<node>& _vNods) {
 		{
 			if (ASSERT_P(_pThis->links[L])) {
 				_pNode = _pThis->links[L];
-				_pNode->Add(std::forward<node>(_fv));
-				node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+				_pNode->Add(_fv);
+				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
@@ -1039,8 +988,8 @@ inline void transForm2(std::vector<node>& _vNods) {
 		{
 			if (ASSERT_P(_pThis->links[R])) {
 				_pNode = _pThis->links[R];
-				_pNode->Add(std::forward<node>(_fv));
-				node::_recent = (CONST_PTR)PNODE<double>(VALT<double>(_fv));
+				_pNode->Add(_fv);
+				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
 			}
 			else {
 				_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
@@ -1052,11 +1001,12 @@ inline void transForm2(std::vector<node>& _vNods) {
 		}
 		else if (_pThis->FrequencyData() == _fv.FrequencyData())
 		{
-			fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00));
 			node::_totSizes += 1.0;
+			fc = (_pThis->FrequencyData() + (_fv.FrequencyData() / 100.00)) +
+				(0.5 * (2.5 + node::_totSizes));
 			_fv.setFrequencyData(fc);
-			_pThis->Add(std::forward<node>(_fv));
-			node::_recent = (CONST_PTR)PNODE<double>(fc);
+			_pThis->Add(_fv);
+			node::_recent = (CONST_PTR)PNODE(fc);
 		}
 	
 		// automatically add to garbage collector
@@ -1089,10 +1039,9 @@ inline void transForm2(std::vector<node>& _vNods) {
 
 
 
-	template < class N>
-	constexpr const node* node::Find(const N uc) {
+	constexpr const node* node::Find(const double fc, const Byte c) {
 		
-		return seek_n<N>(this, uc);
+		return seek_n(this, fc, c);
 	}
 		
 
@@ -1229,9 +1178,15 @@ inline void transForm2(std::vector<node>& _vNods) {
 
 
 
-inline void build_huffman_tree(node* _fRoot, const node* _f0t) {
-	node _tmp = *_f0t;
-	_fRoot->Add( std::forward<node>(_tmp) );
+inline void build_huffman_tree(std::vector<node>& _fNods) {
+	const std::size_t TSZ = _fNods.size();
+	_TREE::_Root = (CONST_PTR)ALLOC_N<node>(_fNods.at(0));
+	node::setRoot(ROOT2P(&_TREE::_Root));
+	node::setSize(TSZ);
+
+	for (int i = 1; i < TSZ; i++)
+		_TREE::_Root->Add(_fNods.at(i));
+
 }
 
 
@@ -1436,11 +1391,9 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fN
 
 
 
-
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
 {
 	LongRange val = _nod._v;
-	const std::size_t _vSize = _nodes.size();
 	node _tmp;
 
 	if (_nodes.empty()) {
@@ -1508,9 +1461,11 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 			}
 		}
 	}
+	HS<NODE_T>.Sweep();
 }
 
 
+/*
 
 inline const void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
 
@@ -1534,7 +1489,6 @@ inline const void huff_tree_create(const std::vector<node>& vn, const std::size_
 		if (ASSERT_P(ft->links[R])) ft->links[R]->setCode(R);
 		fc = 0.00;
 	
-		build_huffman_tree(_TREE::_Root, ft);
 	}
 }
 
@@ -1606,3 +1560,4 @@ inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
 		if (nullptr == _ft) break;	
 	}
 }
+*/
