@@ -20,12 +20,21 @@ int main() {
 
 	nod.clear();
 
-	NPRINT(fNod);
+	RET2();
 
+	sort_Nodes<double>(fNod, fNod.size());
+
+	build_huffman_tree(fNod);
+
+	_TREE::_Root->Print();
+	_TREE::Info();
 
 
 	RET2();
 
+
+	fNod.clear();
+	
 	
 
 	return -1;
