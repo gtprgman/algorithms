@@ -319,7 +319,12 @@ namespace mix {
 	
 	
 	template < class P >
-	struct ptrTraits;
+	struct ptrTraits
+	{
+	    enum {
+		isPointer = _BOOLC(std::is_pointer_v<P>)
+	    };
+	};
 
 	
 	
