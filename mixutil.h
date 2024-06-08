@@ -295,8 +295,8 @@ namespace mix {
 	struct nullType {
 		using value_type = std::nullptr_t;
 
-		nullType() {};
-		nullType(nullptr_t const) {}
+		nullType() : _nan(nullptr) {};
+		nullType(nullptr_t const) : _nan(nullptr) {}
 		
 		_NODISCARD operator value_type() const {
 			return _nan;
@@ -312,7 +312,7 @@ namespace mix {
 		
 
 	private:
-		value_type _nan = 0;
+		value_type _nan;
 	};
 	
 	
@@ -321,8 +321,12 @@ namespace mix {
 	template < class P >
 	struct ptrTraits
 	{
+	    using type = typename P;
+	    using rootType = typename std::remove_pointer_t<P>;
+
 	    enum {
-		isPointer = _BOOLC(std::is_pointer_v<P>)
+		isPointer = _BOOLC(std::is_pointer_v<P>) ,
+		isRef = _BOOLC(std::is_reference_v<P>)
 	    };
 	};
 
