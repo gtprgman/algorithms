@@ -9,6 +9,7 @@ CJMerges folder : contains equivalent implementations of JMerges in the Modern C
 mixutil.h : a modern c++ common utilities ;
 TEST_MIXTURES.cpp : a demo tester for mixutil.h ;
 TEST_MIXS_02.cpp : other version of demo tester for mixutil.h ;
+type_2_aspect.cpp : demonstrating mix::type_aspect_if<T, bool>, that let us choose between T and T* of any given type.
 
 mixtree.h : a library for binary search tree functionalities;
 mixtreeX.h : a library for templatized binary node arranged in a tree;
