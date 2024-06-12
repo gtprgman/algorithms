@@ -224,6 +224,21 @@ struct typeSelect<false,Ty1, Ty2> {
 
 
 
+template <class T, bool _t = false>
+struct type_aspect_if
+{
+	using type = typename std::remove_pointer_t<T>;
+};
+
+
+template < class Ty >
+struct type_aspect_if< Ty, true >
+{
+	using type = typename Ty;
+};
+
+
+
 	template < class Ty >
 	struct isPrimitive {
 	private:
