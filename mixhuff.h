@@ -21,25 +21,6 @@ static LONGFLOAT CSIZE = 0.00;
 	const ULONG L_HEIGHT(const node* const);
 	const ULONG R_HEIGHT(const node* const);
 
-#define RET std::cout << "\n";
-
-#define PRINT(_t) std::cout << (_t) << "\n";
-#define RPRINT(_t) std::cout << (_t) << ", ";
-
-	inline void RET2() {
-		RET;
-		RET;
-	}
-
-
-#define ISNULL(p) ( p == nullptr )
-
-#define NULLP(p) ( p = nullptr )
-
-#define NULL2P(p1,p2) {\
-	p1 = nullptr; \
-	p2 = nullptr; \
-}
 
 
 
@@ -99,9 +80,9 @@ struct BPAIR {
 struct node {
 	node();
 	
-	node(const Byte); // for data tree
+	node(const LongRange); // for data tree
 	node(const double); // for frequency tree
-	node(const Byte, const double);
+	node(const LongRange, const double);
 	node(NODE_T&); // construct from a ref to NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
 	node(const NODE_T&); // construct from a ref to const NODE_T
@@ -122,10 +103,10 @@ struct node {
 	static void setRoot(const node** const);
 	static void setRoot_stack(const node*);
 
-	constexpr const node* Find(const double,const Byte);
+	constexpr const node* Find(const double,const LongRange);
 
 	void setCode(const bool);
-	void setData(const Byte);
+	void setData(const LongRange);
 	void setFrequencyData(const double);
 	void setCount(const double);
 	void setFreq(const double);
@@ -133,7 +114,7 @@ struct node {
 	void setVisit(const bool);
 	void setDelete(const bool);
 
-	const Byte Value() const;
+	const LongRange Value() const;
 	const char dataValue() const;
 	const double FrequencyData() const;
 	const double Freq() const;
@@ -147,8 +128,9 @@ struct node {
 	
 	// implicit conversion
 	operator NODE_T() const;
+	operator LongRange() const;
 
-	const Byte operator()(void) const;
+	const LongRange operator()() const;
 	const bool operator< (const node&) const;
 	const bool operator> (const node&) const;
 	const bool operator!= (const node&) const;
@@ -168,7 +150,7 @@ struct node {
 private:
 	bool cDir;
 	double nCount,freq, _fdata;
-	Byte _data;
+	LongRange _data;
 	bool _visited, _deleted;
 };
 
@@ -359,7 +341,7 @@ node* _TREE::_Root = nullptr;
 
 // to construct a temporary node object, uses this structure for safety reason
 struct NODE_T {
-	Byte _v;
+	LongRange _v;
 	double _freq;
 
 	NODE_T() : _v(0), _freq(0.00) {}
@@ -374,7 +356,7 @@ struct NODE_T {
 		_freq = 0.00;
 	}
 
-	NODE_T(const Byte _vc) {
+	NODE_T(const LongRange _vc) {
 		_v = _vc;
 		_freq = 0.00;
 	}
@@ -384,7 +366,7 @@ struct NODE_T {
 		_freq = _fc;
 	}
 
-	NODE_T(const Byte _vc, const double _fc) {
+	NODE_T(const LongRange _vc, const double _fc) {
 		_v = _vc;
 		_freq = _fc;
 	}
@@ -446,7 +428,7 @@ struct NODE_T {
 
 
 	
-	const Byte operator()(void) const {
+	const LongRange operator()() const {
 		return _v;
 	}
 
@@ -457,12 +439,13 @@ struct NODE_T {
 		return _nd;
 	}
 
-	
-	operator bool() const
+	// implicit conversion
+	operator LongRange() const
 	{
-		return (this->_v != NULL);
+		return _v;
 	}
-
+	
+	
 	const bool operator < (const NODE_T& rNodT) const {
 		return (_v < rNodT._v);
 	}
@@ -540,7 +523,7 @@ template < class N >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
 	
-	_vt = (std::strcmp("unsigned long", typeid(_vt).name()))?
+	_vt = (std::strcmp("long long", typeid(_vt).name()))?
 		(N)_Nod.FrequencyData() : (N)_Nod.Value();
 
 	return std::remove_all_extents_t<N>(_vt);
@@ -553,18 +536,11 @@ constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
 	if (nullptr == _p) return 0;
-	_v = (std::strcmp("unsigned long", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
+	_v = (std::strcmp("long long", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
 	return std::remove_all_extents_t<N>(_v);
 }
 
-
-
-// create an instantaneous node object from a specified Byte value '_c'
-inline const NODE_T TO_NODE(const Byte _c) {
-	node _Nod = _c;
-	return _Nod;
-}
 
 
 // convert a specified node to the frequency node
@@ -576,7 +552,7 @@ inline const node TO_FREQ_NODE(const node& _nod) {
 
 
 
-/* extracts information of a node with a frequency value '_fv'
+/* extracts information from a node with a frequency value '_fv'
    ,this function needs to be initiated with a call to 'setRoot()' before used.
 */ 
 constexpr const node* NODE(const double _fv) {
@@ -633,14 +609,14 @@ inline void passed_by(const node* const _p = nullptr ) {
 
 inline void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
-		printf("(%u.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
+		printf("(%lld.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
 
 
 
 // searches a particular node's value relative to the root node
-constexpr inline const node* seek_n(const node* const uRoot, const double fv, const Byte c) {
+constexpr inline const node* seek_n(const node* const uRoot, const double fv, const LongRange c) {
 	node* tmp = (CONST_PTR)uRoot;
 	node* bckup = nullptr;
 
@@ -753,7 +729,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 // construct a complete huffman tree data structure
 void build_huffman_tree(std::vector<node>&);
 
-/* sorts nodes in the vector in the decreasing order, the size_t
+/* sorts the nodes in the vector in the decreasing order, the size_t
    argument should be the total size of the vector. */
 template <class N>
 void sort_Nodes(std::vector<node>&, const std::size_t);
@@ -813,7 +789,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	node::node(const Byte c): xDir(tDir::UNKNOWN), 
+	node::node(const LongRange c): xDir(tDir::UNKNOWN), 
 		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),  
 		_visited(0), _deleted(0)
 	{
@@ -822,7 +798,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	node::node(const Byte _c, const double _fv) : xDir(tDir::UNKNOWN),
+	node::node(const LongRange _c, const double _fv) : xDir(tDir::UNKNOWN),
 		_data(_c), _fdata(_fv), nCount(0.00), freq(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
@@ -974,12 +950,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			if (ASSERT_P(_pThis->links[L])) {
 				_pNode = _pThis->links[L];
 				_pNode->Add(_fv);
+				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[L])->setCode(L);
 				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
+				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = _pThis->links[L];
 			}
 
@@ -989,12 +967,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			if (ASSERT_P(_pThis->links[R])) {
 				_pNode = _pThis->links[R];
 				_pNode->Add(_fv);
+				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
 			}
 			else {
 				_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[R])->setCode(R);
 				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
+				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = _pThis->links[R];
 			}
 
@@ -1006,6 +986,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				(0.5 * (2.5 + node::_totSizes));
 			_fv.setFrequencyData(fc);
 			_pThis->Add(_fv);
+			HS<NODE_T> = cElem<NODE_T>(_fv);
 			node::_recent = (CONST_PTR)PNODE(fc);
 		}
 	
@@ -1039,14 +1020,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 
-	constexpr const node* node::Find(const double fc, const Byte c) {
+	constexpr const node* node::Find(const double fc, const LongRange c) {
 		
 		return seek_n(this, fc, c);
 	}
 		
 
 	
-	void node::setData(const Byte uc) {
+	void node::setData(const LongRange uc) {
 		_data = uc;
 	}
 
@@ -1080,7 +1061,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	// Get Accessor Methods..
-	const Byte node::Value() const {
+	const LongRange node::Value() const {
 		return _data;
 	}
 
@@ -1126,6 +1107,11 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		return std::forward<NODE_T>(nc);
 	}
 
+	
+	// implicit conversion
+	node::operator LongRange() const {
+		return _data;
+	}
 
 	const node node::Release() const {
 		node&& tmp = node(*this);
@@ -1134,7 +1120,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	const Byte node::operator()(void) const {
+	const LongRange node::operator()() const {
 		return _data;
 	}
 
@@ -1406,7 +1392,7 @@ void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
 	}
 
 	// if an element has been added before..
-	if (HS<NODE_T>.get(val)._v > 0) return;
+	if (HS<NODE_T>.get((Byte)_nod)._v > 0) return;
 	else
 	{
 		_nodes.push_back(_nod);
@@ -1445,7 +1431,7 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 		}
 		else {
 			nc._freq = fc;
-			ZEROES(_count, fc);
+			ZEROES(_count, fc); // clear temporary vars
 			add_Nodes(_dest, nc);
 
 			if (_src[i].Value() != _src[i + 1].Value()) {
