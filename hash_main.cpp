@@ -1,57 +1,28 @@
 
 #ifndef REQUIRE_H
 	#include "mixutil.h"
+	
 #endif
 
 #include "mixhuff.h"
 
 
-
-
-
-int main(int argc, const char* argv[]) 
+int main()
 {
-	std::string s = "She Sells Shells in the Sea Shore.";
-	const std::size_t SZ = s.size();
-	cHash<cElem<NODE_T>> hs(SZ);
-
-	for (const auto& c : s)
-		hs = cElem<NODE_T>(c);
-
-	for (const int i : s)
-		RPRINT((char)hs.get(i)._v);
-
-	RET2();
-
-	hs.Sweep(); // Delete all elements
+	cHash<cElem<node*>> hs(3);
+	node* nods = nullptr;
 	
-	for (const int i : s)
-		RPRINT((char)hs.get(i)._v);
-		
-	
-	RET;
-	
-	// define new data elements, the size previously determined in '_SZ' is not changed.
-	
-	hs = cElem<NODE_T>('H');
-	hs = cElem<NODE_T>('e');
-	hs = cElem<NODE_T>('l');
-	hs = cElem<NODE_T>('l');
-	hs = cElem<NODE_T>('o');
 
-	hs = cElem<NODE_T>('Y');
-	hs = cElem<NODE_T>('u');
+	hs = cElem<node*>(new node((LongRange)'I'));
+	hs = cElem<node*>(new node((LongRange)'a'));
+	hs = cElem<node*>(new node((LongRange)'m'));
+
+	// try the elements number of 0, 1, 2
+	nods = hs.elements(2).DataC;
+
+	PRINT( hs.get((LongRange)nods)->dataValue() );
 
 
-	RPRINT((char)hs.get('H')._v);
-	RPRINT((char)hs.get('i')._v);
-	RPRINT((char)hs.get('Y')._v);
-	RPRINT((char)hs.get('u')._v);
-	RPRINT((char)hs.get('l')._v);
-
-
-	
-	RET2();
 
 	return -1;
 }
