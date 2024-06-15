@@ -19,7 +19,7 @@ be implemented in the any time of the future.
 		#include <initializer_list>
 		#include <forward_list>
 		/*
-		   include any functional headers here..
+			include any functional headers here..
 		*/
 
 using Bit = unsigned char;
@@ -28,6 +28,28 @@ using ULONG = unsigned long;
 using Byte = unsigned long;
 using LongRange = long long;
 using LONGFLOAT = long double;
+
+
+#define RET std::cout << "\n";
+
+#define PRINT(_t) std::cout << (_t) << "\n";
+#define RPRINT(_t) std::cout << (_t) << ", ";
+
+inline void RET2() {
+	RET;
+	RET;
+}
+
+
+#define ISNULL(p) ( p == nullptr )
+
+#define NULLP(p) ( p = nullptr )
+
+#define NULL2P(p1,p2) {\
+	p1 = nullptr; \
+	p2 = nullptr; \
+}
+
 
 #endif
 
@@ -68,12 +90,12 @@ struct _Instantiator;
 template < class Ty >
 struct _Instantiator {
 	
-	 _Instantiator() {};
+	_Instantiator() { Ty(); };
 
 	template < class... Types >
 	static Ty&& _Construct(Types&&... aArgs) {
 		static_assert(std::is_constructible<Ty, Types...>(), "could not instantiate from a class specified by 'Ty' ");
-		return _FORWRD<Ty&&>(Ty(_FORWRD<Types&&>(aArgs)...));
+		return _FORWRD<Ty>(Ty(_FORWRD<Types>(aArgs)...));
 	}
 
 };
@@ -217,7 +239,7 @@ struct typeSelect<true, Ty1, Ty2> {
 	using type = typename Ty1;
 };
 
-template <class Ty1,class Ty2>
+template <class Ty1, class Ty2>
 struct typeSelect<false,Ty1, Ty2> {
 	using type = typename Ty2;
 };
@@ -310,8 +332,8 @@ namespace mix {
 	struct nullType {
 		using value_type = std::nullptr_t;
 
-		nullType() : _nan(nullptr) {};
-		nullType(nullptr_t const) : _nan(nullptr) {}
+		nullType(): _nan(nullptr) {};
+		nullType(std::nullptr_t const) {}
 		
 		_NODISCARD operator value_type() const {
 			return _nan;
@@ -333,16 +355,16 @@ namespace mix {
 	
 	
 	
-	template < class P >
+	template <class P >
 	struct ptrTraits
 	{
-	    using type = typename P;
-	    using rootType = typename std::remove_pointer_t<P>;
+		using type = typename P;
+		using rootType = typename std::remove_pointer_t<P>;
 
-	    enum {
-		isPointer = _BOOLC(std::is_pointer_v<P>) ,
-		isRef = _BOOLC(std::is_reference_v<P>)
-	    };
+		enum {
+			isPointer = _BOOLC(std::is_pointer_v<P>),
+			isRef = _BOOLC(std::is_reference_v<P>)
+		};
 	};
 
 	
@@ -771,5 +793,3 @@ namespace mix {
 
 		
 };
-
-
