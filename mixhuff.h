@@ -80,6 +80,7 @@ struct BPAIR {
 struct node {
 	node();
 	
+	node(const char); // for data tree
 	node(const LongRange); // for data tree
 	node(const double); // for frequency tree
 	node(const LongRange, const double);
@@ -185,11 +186,12 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 #ifndef HUFF_TREE 
 	#include <vector>
-	
+	#include <map>
 	#define NUM_BITS(_X_) (const int)_X_
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
+	std::map<LINT, node*> _Map;
 
 	struct HF_REC {
 		HF_REC() {
@@ -523,7 +525,7 @@ template < class N >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
 	
-	_vt = (std::strcmp("long long", typeid(_vt).name()))?
+	_vt = (std::strcmp("__int64", typeid(_vt).name()))?
 		(N)_Nod.FrequencyData() : (N)_Nod.Value();
 
 	return std::remove_all_extents_t<N>(_vt);
@@ -536,7 +538,7 @@ constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
 	if (nullptr == _p) return 0;
-	_v = (std::strcmp("long long", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
+	_v = (std::strcmp("__int64", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
 	return std::remove_all_extents_t<N>(_v);
 }
@@ -621,16 +623,11 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv, co
 	node* bckup = nullptr;
 
 	while (nullptr != tmp) {
-		if (VALX<double>(tmp) > fv && c != tmp->Value() ) tmp = LEFT(tmp);
+		if (VALX<double>(tmp) > fv ) tmp = LEFT(tmp);
 
-		else if (VALX<double>(tmp) < fv && c != tmp->Value() ) tmp = RIGHT(tmp);
+		else if (VALX<double>(tmp) < fv ) tmp = RIGHT(tmp);
 
-		else if (VALX<double>(tmp) == fv || c == tmp->Value()) {
-			bckup = tmp;
-			break;
-		}
-
-		else if (VALX<double>(tmp) != fv || c == tmp->Value()) {
+		else if (VALX<double>(tmp) == fv ) {
 			bckup = tmp;
 			break;
 		}
@@ -639,7 +636,6 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv, co
 			bckup = nullptr;
 			break;
 		}
-		
 	}
 
 	tmp = nullptr;
@@ -678,21 +674,12 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv, co
 
 
 // Print a collection of nodes from the vector
-template <class T>
-inline void NPRINT(const std::vector<T>& _vn) {
-	int col = 0;
-	for (const T& _ne : _vn) {
-		col++;
-		RPRINT( (char)VALT<Byte>((node)_ne)); RPRINT(" ");
-		RPRINT(VALT<double>((node)_ne)); RET;
-		if (col > 79) {
-			col = 0;
-			RET;
-		}
+inline void NPRINT(const std::vector<node>& _vn) {
+	for (const node& _ne : _vn) {
+		RPRINT( _ne.dataValue() ); RPRINT(" ");
+		RPRINT(_ne.FrequencyData() ); RET;
 	}
 }
-
-
 
 
 #endif
@@ -780,6 +767,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		this->links[R] = nullptr;
 	}
 
+
+
+	node::node(const char _uChar) : xDir(tDir::UNKNOWN), _fdata(0.00),
+		_data(_uChar), nCount(0.00), freq(0.00), _visited(0), _deleted(0)
+	{
+		this->links[L] = nullptr;
+		this->links[R] = nullptr;
+	}
 
 	node::node(const double frq_data):xDir(tDir::UNKNOWN), _fdata(frq_data),
 		_data(0),nCount(0.00), freq(0.00), cDir(0), _visited(0), _deleted(0)
@@ -950,15 +945,15 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			if (ASSERT_P(_pThis->links[L])) {
 				_pNode = _pThis->links[L];
 				_pNode->Add(_fv);
-				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
+				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[L])->setCode(L);
 				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
-				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = _pThis->links[L];
+				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -967,15 +962,16 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			if (ASSERT_P(_pThis->links[R])) {
 				_pNode = _pThis->links[R];
 				_pNode->Add(_fv);
-				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
+				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+
 			}
 			else {
 				_pThis->links[R] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[R])->setCode(R);
 				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
-				HS<NODE_T> = cElem<NODE_T>(_fv);
 				node::_recent = _pThis->links[R];
+				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -986,8 +982,8 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				(0.5 * (2.5 + node::_totSizes));
 			_fv.setFrequencyData(fc);
 			_pThis->Add(_fv);
-			HS<NODE_T> = cElem<NODE_T>(_fv);
 			node::_recent = (CONST_PTR)PNODE(fc);
+			_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
 		}
 	
 		// automatically add to garbage collector
@@ -1001,7 +997,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	void node::setSize(const std::size_t _sizes) {
 		_totSizes = (const double)_sizes;
 	}
-
 
 
 
@@ -1208,7 +1203,6 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 			vn[l] = vn[u];
 			vn[u] = _n2;
 		}
-
 	}
 
 
