@@ -5,22 +5,18 @@
 #include "mixhuff.h"
 
 
-
 int main() {
+	
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::vector<node> nod, fNod;
 
-	for (const int i : s)
-		nod.push_back(NODE_T(i));
+	for (const char& c : s)
+		nod.push_back(c);
 
-	sort_Nodes<Byte>(nod, SZ);
-	
-	filter_Nodes(fNod, nod);
+	sort_Nodes<LINT>(nod, SZ);
 
-	nod.clear();
-
-	RET2();
+	filter_Nodes(fNod, nod); nod.clear();
 
 	sort_Nodes<double>(fNod, fNod.size());
 
@@ -29,13 +25,10 @@ int main() {
 	_TREE::_Root->Print();
 	_TREE::Info();
 
+	PRINT( _Map.find('e')->second->dataValue() );
+	PRINT(_Map.find('e')->second->FrequencyData());
+
 
 	RET2();
-
-
-	fNod.clear();
-	
-	
-
 	return -1;
 }
