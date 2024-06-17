@@ -29,6 +29,8 @@ using Byte = unsigned long;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
+typedef LongRange LINT;
+typedef LONGFLOAT LFLOAT;
 
 #define RET std::cout << "\n";
 
