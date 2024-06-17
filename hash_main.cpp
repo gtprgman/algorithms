@@ -10,19 +10,33 @@
 int main()
 {
 	cHash<cElem<node*>> hs(3);
-	node* nods = nullptr;
+	const LINT SZ = hs.size();
+	U_ARRAY<LINT> ns = MK_U_ARRAY<LINT>((UINT)3);
+	node* u = new node(LINT('D'));
+
+	hs = cElem<node*>((node*)ALLOC_N(LINT('A')));
+	hs = cElem<node*>((node*)ALLOC_N(LINT('B')));
+	hs = cElem<node*>((node*)ALLOC_N(LINT('C')));
+	hs = cElem<node*>(u);
+
+
+	for (LINT i = 0; i < SZ; i++)
+	{
+		if (hs.elements(i).DataC == nullptr) continue;
+		ns[i] = hs.elements(i).KeyC;
+	}
 	
-
-	hs = cElem<node*>(new node((LongRange)'I'));
-	hs = cElem<node*>(new node((LongRange)'a'));
-	hs = cElem<node*>(new node((LongRange)'m'));
-
-	// try the elements number of 0, 1, 2
-	nods = hs.elements(2).DataC;
-
-	PRINT( hs.get((LongRange)nods)->dataValue() );
+	for (LINT j = 0; j < SZ; j++)
+		RPRINT(hs.get(ns[j])->dataValue());
 
 
+	// get an element beyond the maximum predefined slot
+	PRINT(hs.get((LINT)u)->dataValue());
 
+	delete u;
+
+	RET;
+
+	
 	return -1;
 }
