@@ -27,6 +27,9 @@ squzip.cpp : Program for compressing data using the 'mixhuff.h' library.
 mixhash.h : a library for hashing functionality.
 hash_main.cpp : a test unit for mixhash.h.
 
+mixbit.h :  a library for bit operations and manipulations utility.
+bitops.cpp : a unit test for mixbith.h
+
 
 
 
