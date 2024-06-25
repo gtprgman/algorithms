@@ -139,7 +139,7 @@ struct iList2 {
 	}
 
 	// overloaded parameterized ctor, not a copy ctor
-	constexpr iList2( std::initializer_list<tElem>& rList ) noexcept {
+	constexpr iList2( const std::initializer_list<tElem>& rList ) noexcept {
 		*this = rList;
 
 	}
