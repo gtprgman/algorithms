@@ -169,7 +169,7 @@ struct iList2 {
 
 
 	// overloaded assignment operator
-	constexpr const iList2<tElem>& operator=( std::initializer_list<tElem>& rList ) noexcept {
+	constexpr const iList2<tElem>& operator= ( const std::initializer_list<tElem>& rList ) noexcept {
 		_mFirst = rList.begin();  
 		_mLast = rList.end();
 
