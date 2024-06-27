@@ -8,30 +8,52 @@
 
 int main()
 {
-
-	BitN bitC;
+	BitN bitFun;
 	
-	PRINT("127 -> (bin) := ");  
-	PRINT(bitC.toBits(127).data()); 
-	
-	RET; RET;
-
-	PRINT("0111 1111 -> (dec):= "); 
-	std::cout << bitC.value_from_bitlist({ 0,1,1,1,1,1,1,1, }) << "\n";
-	
+	PRINT("19 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(19).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2();
 	RET;
 
+	PRINT("-19 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(-19).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	
+	RET;
 	RET2();
 
-	bitC.setBits({ 1,0,1,0,1,1 });
-	std::string strBits = bitC.Bits();
+	
+	PRINT("25 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(25).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
 
-	PRINT("101011 -> (dec) := "); RET;
-	PRINT(bitC.value_from_bitstr(strBits)); RET;
-	PRINT("43 -> (bin) := "); RPRINT(bitC.toBits(43).data());
+	RET2(); RET;
 
-	RET2();
+	PRINT("-25 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(-25).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2(); RET;
 
+	
+	PRINT("256 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(256).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2(); RET;
+
+	
+	PRINT("358 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(358).data());
+	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2(); RET;
+
+	PRINT("-358 -> (bin) = ");
+	PRINT(bitFun.to_signed_bits(-358).data());
+	PRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2(); RET;
+	
+
+	RET;
 
 	return -1;
 }
