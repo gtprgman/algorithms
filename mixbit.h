@@ -1,4 +1,5 @@
 #pragma once
+/* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
 	#include <vector>
@@ -39,18 +40,20 @@ void invert_bits(bool _pb[], const unsigned nBits)
 
 
 
-
 // get a bit character from a position in the bit array as specified by '_pb'.
 const char* char_from_bit(const bool _pb[], const int _index)
 {
 	return (_pb[_index])? (char*)"1" : (char*)"0";
 }
 
+
+
 // get a value from a position in the bit array 
 const unsigned n_of_bit(const bool _pb[], const int _index)
 {
 	return _pb[_index];
 }
+
 
 
 // obtain a full bits string from the bit array specified by '_pb'.
@@ -238,8 +241,98 @@ struct BitN
 
 	const size_t bitSize() const { return _bitLen; }
 
+
+	// returns a string representation of a fixed point binary bits.
+	const std::string& to_fixed_point_bits(const std::string& _cf)
+	{
+		size_t _sz = std::strlen(_cf.data());
+		size_t _point = _cf.find_first_of(".", 0);
+		int _decPart = atoi(_cf.substr(0, _point).data());
+		int _frac = atoi(_cf.substr(_point + 1, _sz - (_point + 1)).data());
+
+		size_t _fracZeros = _sz - (_point + 1); // would be used in 2^(-n)
+		double _dFrac = _frac; // fraction part
+
+		toBits((unsigned)_decPart); // result is stored to _bitStr
+		_bitStr = strcat((char*)_bitStr.c_str(), ".");
+	
+		std::string _sDecPart;
+		_sDecPart.assign(_bitStr.data() );
+
+		_bitStr = "\0";
+		_bitStr = toBits((unsigned)_frac); // fraction bits stored to _bitStr
+
+		 // integrate decimal & fraction bits length
+		std::size_t s1 =0, s2 = 0;
+
+		s1 = std::strlen(_sDecPart.data()); // the bits length of decimal part
+		s2 = std::strlen(_bitStr.data()); // the bits length of fraction part
+
+
+		// new spaces for storing the integrated fix-point bits
+		char* _ps = new char[s1 + s2]; 
+
+		for (size_t i = 0; i < s1; i++)
+			_ps[i] = _sDecPart[i];
+
+		_point = _sDecPart.find_first_of('.', 0);
+		
+		_sDecPart = "\0";
+
+		// 10 being raised to the -N zeroes power equates to a value of ' 0.d1d2...d(n) '
+		for (size_t k = 0; k < _fracZeros; k++)
+			_dFrac /= 10;
+
+
+		double _fpv = 0, _exp = -1, _2e = 0;
+		const double _fv = _dFrac;
+		int _pos = (int)(++_point);
+
+		double i = 0;
+
+			while( _fpv < _fv)
+			{
+				_dFrac *= 2;
+				i = (int)_dFrac;
+
+				// how to get its fraction part as double??
+				_dFrac = std::abs(_dFrac - i);
+
+				//RPRINT("i = "); RPRINT(i); RET2();
+
+				_2e = std::pow(2, _exp--);
+				//RPRINT("2e^(-n) = "); RPRINT(_2e); RET2();
+
+				if (i > 0)
+				{
+					_fpv += i * _2e;
+					_ps[_pos++] = '1';
+				}
+				else {
+					_ps[_pos++] = '0';
+				}
+
+				// adjust number of bits behind the point with (_frac - _fpv) <= epsilon
+				if ( (_fv - _fpv) <= 0.005 ) break;
+			}
+
+			_ps[_pos] = '\0';
+			_bitStr = "\0";
+
+			_bitLen = std::strlen(_ps);
+			_bitStr.assign(_ps);
+
+		return _bitStr;
+	}
+
+	void operator()() const
+	{
+		std::cout << _bitStr << "\n\n";
+	}
+
 private:
 	std::deque<bool> _vBits;
 	std::string _bitStr;
 	std::size_t _bitLen;
 };
+
