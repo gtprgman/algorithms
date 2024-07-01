@@ -10,50 +10,31 @@ int main()
 {
 	BitN bitFun;
 	
-	PRINT("19 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(19).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
-	RET2();
-	RET;
-
-	PRINT("-19 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(-19).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	std::string f1 = "3.8";
+	bitFun.to_fixed_point_bits(f1);
+	bitFun(); 
 	
-	RET;
 	RET2();
 
+	f1 = "8.75";
+	bitFun.to_fixed_point_bits(f1);
+	bitFun(); 
 	
-	PRINT("25 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(25).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
+	RET2();
 
-	RET2(); RET;
-
-	PRINT("-25 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(-25).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
-	RET2(); RET;
-
+	f1 = "8.63";
+	bitFun.to_fixed_point_bits(f1);
+	bitFun(); 
 	
-	PRINT("256 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(256).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
-	RET2(); RET;
+	RET2();
 
-	
-	PRINT("358 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(358).data());
-	RPRINT("Bit Range: "); RPRINT(MAX_BIT);
-	RET2(); RET;
-
-	PRINT("-358 -> (bin) = ");
-	PRINT(bitFun.to_signed_bits(-358).data());
-	PRINT("Bit Range: "); RPRINT(MAX_BIT);
-	RET2(); RET;
+	f1 = "1.625";
+	bitFun.to_fixed_point_bits(f1);
+	bitFun(); 
 	
 
-	RET;
+	RET2();
 
 	return -1;
 }
+
