@@ -96,6 +96,20 @@ const bool* bits_from_str(const std::string& _cBits)
 struct BitN
 {
 	BitN() :_bitLen(0) {}
+
+	BitN(const int _val)  
+	{
+		_bitStr = (_val > 0)? toBits(_val) : to_signed_bits(_val);
+		
+	}
+
+	BitN(const char* _strFixBits)
+	{
+		to_fixed_point_bits(_strFixBits, 0.01);
+	}
+
+	
+	
 	BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
 	{
 		_vBits.erase(_vBits.begin(), _vBits.end());
@@ -105,6 +119,7 @@ struct BitN
 
 		_bitLen = _vBits.size();
 	}
+
 
 	void setBits(const std::initializer_list<bool>& _bitL)
 	{
@@ -117,6 +132,7 @@ struct BitN
 
 		_bitLen = _vBits.size();
 	}
+
 
 
 	const int value_from_bitstr(const std::string& _bits)
@@ -243,7 +259,7 @@ struct BitN
 
 
 	// returns a string representation of a fixed point binary bits.
-	const std::string& to_fixed_point_bits(const std::string& _cf)
+	const std::string& to_fixed_point_bits(const std::string& _cf, const double _epsilon)
 	{
 		size_t _sz = std::strlen(_cf.data());
 		size_t _point = _cf.find_first_of(".", 0);
@@ -270,7 +286,7 @@ struct BitN
 
 
 		// new spaces for storing the integrated fix-point bits
-		char* _ps = new char[s1 + s2]; 
+		char* _ps = new char[2*(s1 + s2)]; 
 
 		for (size_t i = 0; i < s1; i++)
 			_ps[i] = _sDecPart[i];
@@ -313,7 +329,7 @@ struct BitN
 				}
 
 				// adjust number of bits behind the point with (_frac - _fpv) <= epsilon
-				if ( (_fv - _fpv) <= 0.005 ) break;
+				if ( (_fv - _fpv) <= _epsilon ) break;
 			}
 
 			_ps[_pos] = '\0';
@@ -322,12 +338,13 @@ struct BitN
 			_bitLen = std::strlen(_ps);
 			_bitStr.assign(_ps);
 
+			delete[] _ps;
 		return _bitStr;
 	}
 
 	void operator()() const
 	{
-		std::cout << _bitStr << "\n\n";
+		std::cout << _bitStr.data() << "\n\n";
 	}
 
 private:
