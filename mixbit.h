@@ -13,6 +13,84 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned DDWORD = 64;
 
 
+// fixed point numeric type.
+template < const unsigned BITS >
+struct fixN
+{
+	fixN(): _nVal(0){}
+
+	fixN(const double x)
+	{
+		*this = x;
+	}
+
+	fixN(const int x)
+	{
+		*this = x;
+	}
+
+
+	void operator= (const double x)
+	{
+		_nVal = toFix(x);
+	}
+
+	void operator= (int x)
+	{
+		_nVal = toFixInt(x);
+	}
+	
+	const double operator()()
+	{
+		return toDouble(_nVal);
+	}
+
+	const int operator()(int c)
+	{
+		return fixToInt(_nVal);
+	}
+
+	const double decimal()
+	{
+		return toDouble((_nVal & iXMask ));
+	}
+
+	const double rational()
+	{
+		return  toDouble((_nVal & fXMask) );
+	}
+
+	
+private:
+	int _nVal;
+
+	const int scale = BITS / 2;
+
+	const int fXMask = ((int)std::pow(2,BITS) - 1) & ((int)std::pow(2,scale) - 1);
+	const int iXMask = 0xFFFF << scale;
+
+	const double toFix(const double x)
+	{
+		return x *(double)(1 << scale);
+	}
+
+	const double toDouble(const int x)
+	{
+		return (double)x / (double)(1 << scale);
+	}
+
+	const int toFixInt(int x)
+	{
+		return x << scale;
+	}
+
+	const int fixToInt(int x)
+	{
+		return x >> scale;
+	}
+};
+
+
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
 
