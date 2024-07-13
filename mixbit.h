@@ -12,7 +12,6 @@ constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
 constexpr unsigned DDWORD = 64;
 
-
 // fixed point numeric type.
 template < const unsigned BITS >
 struct fixN
@@ -88,8 +87,8 @@ private:
 	{
 		return x >> scale;
 	}
-};
 
+};
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
@@ -104,6 +103,23 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 	else MAX_BIT = DDWORD;
 
 	return MAX_BIT;
+}
+
+
+// Convert alphanumeric string '0,1,2..9' to integer
+const int strtoint(const char* _sNum)
+{
+	int _result = 0;
+	const int _len = (int)std::strlen(_sNum);
+
+	for (int _c = 0, _Exp = 0, i = (_len - 1); i >= 0; i--)
+	{
+		_c = _sNum[i] ^ 0b00110000; // xor with the alphanumeric ascii bit mask
+		_result += _c * (int)std::pow(10, _Exp++);
+
+	}
+
+	return _result;
 }
 
 
@@ -140,7 +156,7 @@ const std::string str_from_bits(const bool _pb[], const unsigned nBits)
 	char* _ss = new char[nBits];
 
 	for (unsigned i = 0; i < nBits; i++)
-		_ss[i] =  (_pb[i])? 49 : 48;
+		_ss[i] =  (_pb[i])? '1' : '0';
 	
 	_ss[nBits] = '\0';
 	return _ss;
@@ -170,7 +186,6 @@ const bool* bits_from_str(const std::string& _cBits)
 }
 
 
-
 struct BitN
 {
 	BitN() :_bitLen(0) {}
@@ -183,7 +198,7 @@ struct BitN
 
 	BitN(const char* _strFixBits)
 	{
-		to_fixed_point_bits(_strFixBits, 0.01);
+		to_fixed_point_bits(_strFixBits, 0.1);
 	}
 
 	
@@ -216,14 +231,14 @@ struct BitN
 	const int value_from_bitstr(const std::string& _bits)
 	{
 		int _v = 0, j = 0, _exp = 0;
-		const int _nBits = (int)strlen(_bits.c_str());
+		const int _nBits = (int)std::strlen(_bits.c_str());
 
 		bool* _pb = new bool[_nBits];
 
-		for (j = (_nBits - 1); j >= 0; j--)
+		for (j = (_nBits - 1); j >= 0; j--,_exp++)
 		{
 			 _pb[j] = (_bits.c_str()[j] == 49)? true : false;
-			 _v += _pb[j] * (0b1 << _exp++);
+			 _v += (int)(_pb[j] * (0b1 << _exp) );
 		}
 
 		delete[] _pb;
@@ -236,8 +251,8 @@ struct BitN
 	{
 		_bitStr = "\0";
 	
-		for (std::deque<bool>::reverse_iterator _pb = _vBits.rbegin();
-			_pb != _vBits.rend(); _pb++)
+		for (std::deque<bool>::iterator _pb = _vBits.begin();
+			_pb != _vBits.end(); _pb++)
 		{
 			strcat((char*)_bitStr.c_str(), (*_pb)? (char*)"1" : (char*)"0");
 		}
@@ -424,6 +439,7 @@ struct BitN
 	{
 		std::cout << _bitStr.data() << "\n\n";
 	}
+
 
 private:
 	std::deque<bool> _vBits;
