@@ -123,6 +123,38 @@ const int strtoint(const char* _sNum)
 }
 
 
+
+const char* inttostr(const int nVal)
+{
+	char* _ss = new char[20];
+	std::deque<char> _cTube;
+	int nDiv = nVal, _mod = 0, cnt = 0;
+
+	*_ss = '\0';
+	char _ch = '0';
+
+	while (nDiv > 0)
+	{
+		_mod = nDiv % 10;
+		_ch = '0' + (char)_mod;
+		_cTube.push_front(_ch);
+		nDiv /= 10; ++cnt;
+	}
+
+	for (int i = 0; i < cnt; i++)
+	{
+		_ch = _cTube.at(i);
+		_ss[i] = _ch;
+	}
+
+	_ss[cnt] = '\0';
+	_cTube.clear();
+
+	return _ss;
+}
+
+
+
 // invert every bit in the bit array.
 void invert_bits(bool _pb[], const unsigned nBits)
 {
