@@ -2,43 +2,30 @@
 	#include "mixutil.h"
 #endif
 
+
 #include "mixbit.h"
 
-	
+
+
 
 int main()
 {
-	std::cout.precision(8);
+	BitN bx;
+	std::vector<bitInfo> bits{ {0b1,1},{0b01,2},{0b011,3},{0b0111,4},{0b01111,5} };
+				
+	const UINT packed = bitsPack(bits);
 
-	fixN<32> f1 = 7.0221;
-	fixN<32> f2 = 3.0051;
+	bx = packed;
 
-
-	PRINT(f1()); RET;
-	PRINT(f2()); RET;
-
-	RPRINT(f1() + f2()); RET;
-	
-	RPRINT(f1() * f2()); RET;
-
-	RET;
-	PRINT(f1.rational()); RET;
-	PRINT(f2.rational()); RET;
+	bx(); 
 
 	RET;
 
-	PRINT(f1.decimal()); RET;
-	PRINT(f2.decimal()); RET;
 
+	PRINT(num_of_bits<127088>::eval());
 
-	fixN<16> d = 33570; 
-
-	PRINT(d(0)); RET;
-
-	
 
 	RET2();
-
 	return -1;
 }
 
