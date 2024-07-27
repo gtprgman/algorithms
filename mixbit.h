@@ -42,6 +42,29 @@ const UINT bitsPack(const std::vector<bitInfo>& _vb)
 
 
 
+// evaluate to how much number of bits that made up a constant value '_v'
+template <std::add_const_t<UINT> _v >
+struct num_of_bits
+{
+	using type = std::remove_reference_t<decltype(_v)>;
+
+	static const type eval()
+	{
+		type cnt = 0; 
+		type _val = _v;
+
+		while (_val > 0)
+		{
+			_val >>= 1;
+			++cnt;
+		}
+		
+		return cnt;
+	}
+};
+
+
+
 // fixed point numeric type.
 template < const unsigned BITS >
 struct fixN
