@@ -10,7 +10,37 @@
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
-constexpr unsigned DDWORD = 64;
+constexpr unsigned QWORD = 64;
+
+
+// bit status information
+struct bitInfo
+{
+	UINT X, numBits;
+};
+
+
+
+// pack the entire bits of the vector into a UINT var
+const UINT bitsPack(const std::vector<bitInfo>& _vb)
+{
+	UINT _bx = 0b0, _Ax = 0b0;
+	UINT _n = 0;
+
+	for (const auto& ub : _vb)
+	{
+		_bx = ub.X;
+		_n = ub.numBits;
+
+		_Ax <<= _n;
+		_Ax |= _bx;
+
+	}
+
+	return _Ax;
+}
+
+
 
 // fixed point numeric type.
 template < const unsigned BITS >
@@ -90,6 +120,7 @@ private:
 
 };
 
+
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
 
@@ -100,7 +131,7 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 	if (nBits <= BYTE) MAX_BIT = BYTE;
 	else if (nBits > BYTE && nBits <= WORD) MAX_BIT = WORD;
 	else if (nBits > WORD && nBits <= DWORD) MAX_BIT = DWORD;
-	else MAX_BIT = DDWORD;
+	else MAX_BIT = 128 - QWORD;
 
 	return MAX_BIT;
 }
