@@ -271,7 +271,18 @@ struct type_aspect_if< Ty, true >
 	public:
 		static const bool Result = std::is_fundamental<type_>::value;
 	};
-	
+
+
+
+	template <const unsigned _v>
+	struct isNumeric
+	{
+		enum class Type { value = std::is_integral_v<decltype(_v)> };
+
+		using numType = std::conditional < std::is_integral_v<decltype(_v)>, decltype(_v), void > ::type;
+
+	};
+
 
 	
 	template < class LV >
