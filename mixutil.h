@@ -274,13 +274,12 @@ struct type_aspect_if< Ty, true >
 
 
 
-	template <const unsigned _v>
 	struct isNumeric
 	{
-		enum class Type { value = std::is_integral_v<decltype(_v)> };
-
-		using numType = std::conditional < std::is_integral_v<decltype(_v)>, decltype(_v), void > ::type;
-
+	   template < typename T >
+	   static const bool eval(const T _v) {
+		return std::is_integral_v<decltype(_v)>;
+	   }
 	};
 
 
