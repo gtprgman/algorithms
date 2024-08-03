@@ -43,12 +43,12 @@ const UINT bitsPack(const std::vector<bitInfo>& _vb)
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
-template <std::add_const_t<UINT> _v >
+template < class T >
 struct num_of_bits
 {
-	using type = std::remove_reference_t<decltype(_v)>;
+	using type = typename T;
 
-	static const type eval()
+	static const type eval(const type _v)
 	{
 		type cnt = 0; 
 		type _val = _v;
@@ -62,6 +62,21 @@ struct num_of_bits
 		return cnt;
 	}
 };
+
+
+
+const char* concat_str(char* _target, const char* _str)
+{
+	const std::size_t lenz = std::strlen(_target),
+			lenS = std::strlen(_str);
+	
+	char* _pStr = new char[lenz + lenS];
+	std::strncpy(_pStr, _target, lenz);
+	std::strncpy(&_pStr[lenz], _str, lenS);
+	_pStr[lenz + lenS] = 0;
+
+	return _pStr;
+}
 
 
 
