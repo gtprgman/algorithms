@@ -15,6 +15,9 @@ static LONGFLOAT CSIZE = 0.00;
 	cHash<cElem<Ty>> HS(4096); // a preset of 4K size
 #endif
 
+
+
+
 // Forward Declaration of Any Immediate Required Elements..
 	struct node;
 
@@ -37,43 +40,16 @@ constexpr std::int8_t L = static_cast<std::int8_t>(tDir::LEFT);
 constexpr std::int8_t ROOT = static_cast<std::int8_t>(tDir::UNKNOWN);
 
 
-/* this structure is used to note the index to the first and the last address of a
-   number of pointers to node stored in a vector */
-struct LINK_ID {
-	std::size_t _First;
-	std::size_t _Last;
-	std::size_t _Size;
-} vNodeLnk;
 
 struct NODE_T;
 
 
 // a data structure of a Pair of Bit and Byte
 struct BPAIR {
-	Bit _bit;
-	Byte _cdata;
-	std::string _bitStr;
 	
-
-	const Byte operator()(void) const {
-		return _cdata;
-	}
-
-	const bool operator< (const BPAIR& _bPair) const {
-		return (_cdata < _bPair._cdata);
-	}
-
-	const bool operator== (const BPAIR& _bPair) const {
-		return (_cdata == _bPair._cdata);
-	}
-
-	const bool operator> (const BPAIR& _bPair) const {
-		return (_cdata > _bPair._cdata);
-	}
-
-	const bool operator != (const BPAIR& _bPair) const {
-		return (_cdata != _bPair._cdata);
-	}
+	LINT _data;
+	UINT _val;
+	
 };
 
 
@@ -186,85 +162,13 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 #ifndef HUFF_TREE 
 	#include <vector>
+	#include <deque>
 	#include <map>
-	#define NUM_BITS(_X_) (const int)_X_
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
 	std::map<LINT, node*> _Map;
-
-	struct HF_REC {
-		HF_REC() {
-			_data = 0;
-		}
-
-		HF_REC(std::vector<bool>& _bts, Byte _dta) {
-			_bits = _bts;
-			_data = _dta;
-		}
-
-		~HF_REC() {
-			reset();
-		}
-
-		HF_REC(const HF_REC& _hfr) {
-			if (this == &_hfr) return;
-			*this = _hfr;
-		}
-
-
-		HF_REC(HF_REC&& _hfr) {
-			if (this == &_hfr) return;
-			*this = std::move(_hfr);
-		}
-
-
-		const HF_REC& operator= (const HF_REC& _hfc) {
-			if (this == &_hfc) return (*this);
-
-			_bits = _hfc._bits;
-			_data = _hfc._data;
-
-			return (*this);
-		}
-
-
-		HF_REC&& operator= (HF_REC&& _hf) {
-			if (this == &_hf) return std::move(*this);
-
-			_bits = _hf._bits;
-			_data = _hf._data;
-
-			_hf.~HF_REC();
-		
-			return std::move(*this);
-		}
-
-		
-		const char* Bits() const {
-			std::size_t sz = _bits.size();
-			
-			for (std::size_t j = 0; j < sz; j++)
-				if (_bits[j]) strcat((char*)_cb.c_str(), "1"); else
-					strcat((char*)_cb.c_str(), "0"); 
-
-			return _cb.data();
-		}
-
-
-		void reset() {
-			if (!_bits.empty()) _bits.clear();
-			if (!_cb.empty()) _cb.clear();
-			this->_data = 0;
-		}
-
-		std::string _cb;
-		std::vector<bool> _bits;
-		Byte _data;
-	};
-
 	
-
 	// custom deleter for std::unique_ptr<node>
 	struct N_DELETER {
 		void operator()(node* _p0) {
@@ -279,7 +183,6 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 		}
 	};
 
-	HF_REC _hc;
 #endif
 
 
@@ -315,6 +218,12 @@ static struct _Deallocator {
 
 #ifndef HUFF_TREE
 #define HUFF_TREE
+
+#ifndef MX_BIT
+	#include "mixbit.h"
+	BitN biXs;
+#endif
+
 
 #ifndef _DEALLOCS_H
 #include <vector>
@@ -489,6 +398,7 @@ inline node* const RIGHT(const node* const _any) {
 }
 
 
+// get the number of nodes in the outer left branches relative to the root node.
 inline const ULONG L_HEIGHT(const node* const _pRoot ) {
 	ULONG cnt = 0;
 	node* _Curr = (node* const)_pRoot;
@@ -504,6 +414,7 @@ inline const ULONG L_HEIGHT(const node* const _pRoot ) {
 }
 
 
+// get the number of nodes in the outer right branches relative to the root node.
 inline const ULONG R_HEIGHT(const node* const _pRoot) {
 	ULONG nums = 0;
 	node* _curr = (node* const)_pRoot;
@@ -715,6 +626,10 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 
 // construct a complete huffman tree data structure
 void build_huffman_tree(std::vector<node>&);
+
+
+// build a complete table data from the huffman encoded bits pattern
+void build_huffman_code(std::vector<BPAIR>&, const node*);
 
 /* sorts the nodes in the vector in the decreasing order, the size_t
    argument should be the total size of the vector. */
@@ -930,7 +845,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 
-	
 	void node::Add(node& _fv) 
 	{
 		node* _pNode = nullptr;
@@ -990,7 +904,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		_Deleter.push(node::_recent);
 	}
 	
-
 
 
 	// the total size of a data source
@@ -1156,20 +1069,40 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
+	 
+
+	inline void build_huffman_tree(std::vector<node>& _fNods)
+	{
+		const std::size_t TSZ = _fNods.size();
+		const std::size_t halfTSz = (TSZ / 2);
+
+		_TREE::_Root = (CONST_PTR)ALLOC_N<node>(NODE_T(0,100.00) );
+		node::setRoot(ROOT2P(&_TREE::_Root));
+		node::setSize(TSZ);
+
+		_TREE::_Root->links[R] = (CONST_PTR)ALLOC_N<LINT>(0);
+		_TREE::_Root->links[R]->setCode(R);
 
 
+		// fill up the first half of the branches..
+		for (std::size_t i = 0; i < halfTSz; i++)
+			_TREE::_Root->Add(_fNods.at(i));
 
-inline void build_huffman_tree(std::vector<node>& _fNods) {
-	const std::size_t TSZ = _fNods.size();
-	_TREE::_Root = (CONST_PTR)ALLOC_N<node>(_fNods.at(0));
-	node::setRoot(ROOT2P(&_TREE::_Root));
-	node::setSize(TSZ);
 
-	for (int i = 1; i < TSZ; i++)
-		_TREE::_Root->Add(_fNods.at(i));
+		// spill up to the right branches of the tree
+		node* _rightLeft = _TREE::_Root->links[R];
+		*_rightLeft = _fNods.at(halfTSz);
 
-}
+		for (std::size_t j = halfTSz + 1; j < TSZ; j++)
+		{
+			_rightLeft->links[L] = (CONST_PTR)ALLOC_N<LINT>(0);
+			_rightLeft->links[L]->setCode(L);
+			*_rightLeft->links[L] = _fNods.at(j);
+			_rightLeft = _rightLeft->links[L];
 
+		}
+		_rightLeft = nullptr;
+	}
 
 
 
@@ -1321,7 +1254,6 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 
 
-
 template < class T >
 inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fNod, T& _vElem) {
 	LongRange vecSize = 0, M = 0, L = 0, R = 0;
@@ -1386,7 +1318,7 @@ void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
 	}
 
 	// if an element has been added before..
-	if (HS<NODE_T>.get((Byte)_nod)._v > 0) return;
+	if (HS<NODE_T>.get((LINT)_nod)._v > 0) return;
 	else
 	{
 		_nodes.push_back(_nod);
@@ -1445,99 +1377,68 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 }
 
 
-/*
-
-inline const void huff_tree_create(const std::vector<node>& vn, const std::size_t _Len) {
-
-	node* ft = nullptr, *f2t = nullptr;
-	double fc = 0.00;
-
-	_TREE::_Root = (CONST_PTR)ALLOC_N<double>(50.00);
-	node::setRoot(ROOT2P(&_TREE::_Root));
 
 
-	for (std::size_t i = 0; i < _Len; i += 2) {
-		if (!ASSERT_P(&vn[i])) return;
-		fc = (vn[i].FrequencyData() ) + ((i + 1) >= _Len)? 0.00 : (vn[i + 1].FrequencyData());
-		ft = new node(fc);
-		PRINT(ft->FrequencyData());
-
-		ft->links[L] =  (CONST_PTR)(&vn[i]);
-		ft->links[L]->setCode(L);
-
-		ft->links[R] = ((i+1) >= _Len)? nullptr : (CONST_PTR)(&vn[i + 1]);
-		if (ASSERT_P(ft->links[R])) ft->links[R]->setCode(R);
-		fc = 0.00;
+inline void build_huffman_code(std::vector<BPAIR>& vtPair, const node* _fRoot) 
+{
+	node* _pt = nullptr;
+	char* _bt = (char*)"0";
+	BPAIR _bpt = {}; 
 	
-	}
-}
+	if (_fRoot != nullptr) _pt = (node*)_fRoot;
+	else return;
 
+	// encoding bits pattern from the left branches..
+	ULONG _leftEnd = L_HEIGHT(_pt);
 
+	for (ULONG i = 1; i <= _leftEnd; i++)
+	{
+		if (ASSERT_P(_pt->links[L]))
+		{
+			_pt = _pt->links[L];
 
+			if (_pt->Visited()) continue;
 
-inline void huffman_encode(std::vector<HF_REC>& _tab, const node* const _f0t) {
-	node* _ft = nullptr;
+			_bt = (char*)concat_str(_bt, inttostr(L));
 
-	if (_f0t == nullptr) return;
-	
-	const std::size_t LT = L_HEIGHT(_f0t);
+			_bpt._data = _pt->Value();
+			_bpt._val = biXs.value_from_bitstr(_bt);
+			vtPair.push_back(_bpt);
+			_bpt = {};
 
-	//_hc._bits.push_back(R);
-	//_hc._bits.push_back(R);
-	//_hc._data = _f0t->links[R]->links[R]->Value();
-
-	//_tab.push_back(_hc);
-	//_hc.reset();
-
-	_hc._bits.push_back(R);
-	_hc._bits.push_back(R);
-	_hc._data = _f0t->links[R]->links[R]->Value();
-
-	_tab.push_back(_hc);
-	_hc.reset();
-
-	if (nullptr != _f0t->links[L])
-		_ft = _f0t->links[L];
-	else
-		return;
-
-	_hc._bits.push_back(L); // outer left first branch
-
-	for (std::size_t i = 1; i < LT; i++) {
-
-		if ((i + 1) == LT) {
-			_hc._bits.push_back(R);
-			_hc._data = _ft->links[R]->Value();
-
-			_tab.push_back(_hc);
-
-			_hc._bits.pop_back();
-			_hc._bits.push_back(L);
-			_hc._data = _ft->links[L]->Value();
-
-			_tab.push_back(_hc);
-			_hc.reset();
-			continue;
+			passed_by(_pt); // signed as visited
 		}
-
-		_hc._bits.push_back(R);
-		_hc._bits.push_back(R);
-		_hc._data = _ft->links[R]->links[R]->Value();
-
-		_tab.push_back(_hc);
-
-		_hc._bits.pop_back();
-		_hc._bits.push_back(L);
-		_hc._data = _ft->links[R]->links[L]->Value();
-
-		_tab.push_back(_hc);
-
-		_hc._bits.pop_back();
-		_hc._bits.pop_back();
-		_hc._bits.push_back(L);
-
-		_ft = _ft->links[L];
-		if (nullptr == _ft) break;	
+		else
+			break;
 	}
+
+	// encoding bits pattern from the right branches..
+	_pt = (node*)_fRoot->links[R];
+	_bpt = {};
+	_bt = (char*)"10";
+	
+	ULONG _rightLeftEnd = L_HEIGHT(_pt);
+
+	for (ULONG j = 1; j <= _rightLeftEnd; j++)
+	{
+		if (ASSERT_P(_pt->links[L]))
+		{
+			_pt = _pt->links[L];
+			if (_pt->Visited()) continue;
+
+			_bt = (char*)concat_str(_bt, inttostr(L));
+
+			_bpt._data = _pt->Value();
+			_bpt._val = biXs.value_from_bitstr(_bt);
+			vtPair.push_back(_bpt);
+			_bpt = {};
+
+			passed_by(_pt); // signed as visited
+		}
+		else
+			break;
+	}
+
+	_pt = nullptr;
 }
-*/
+
