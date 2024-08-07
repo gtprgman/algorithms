@@ -1,8 +1,10 @@
 #ifndef REQUIRE_H
-	#include "mixutil.h"
+	#include "D:\MIXUTIL\User\Libs\mixutil.h"
 #endif
 
-#include "mixhuff.h"
+#include "D:\MIXUTIL\User\Libs\mixhuff.h"
+
+
 
 
 int main() {
@@ -10,6 +12,7 @@ int main() {
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::vector<node> nod, fNod;
+	std::vector<BPAIR> vtPair;
 
 	for (const char& c : s)
 		nod.push_back(c);
@@ -22,13 +25,19 @@ int main() {
 
 	build_huffman_tree(fNod);
 
-	_TREE::_Root->Print();
-	_TREE::Info();
+	_TREE::Info(); RET;
 
-	PRINT( _Map.find('e')->second->dataValue() );
-	PRINT(_Map.find('e')->second->FrequencyData());
 
+	build_huffman_code(vtPair,_TREE::_Root);
+
+	for (const BPAIR& bp : vtPair)
+	{
+		RPRINT((char)bp._data); RPRINT("="); RPRINT(biXs.toBits(bp._val).data() );
+		RET;
+	}
+	
 
 	RET2();
 	return -1;
 }
+
