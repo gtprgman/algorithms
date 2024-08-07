@@ -7,10 +7,13 @@
 
 #endif
 
+#define MX_BIT
+
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
+
 
 
 // bit status information
@@ -42,42 +45,10 @@ const UINT bitsPack(const std::vector<bitInfo>& _vb)
 
 
 
-// evaluate to how much number of bits that made up a constant value '_v'
-template < class T >
-struct num_of_bits
+const UINT unpack_bit(const UINT _nonPacked, const UINT _packed)
 {
-	using type = typename T;
-
-	static const type eval(const type _v)
-	{
-		type cnt = 0; 
-		type _val = _v;
-
-		while (_val > 0)
-		{
-			_val >>= 1;
-			++cnt;
-		}
-		
-		return cnt;
-	}
-};
-
-
-
-const char* concat_str(char* _target, const char* _str)
-{
-	const std::size_t lenz = std::strlen(_target),
-			lenS = std::strlen(_str);
-	
-	char* _pStr = new char[lenz + lenS];
-	std::strncpy(_pStr, _target, lenz);
-	std::strncpy(&_pStr[lenz], _str, lenS);
-	_pStr[lenz + lenS] = 0;
-
-	return _pStr;
+	return _packed & _nonPacked;
 }
-
 
 
 // fixed point numeric type.
@@ -158,7 +129,6 @@ private:
 
 };
 
-
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
 
@@ -202,6 +172,12 @@ const char* inttostr(const int nVal)
 	*_ss = '\0';
 	char _ch = '0';
 
+	if (!nDiv) {
+		_ss[0] = '0';
+		_ss[1] = 0;
+		return _ss;
+	}
+
 	while (nDiv > 0)
 	{
 		_mod = nDiv % 10;
@@ -222,6 +198,44 @@ const char* inttostr(const int nVal)
 	return _ss;
 }
 
+
+
+// evaluate to how much number of bits that made up a constant value '_v'
+template < class T >
+struct num_of_bits
+{
+	using type = typename T;
+
+	static const type eval(const type _v)
+	{
+		type cnt = 0; 
+		type _val = _v;
+
+		while (_val > 0)
+		{
+			_val >>= 1;
+			++cnt;
+		}
+		
+		return cnt;
+	}
+};
+
+
+
+const char* concat_str(char* _target, const char* _str)
+{
+	const std::size_t lenz = std::strlen(_target),
+					  lenS = std::strlen(_str);
+	
+	char* _pStr = new char[lenz + lenS];
+	std::strncpy(_pStr, _target, lenz);
+	std::strncpy(&_pStr[lenz], _str, lenS);
+	_pStr[lenz + lenS] = 0;
+
+	return _pStr;
+
+}
 
 
 // invert every bit in the bit array.
@@ -350,7 +364,8 @@ struct BitN
 
 	const std::string& Bits()
 	{
-		_bitStr = "\0";
+		_bitStr.clear();
+		_bitStr = "0";
 	
 		for (std::deque<bool>::iterator _pb = _vBits.begin();
 			_pb != _vBits.end(); _pb++)
@@ -367,7 +382,7 @@ struct BitN
 		unsigned _dec = _val;
 		bool _bv = 0;
 
-		_bitStr = "\0";
+		_bitStr.clear();
 		_vBits.erase(_vBits.begin(), _vBits.end());
 
 		while (_dec > 1)
@@ -379,6 +394,8 @@ struct BitN
 
 		_vBits.push_front(1);
 		_bitLen = _vBits.size();
+
+		_bitStr = "0";
 
 		for (std::deque<bool>::iterator _pb = _vBits.begin(); _pb != _vBits.end(); _pb++)
 			strcat((char*)_bitStr.c_str(), (*_pb)? (char*)"1" : (char*)"0");
@@ -405,7 +422,7 @@ struct BitN
 	// obtains a 2-complement bits string from a specific signed value ( + / - )
 	const std::string& to_signed_bits(const int _signed_v)
 	{
-		_bitStr = "\0";
+		_bitStr.clear();
 		bool* _bits = nullptr;
 		unsigned _v = 0;
 
