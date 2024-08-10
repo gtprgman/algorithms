@@ -45,21 +45,22 @@ struct NODE_T;
 
 
 // a data structure of a Pair of Bit and Byte
-struct BPAIR {
-	
-	LINT _data;
-	UINT _val;
-	
+struct BPAIR
+{
+	UINT _data : 8;
+	UINT _val : 32;
 };
+
+
 
 
 struct node {
 	node();
 	
 	node(const char); // for data tree
-	node(const LongRange); // for data tree
+	node(const UINT); // for data tree
 	node(const double); // for frequency tree
-	node(const LongRange, const double);
+	node(const UINT, const double);
 	node(NODE_T&); // construct from a ref to NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
 	node(const NODE_T&); // construct from a ref to const NODE_T
@@ -80,10 +81,10 @@ struct node {
 	static void setRoot(const node** const);
 	static void setRoot_stack(const node*);
 
-	constexpr const node* Find(const double,const LongRange);
+	constexpr const node* Find(const double);
 
 	void setCode(const bool);
-	void setData(const LongRange);
+	void setData(const UINT);
 	void setFrequencyData(const double);
 	void setCount(const double);
 	void setFreq(const double);
@@ -91,7 +92,7 @@ struct node {
 	void setVisit(const bool);
 	void setDelete(const bool);
 
-	const LongRange Value() const;
+	const UINT Value() const;
 	const char dataValue() const;
 	const double FrequencyData() const;
 	const double Freq() const;
@@ -105,9 +106,9 @@ struct node {
 	
 	// implicit conversion
 	operator NODE_T() const;
-	operator LongRange() const;
+	operator UINT() const;
 
-	const LongRange operator()() const;
+	const UINT operator()() const;
 	const bool operator< (const node&) const;
 	const bool operator> (const node&) const;
 	const bool operator!= (const node&) const;
@@ -127,7 +128,7 @@ struct node {
 private:
 	bool cDir;
 	double nCount,freq, _fdata;
-	LongRange _data;
+	UINT _data;
 	bool _visited, _deleted;
 };
 
@@ -140,7 +141,7 @@ node** node::_ppRoot = nullptr;
 
 
 // allocate a new node
-template <class N>
+template <class N =UINT>
 constexpr inline const node* const ALLOC_N(N const v) {
 	node* _p = (node* const)ALLOC_N(new node(v));
 	return (_p);
@@ -167,7 +168,7 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
-	std::map<LINT, node*> _Map;
+	std::map<UINT, node*> _Map;
 	
 	// custom deleter for std::unique_ptr<node>
 	struct N_DELETER {
@@ -252,7 +253,7 @@ node* _TREE::_Root = nullptr;
 
 // to construct a temporary node object, uses this structure for safety reason
 struct NODE_T {
-	LongRange _v;
+	UINT _v;
 	double _freq;
 
 	NODE_T() : _v(0), _freq(0.00) {}
@@ -267,7 +268,7 @@ struct NODE_T {
 		_freq = 0.00;
 	}
 
-	NODE_T(const LongRange _vc) {
+	NODE_T(const UINT _vc) {
 		_v = _vc;
 		_freq = 0.00;
 	}
@@ -277,7 +278,7 @@ struct NODE_T {
 		_freq = _fc;
 	}
 
-	NODE_T(const LongRange _vc, const double _fc) {
+	NODE_T(const UINT _vc, const double _fc) {
 		_v = _vc;
 		_freq = _fc;
 	}
@@ -339,7 +340,7 @@ struct NODE_T {
 
 
 	
-	const LongRange operator()() const {
+	const UINT operator()() const {
 		return _v;
 	}
 
@@ -351,7 +352,7 @@ struct NODE_T {
 	}
 
 	// implicit conversion
-	operator LongRange() const
+	operator UINT() const
 	{
 		return _v;
 	}
@@ -436,10 +437,10 @@ template < class N >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
 	
-	_vt = (std::strcmp("__int64", typeid(_vt).name()))?
+	_vt = (std::strcmp("unsigned int", typeid(_vt).name()))?
 		(N)_Nod.FrequencyData() : (N)_Nod.Value();
 
-	return std::remove_all_extents_t<N>(_vt);
+	return _vt;
 }
 
 
@@ -449,9 +450,9 @@ constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
 	if (nullptr == _p) return 0;
-	_v = (std::strcmp("__int64", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
+	_v = (std::strcmp("unsigned int", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
-	return std::remove_all_extents_t<N>(_v);
+	return _v;
 }
 
 
@@ -469,16 +470,16 @@ inline const node TO_FREQ_NODE(const node& _nod) {
    ,this function needs to be initiated with a call to 'setRoot()' before used.
 */ 
 constexpr const node* NODE(const double _fv) {
-	return (node::_main)->Find(_fv,0);
+	return (node::_main)->Find(_fv);
 }
 
 
 
-/* Get a pointer to any node of the tree with a specified value '_v'
+/* Get a pointer to any node of the tree with a specified value '_fv'
   'setRoot()' must be called first before use
 */ 
 constexpr const node* PNODE(const double _fv) {
-	return (node::_main)->Find(_fv,0);
+	return (node::_main)->Find(_fv);
 }
 
 
@@ -502,9 +503,9 @@ inline const double FREQX(const node* _Nod) {
 
 // evaluates the sum of total elements' value in the array with '_Count' elements
 template <class T >
-constexpr std::size_t inline total_values(const T& _any, const LongRange _Count) {
+constexpr std::size_t inline total_values(const T& _any, const UINT _Count) {
 	std::size_t nums = 0;
-	for (LongRange j = 0; j < _Count; j++)
+	for (UINT j = 0; j < _Count; j++)
 		nums = nums + (std::size_t)_any[j];
 
 	return nums;
@@ -522,14 +523,14 @@ inline void passed_by(const node* const _p = nullptr ) {
 
 inline void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
-		printf("(%lld.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
+		printf("(%ld.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
 
 
 
 // searches a particular node's value relative to the root node
-constexpr inline const node* seek_n(const node* const uRoot, const double fv, const LongRange c) {
+constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 	node* tmp = (CONST_PTR)uRoot;
 	node* bckup = nullptr;
 
@@ -573,13 +574,13 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv, co
  despite of whether a data tree has been built or not, especially in the
  case where we want to supply an instantaneous node object as argument to
  the search_Node function. */ 
-#define nodeX(_ch) node((Byte)_ch)
+#define nodeX(_ch) node((UINT)_ch)
 
 
 /* construct an instantaneous NODE_T object with a data specified as '_ch' 
    this is useful whenever we want an instantaneous NODE_T object supplied
    as argument to the vector_search function */
-#define nodeY(_ch) (Byte)_ch
+#define nodeY(_ch) (UINT)_ch
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
@@ -634,14 +635,14 @@ void build_huffman_code(std::vector<BPAIR>&, const node*);
 /* sorts the nodes in the vector in the decreasing order, the size_t
    argument should be the total size of the vector. */
 template <class N>
-void sort_Nodes(std::vector<node>&, const std::size_t);
+void sort_Nodes(std::vector<node>&, const UINT);
 
 /* sort the nodes in decreasing order using partial sort methods,
   the first element's pos should be 0 and the last element should be (n - 1), 
   you should precede the call to this one before calling any subsequent sorting
   mechanism */ 
 template <class N>
-void range_sort(std::vector<node>&, const LongRange, const LongRange);
+void range_sort(std::vector<node>&, const UINT, const UINT);
 
 
 #ifndef MIXHUFF_USE_THREAD
@@ -685,7 +686,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	node::node(const char _uChar) : xDir(tDir::UNKNOWN), _fdata(0.00),
-		_data(_uChar), nCount(0.00), freq(0.00), _visited(0), _deleted(0)
+		_data((UINT)_uChar), nCount(0.00), freq(0.00), _visited(0), _deleted(0)
 	{
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
@@ -699,7 +700,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	node::node(const LongRange c): xDir(tDir::UNKNOWN), 
+	node::node(const UINT c): xDir(tDir::UNKNOWN), 
 		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),  
 		_visited(0), _deleted(0)
 	{
@@ -708,7 +709,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	node::node(const LongRange _c, const double _fv) : xDir(tDir::UNKNOWN),
+	node::node(const UINT _c, const double _fv) : xDir(tDir::UNKNOWN),
 		_data(_c), _fdata(_fv), nCount(0.00), freq(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
@@ -845,6 +846,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 
+	
 	void node::Add(node& _fv) 
 	{
 		node* _pNode = nullptr;
@@ -860,14 +862,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[L];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[L])->setCode(L);
 				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[L];
-				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -877,7 +879,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[R];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
 
 			}
 			else {
@@ -885,7 +887,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				(_pThis->links[R])->setCode(R);
 				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[R];
-				_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -897,7 +899,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			_fv.setFrequencyData(fc);
 			_pThis->Add(_fv);
 			node::_recent = (CONST_PTR)PNODE(fc);
-			_Map.emplace(std::pair<LINT, node*>(_fv, node::_recent));
+			_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
 		}
 	
 		// automatically add to garbage collector
@@ -906,10 +908,12 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	
 
 
+
 	// the total size of a data source
 	void node::setSize(const std::size_t _sizes) {
 		_totSizes = (const double)_sizes;
 	}
+
 
 
 
@@ -928,14 +932,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 
-	constexpr const node* node::Find(const double fc, const LongRange c) {
+	constexpr const node* node::Find(const double fc) {
 		
-		return seek_n(this, fc, c);
+		return seek_n(this, fc);
 	}
 		
 
 	
-	void node::setData(const LongRange uc) {
+	void node::setData(const UINT uc) {
 		_data = uc;
 	}
 
@@ -969,7 +973,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	// Get Accessor Methods..
-	const LongRange node::Value() const {
+	const UINT node::Value() const {
 		return _data;
 	}
 
@@ -1017,7 +1021,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 	
 	// implicit conversion
-	node::operator LongRange() const {
+	node::operator UINT() const {
 		return _data;
 	}
 
@@ -1028,7 +1032,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	const LongRange node::operator()() const {
+	const UINT node::operator()() const {
 		return _data;
 	}
 
@@ -1071,6 +1075,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 	 
 
+
 	inline void build_huffman_tree(std::vector<node>& _fNods)
 	{
 		const std::size_t TSZ = _fNods.size();
@@ -1080,43 +1085,43 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		node::setRoot(ROOT2P(&_TREE::_Root));
 		node::setSize(TSZ);
 
-		_TREE::_Root->links[R] = (CONST_PTR)ALLOC_N<LINT>(0);
-		_TREE::_Root->links[R]->setCode(R);
-
-
+	
 		// fill up the first half of the branches..
 		for (std::size_t i = 0; i < halfTSz; i++)
 			_TREE::_Root->Add(_fNods.at(i));
 
 
 		// spill up to the right branches of the tree
-		node* _rightLeft = _TREE::_Root->links[R];
-		*_rightLeft = _fNods.at(halfTSz);
+		// create a new branches before appended to the right of the root
+		_TREE::_Root->links[R] = (CONST_PTR)ALLOC_N<node>(NODE_T(0, 0.00));
+		_TREE::_Root->links[R]->setCode(R);
+		node* _rightLeft = _TREE::_Root->links[R]; // _rightLeft points to the right branches
+
+		*_rightLeft = _fNods[halfTSz];
+		PRINT("Debug Info:"); RPRINT(_rightLeft->dataValue()); RET;
 
 		for (std::size_t j = halfTSz + 1; j < TSZ; j++)
-		{
-			_rightLeft->links[L] = (CONST_PTR)ALLOC_N<LINT>(0);
-			_rightLeft->links[L]->setCode(L);
-			*_rightLeft->links[L] = _fNods.at(j);
-			_rightLeft = _rightLeft->links[L];
+			_rightLeft->Add(_fNods.at(j));
 
-		}
+		
+		
 		_rightLeft = nullptr;
 	}
 
 
 
+
 template <class N >
-inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
-	LongRange j = 0, k = 0, r = 0, t = 0;
-	const LongRange	_Max = (LongRange)_Len;
+inline void sort_Nodes(std::vector<node>& vn, const UINT _Len) {
+	UINT j = 0, k = 0, r = 0, t = 0;
+	const UINT	_Max = _Len;
 	N _v1, _v3, _v2, _v4;
 	NODE_T _n1, _n3, _n2, _n4;
 
 	if (vn.empty()) return;
 
 	// apply quick sort on each half of the set
-	for (std::size_t n = 0, e = (_Len / 2), u = _Len, d = e, l = e;
+	for (UINT n = 0, e = (_Len / 2), u = _Len, d = e, l = e;
 		(n < e) && (u > e); n++, l++, d--, u--) {
 
 		_v1 = VALT<N>(vn[n]);
@@ -1140,8 +1145,8 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 
 
 // apply n times insertion sort to each half of the set
- for(std::size_t g = 0; g < _Len; g++) 
-	for (LongRange i = 0, m = (_Max / 2); (i < m) && (m < _Max); i++, m++) {
+ for(UINT g = 0; g < _Len; g++) 
+	for (UINT i = 0, m = (_Max / 2); (i < m) && (m < _Max); i++, m++) {
 		t = i; r = t + 1;
 		j = m; k = j + 1;
 
@@ -1175,14 +1180,14 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 
 
 template <class N>
-void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
+void range_sort(std::vector<node>& _vn, const UINT L, const UINT R) {
 	NODE_T tiny;
-	LongRange q = 0, p = 0, lim = 0;
-	LongRange mid = (L + R) / 2;
+	UINT q = 0, p = 0, lim = 0;
+	UINT mid = (L + R) / 2;
 
 	while ((R - mid) < (mid - L)) --mid;
 
-	for (LongRange i = 0; i < mid; i++)
+	for (UINT i = 0; i < mid; i++)
 	{
 		lim = mid + i;
 		if (lim > R) break;
@@ -1208,7 +1213,7 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 	lim = R;
 
-	for (LongRange t = 0; t < mid; t++, lim--) {
+	for (UINT t = 0; t < mid; t++, lim--) {
 		p = t; q = p + 1;
 
 		if (lim < 0) break;
@@ -1254,16 +1259,17 @@ void range_sort(std::vector<node>& _vn, const LongRange L, const LongRange R) {
 
 
 
+
 template < class T >
 inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fNod, T& _vElem) {
-	LongRange vecSize = 0, M = 0, L = 0, R = 0;
-	LongRange L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
+	UINT vecSize = 0, M = 0, L = 0, R = 0;
+	UINT L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
 	NODE_T Uc; // Uc: user's value
 	T Vc; // Vector's value
 
 	if (_vecNod.empty()) return 0;
 
-	vecSize = (LongRange)_vecNod.size();
+	vecSize = (UINT)_vecNod.size();
 	R = vecSize;
 	R1 = R;
 	M = (L + R) / 2;
@@ -1305,7 +1311,7 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fN
 
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
 {
-	LongRange val = _nod._v;
+	UINT val = _nod._v;
 	node _tmp;
 
 	if (_nodes.empty()) {
@@ -1318,7 +1324,7 @@ void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
 	}
 
 	// if an element has been added before..
-	if (HS<NODE_T>.get((LINT)_nod)._v > 0) return;
+	if (HS<NODE_T>.get(_nod._v)._v > 0) return;
 	else
 	{
 		_nodes.push_back(_nod);
@@ -1413,20 +1419,20 @@ inline void build_huffman_code(std::vector<BPAIR>& vtPair, const node* _fRoot)
 	}
 
 	// encoding bits pattern from the right branches..
-	_pt = (node*)_fRoot->links[R];
+	_pt = (node*)_fRoot;
 	_bpt = {};
-	_bt = (char*)"10";
+	_bt = (char*)"1";
 	
-	ULONG _rightLeftEnd = L_HEIGHT(_pt);
+	ULONG _rightLeftEnd = R_HEIGHT(_pt);
 
 	for (ULONG j = 1; j <= _rightLeftEnd; j++)
 	{
-		if (ASSERT_P(_pt->links[L]))
+		if (ASSERT_P(_pt->links[R]))
 		{
-			_pt = _pt->links[L];
+			_pt = _pt->links[R];
 			if (_pt->Visited()) continue;
 
-			_bt = (char*)concat_str(_bt, inttostr(L));
+			_bt = (char*)concat_str(_bt, inttostr(R));
 
 			_bpt._data = _pt->Value();
 			_bpt._val = biXs.value_from_bitstr(_bt);
