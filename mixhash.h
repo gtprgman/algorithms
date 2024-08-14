@@ -5,8 +5,8 @@
 	" A Practical Introduction to
 	Data Structures & Algorithm Analysis "
 	    3rd Edition ( C++ Version )
-		          by
-		   Clifford A. Shaffer
+		        by
+		Clifford A. Shaffer
 */
 
 #pragma once
@@ -42,7 +42,7 @@ inline const std::size_t permute(const std::size_t _TMinusOne)
 
 
 // data element for cHash
-template <class T>
+template <class T,class keyType = unsigned int>
 struct cElem
 {
 	// AType could be a T or T*
@@ -53,6 +53,9 @@ struct cElem
 
 	// The T is determined to be of as what it was
 	using PType = typename mix::ptrTraits<T>::type;
+
+	// the type of key use for hash
+	using KeyType = typename keyType;
 	
 	
 	cElem() : KeyC(0), DataC(AType()), _head{ nullptr}, _next{ nullptr }
@@ -112,8 +115,8 @@ struct cElem
 
 	
 	
-	AType DataC; // AType could be a pointer or a native std type
-	LongRange KeyC;
+	AType DataC; // DataC could be a pointer or an instance of any std type
+	KeyType KeyC;
 
 	uniqueP<cElem<AType>> _head;
 	uniqueP<cElem<AType>> _next;
@@ -140,6 +143,7 @@ struct cElem
 	}
 
 
+	// disable copy ctor & copy assignment
 	cElem(const cElem<AType>&) = delete;
 	const cElem<AType>& operator= (const cElem<AType>&) = delete;
 };
@@ -152,39 +156,40 @@ class cHash;
 
 
 template < class Ty > /* partial template specialization for cHash<T>, 
-  where T = cElem<Ty>; Ty depends on user supplied type */
-
-
+  where T = cElem<Ty,keyType>; Ty depends on user supplied type */
 class cHash<cElem<Ty>>
 {
 public:
 
+	using KeyT = typename cElem<Ty>::KeyType;
+
+
 	cHash() : isPtrC(0), _elemPtr(nullptr), _pList{nullptr} {}
-	cHash(const LongRange _sz) : isPtrC(0), _elemPtr(nullptr), _M(_sz)
+	cHash(const std::size_t _sz) : isPtrC(0), _elemPtr(nullptr), _M(_sz)
 	{
 		_pList = MK_U_ARRAY<cElem<Ty>>((UINT)_sz);
 		isPtrC = mix::ptrTraits<Ty>::isPointer;
 	}
 
 
-	const LongRange size() const { return _M;  }
+	const std::size_t size() const { return _M;  }
 
 
 	// Returns a calculated hash value
-	const LongRange operator()(const LongRange _K) const
+	const KeyT operator()(const KeyT _K) const
 	{
 		return hash(_K);
 	}
 
 
 	// Returns a recalculated hash by means of linear probing
-	const LongRange operator()(const LongRange _K, const LongRange _c) const {
+	const KeyT operator()(const KeyT _K, const KeyT _c) const {
 		return probe(_K, _c);
 	}
 
 	 
 	// get the element at '_i' position of the internal array
-	const cElem<Ty>& elements(const LongRange _i) const
+	const cElem<Ty>& elements(const std::size_t _i) const
 	{
 		return _pList[_i];
 	}
@@ -194,11 +199,11 @@ public:
 	   the key specified as '_uKey' must be the core data object/value
 	   not the index or reference to the data object.
 	*/
-	const Ty get(const LongRange _uKey)
+	const Ty get(const KeyT _uKey)
 	{
 		Ty _DataObj = (mix::ptrTraits<Ty>::isPointer)? nullptr : Ty();
 
-		LongRange nPos = (*this)(_uKey); // invoke hash method
+		KeyT nPos = hash(_uKey); // invoke hash method
 		
 		if (elements(nPos).KeyC != _uKey)
 		{
@@ -233,13 +238,13 @@ public:
 
 		_key = _rElem.DataC;
 
-		LongRange nPos = hash( (LongRange)_key );
+		KeyT nPos = hash( (KeyT)_key );
 
-		if (nPos > _M) --nPos;
+		if (nPos > (KeyT)_M) --nPos;
 
 		// if the returned slot position hasn't been occupied by other..
 		if (!Exist(nPos)) {
-			_rElem.KeyC = (LongRange)_key;
+			_rElem.KeyC = (KeyT)_key;
 			_pList[nPos] = std::move(_rElem);
 			return;
 		}
@@ -250,13 +255,13 @@ public:
 			nPos = probe(nPos, 1); // searches other possible empty slot..
 			if (!Exist(nPos) ) // if any found slot has not been occupied..
 			{
-				_rElem.KeyC = (LongRange)_key;
+				_rElem.KeyC = (KeyT)_key;
 				_pList[nPos] = std::move(_rElem);
 				return;
 			}
 			else
 			{
-				_rElem.KeyC = (LongRange)_key;
+				_rElem.KeyC = (KeyT)_key;
 				_elemPtr = (cElem<Ty>*)add_next_links(&_pList[nPos]);
 
 				if ( _elemPtr != nullptr )
@@ -268,7 +273,7 @@ public:
 	}
 
 	
-	const cElem<Ty>& Exist(const LongRange _hPos) const
+	const cElem<Ty>& Exist(const std::size_t _hPos) const
 	{
 		return _pList[_hPos];
 	}
@@ -278,7 +283,7 @@ public:
 	// Erases all the data elements in the array
 	void Sweep() const
 	{
-		for (LongRange i = 0; i < _M; i++)
+		for (std::size_t i = 0; i < _M; i++)
 			_pList[i].~cElem();
 	}
 
@@ -286,8 +291,8 @@ public:
 
 	
 private:
-	LongRange _M;
-
+	std::size_t _M;
+	
 	// a raw pointer to each linked element of _pList
 	cElem<Ty>* _elemPtr;
 
@@ -296,16 +301,16 @@ private:
 	bool isPtrC;
 
 	
-	const LongRange hash(const LongRange& _Key) const
+	const KeyT hash(const KeyT& _Key) const
 	{
-		return ( _Key % _M  );
+		return ( _Key % (KeyT)_M  );
 	}
 
 
-	const LongRange probe(const LongRange& _Key, const LongRange& _ci) const
+	const KeyT probe(const KeyT& _Key, const KeyT _ci) const
 	{
-		LongRange _home = hash(_Key);
-		return (_home + _ci) % _M;
+		KeyT _home = hash(_Key);
+		return (_home + _ci) % (KeyT)_M;
 	}
 
 
@@ -329,7 +334,9 @@ private:
 
 		return (_elemPtr->_next.get());
 	}
+
 };
 
 
 #endif
+
