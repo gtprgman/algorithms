@@ -25,8 +25,6 @@ static LONGFLOAT CSIZE = 0.00;
 	const ULONG R_HEIGHT(const node* const);
 
 
-
-
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
 
 enum class tDir : std::int8_t {
@@ -47,7 +45,7 @@ struct NODE_T;
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	UINT _data : 8;
+	int _data : 8;
 	UINT _val : 32;
 };
 
@@ -58,9 +56,9 @@ struct node {
 	node();
 	
 	node(const char); // for data tree
-	node(const UINT); // for data tree
+	node(const int); // for data tree
 	node(const double); // for frequency tree
-	node(const UINT, const double);
+	node(const int, const double);
 	node(NODE_T&); // construct from a ref to NODE_T
 	node(NODE_T&&); // construct from rvalue NODE_T
 	node(const NODE_T&); // construct from a ref to const NODE_T
@@ -84,18 +82,16 @@ struct node {
 	constexpr const node* Find(const double);
 
 	void setCode(const bool);
-	void setData(const UINT);
+	void setData(const int);
 	void setFrequencyData(const double);
 	void setCount(const double);
-	void setFreq(const double);
 	
 	void setVisit(const bool);
 	void setDelete(const bool);
 
-	const UINT Value() const;
+	const int Value() const;
 	const char dataValue() const;
 	const double FrequencyData() const;
-	const double Freq() const;
 	const double Count() const;
 	const double Capacity() const;
 	const bool Code() const;
@@ -106,9 +102,9 @@ struct node {
 	
 	// implicit conversion
 	operator NODE_T() const;
-	operator UINT() const;
+	operator int() const;
 
-	const UINT operator()() const;
+	const int operator()() const;
 	const bool operator< (const node&) const;
 	const bool operator> (const node&) const;
 	const bool operator!= (const node&) const;
@@ -127,8 +123,8 @@ struct node {
 	
 private:
 	bool cDir;
-	double nCount,freq, _fdata;
-	UINT _data;
+	double nCount,_fdata;
+	int _data;
 	bool _visited, _deleted;
 };
 
@@ -141,7 +137,7 @@ node** node::_ppRoot = nullptr;
 
 
 // allocate a new node
-template <class N =UINT>
+template <class N = int>
 constexpr inline const node* const ALLOC_N(N const v) {
 	node* _p = (node* const)ALLOC_N(new node(v));
 	return (_p);
@@ -168,7 +164,7 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
-	std::map<UINT, node*> _Map;
+	std::map<int, node*> _Map; // used primarily for debugging purposes.
 	
 	// custom deleter for std::unique_ptr<node>
 	struct N_DELETER {
@@ -253,7 +249,7 @@ node* _TREE::_Root = nullptr;
 
 // to construct a temporary node object, uses this structure for safety reason
 struct NODE_T {
-	UINT _v;
+	int _v;
 	double _freq;
 
 	NODE_T() : _v(0), _freq(0.00) {}
@@ -263,12 +259,12 @@ struct NODE_T {
 		_freq = 0.00;
 	}
 
-	NODE_T(const int _ch) {
+	NODE_T(const char _ch) {
 		_v = _ch;
 		_freq = 0.00;
 	}
 
-	NODE_T(const UINT _vc) {
+	NODE_T(const int _vc) {
 		_v = _vc;
 		_freq = 0.00;
 	}
@@ -278,7 +274,7 @@ struct NODE_T {
 		_freq = _fc;
 	}
 
-	NODE_T(const UINT _vc, const double _fc) {
+	NODE_T(const int _vc, const double _fc) {
 		_v = _vc;
 		_freq = _fc;
 	}
@@ -340,7 +336,7 @@ struct NODE_T {
 
 
 	
-	const UINT operator()() const {
+	const int operator()() const {
 		return _v;
 	}
 
@@ -352,7 +348,7 @@ struct NODE_T {
 	}
 
 	// implicit conversion
-	operator UINT() const
+	operator int() const
 	{
 		return _v;
 	}
@@ -437,7 +433,7 @@ template < class N >
 constexpr inline const N VALT(const node& _Nod) {
 	N _vt;
 	
-	_vt = (std::strcmp("unsigned int", typeid(_vt).name()))?
+	_vt = (std::strcmp("int", typeid(_vt).name()))?
 		(N)_Nod.FrequencyData() : (N)_Nod.Value();
 
 	return _vt;
@@ -450,7 +446,7 @@ constexpr inline const N VALX(const node* const _p) {
 	N _v;
 
 	if (nullptr == _p) return 0;
-	_v = (std::strcmp("unsigned int", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
+	_v = (std::strcmp("int", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
 
 	return _v;
 }
@@ -523,7 +519,7 @@ inline void passed_by(const node* const _p = nullptr ) {
 
 inline void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
-		printf("(%ld.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
+		printf("(%d.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
 
@@ -574,13 +570,13 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
  despite of whether a data tree has been built or not, especially in the
  case where we want to supply an instantaneous node object as argument to
  the search_Node function. */ 
-#define nodeX(_ch) node((UINT)_ch)
+#define nodeX(_ch) node((int)_ch)
 
 
 /* construct an instantaneous NODE_T object with a data specified as '_ch' 
    this is useful whenever we want an instantaneous NODE_T object supplied
    as argument to the vector_search function */
-#define nodeY(_ch) (UINT)_ch
+#define nodeY(_ch) (int)_ch
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
@@ -632,17 +628,17 @@ void build_huffman_tree(std::vector<node>&);
 // build a complete table data from the huffman encoded bits pattern
 void build_huffman_code(std::vector<BPAIR>&, const node*);
 
-/* sorts the nodes in the vector in the decreasing order, the size_t
+/* sort nodes in the vector in decreasing order, the size_t
    argument should be the total size of the vector. */
 template <class N>
-void sort_Nodes(std::vector<node>&, const UINT);
+void sort_Nodes(std::vector<node>&, const std::size_t);
 
 /* sort the nodes in decreasing order using partial sort methods,
   the first element's pos should be 0 and the last element should be (n - 1), 
   you should precede the call to this one before calling any subsequent sorting
   mechanism */ 
 template <class N>
-void range_sort(std::vector<node>&, const UINT, const UINT);
+void range_sort(std::vector<node>&, const int, const int);
 
 
 #ifndef MIXHUFF_USE_THREAD
@@ -660,7 +656,7 @@ void range_sort(std::vector<node>&, const UINT, const UINT);
 
 
 /* search a node in the vector container using binary search method,
-   this function can apply only to a vector node sorted on data value. */
+   this function can apply only to a sorted data value in vector node. */
 template < class T>
 const bool vector_search(const std::vector<T>&, const NODE_T& ,T&);
 
@@ -677,7 +673,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 	// Node Class Impl..
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
-		nCount(0.00), freq(0.00),cDir(0), _visited(0), _deleted(0)
+		nCount(0.00),cDir(0), _visited(0), _deleted(0)
 	{
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
@@ -686,22 +682,22 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	node::node(const char _uChar) : xDir(tDir::UNKNOWN), _fdata(0.00),
-		_data((UINT)_uChar), nCount(0.00), freq(0.00), _visited(0), _deleted(0)
+		_data((int)_uChar), nCount(0.00), _visited(0), _deleted(0)
 	{
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
 	}
 
 	node::node(const double frq_data):xDir(tDir::UNKNOWN), _fdata(frq_data),
-		_data(0),nCount(0.00), freq(0.00), cDir(0), _visited(0), _deleted(0)
+		_data(0),nCount(0.00), cDir(0), _visited(0), _deleted(0)
 	{
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
 	}
 
 
-	node::node(const UINT c): xDir(tDir::UNKNOWN), 
-		_data(c),nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),  
+	node::node(const int c): xDir(tDir::UNKNOWN), 
+		_data(c),nCount(0.00), _fdata(0.00), cDir(0),  
 		_visited(0), _deleted(0)
 	{
 		this->links[L] = nullptr;
@@ -709,8 +705,8 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	node::node(const UINT _c, const double _fv) : xDir(tDir::UNKNOWN),
-		_data(_c), _fdata(_fv), nCount(0.00), freq(0.00), cDir(0),
+	node::node(const int _c, const double _fv) : xDir(tDir::UNKNOWN),
+		_data(_c), _fdata(_fv), nCount(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
 		this->links[L] = nullptr;
@@ -724,7 +720,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	*/ 
 
 	node::node(NODE_T& _NodT): xDir(tDir::UNKNOWN),
-		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
+		_data(0), nCount(0.00),_fdata(0.00), cDir(0),
 		_visited(0), _deleted(0)
 	{
 		_data = _NodT._v;
@@ -735,7 +731,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	node::node(const NODE_T& _tmpNod) : xDir(tDir::UNKNOWN),
-		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
+		_data(0), nCount(0.00), _fdata(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
 		_data = _tmpNod._v;
@@ -746,7 +742,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	node::node(NODE_T&& _nodT):xDir(tDir::UNKNOWN),
-		_data(0), nCount(0.00), freq(0.00), _fdata(0.00), cDir(0),
+		_data(0), nCount(0.00), _fdata(0.00), cDir(0),
 		_visited(0), _deleted(0) 
 	{
 		_data = _nodT._v;
@@ -789,7 +785,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		nCount = rNod.nCount;
 		_data = rNod._data;
 		_fdata = rNod._fdata;
-		freq = rNod.freq;
 		xDir = rNod.xDir;
 		_visited = rNod._visited;
 		_deleted = rNod._deleted;
@@ -811,7 +806,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		nCount = rvNod.nCount;
 		_data = rvNod._data;
 		_fdata = rvNod._fdata;
-		freq = rvNod.freq;
 		xDir = rvNod.xDir;
 		_visited = rvNod._visited;
 		_deleted = rvNod._deleted;
@@ -826,7 +820,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		rvNod.nCount = 0.00;
 		rvNod._data = 0;
 		rvNod._fdata = 0.00;
-		rvNod.freq = 0.00;
 		xDir = tDir::UNKNOWN;
 
 		rvNod._visited = 0;
@@ -862,14 +855,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[L];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[L])->setCode(L);
 				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[L];
-				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -879,7 +872,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[R];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 
 			}
 			else {
@@ -887,7 +880,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				(_pThis->links[R])->setCode(R);
 				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[R];
-				_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
+				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -899,7 +892,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			_fv.setFrequencyData(fc);
 			_pThis->Add(_fv);
 			node::_recent = (CONST_PTR)PNODE(fc);
-			_Map.emplace(std::pair<UINT, node*>(_fv, node::_recent));
+			_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 		}
 	
 		// automatically add to garbage collector
@@ -939,7 +932,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		
 
 	
-	void node::setData(const UINT uc) {
+	void node::setData(const int uc) {
 		_data = uc;
 	}
 
@@ -951,11 +944,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 	void node::setCount(const double fc) {
 		nCount = fc;
-	}
-
-
-	void node::setFreq(const double dv) {
-		freq = dv;
 	}
 
 
@@ -973,7 +961,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	// Get Accessor Methods..
-	const UINT node::Value() const {
+	const int node::Value() const {
 		return _data;
 	}
 
@@ -987,11 +975,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		return _fdata;
 	}
 
-	const double node::Freq() const {
-		return this->freq;
-	}
-
-
+	
 	const double node::Count() const {
 		return nCount;
 	}
@@ -1021,7 +1005,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 	
 	// implicit conversion
-	node::operator UINT() const {
+	node::operator int() const {
 		return _data;
 	}
 
@@ -1032,7 +1016,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	const UINT node::operator()() const {
+	const int node::operator()() const {
 		return _data;
 	}
 
@@ -1112,16 +1096,16 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 template <class N >
-inline void sort_Nodes(std::vector<node>& vn, const UINT _Len) {
+inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 	UINT j = 0, k = 0, r = 0, t = 0;
-	const UINT	_Max = _Len;
+	const UINT	_Max = (UINT)_Len;
 	N _v1, _v3, _v2, _v4;
 	NODE_T _n1, _n3, _n2, _n4;
 
 	if (vn.empty()) return;
 
 	// apply quick sort on each half of the set
-	for (UINT n = 0, e = (_Len / 2), u = _Len, d = e, l = e;
+	for (UINT n = 0, e = (_Max / 2), u = _Max, d = e, l = e;
 		(n < e) && (u > e); n++, l++, d--, u--) {
 
 		_v1 = VALT<N>(vn[n]);
@@ -1145,7 +1129,7 @@ inline void sort_Nodes(std::vector<node>& vn, const UINT _Len) {
 
 
 // apply n times insertion sort to each half of the set
- for(UINT g = 0; g < _Len; g++) 
+ for(UINT g = 0; g < _Max; g++) 
 	for (UINT i = 0, m = (_Max / 2); (i < m) && (m < _Max); i++, m++) {
 		t = i; r = t + 1;
 		j = m; k = j + 1;
@@ -1180,7 +1164,7 @@ inline void sort_Nodes(std::vector<node>& vn, const UINT _Len) {
 
 
 template <class N>
-void range_sort(std::vector<node>& _vn, const UINT L, const UINT R) {
+void range_sort(std::vector<node>& _vn, const int L, const int R) {
 	NODE_T tiny;
 	UINT q = 0, p = 0, lim = 0;
 	UINT mid = (L + R) / 2;
@@ -1311,7 +1295,7 @@ inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fN
 
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
 {
-	UINT val = _nod._v;
+	int val = _nod._v;
 	node _tmp;
 
 	if (_nodes.empty()) {
