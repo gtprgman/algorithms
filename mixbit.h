@@ -2,12 +2,15 @@
 /* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
+
 	#include <vector>
 	#include <deque>
 
 #endif
 
+
 #define MX_BIT
+
 
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
@@ -15,20 +18,50 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 
 
+const char* concat_str(char* _target, const char* _str)
+{
+	const std::size_t lenz = std::strlen(_target),
+		lenS = std::strlen(_str);
+
+	char* _pStr = new char[lenz + lenS];
+	std::strncpy(_pStr, _target, lenz);
+	std::strncpy(&_pStr[lenz], _str, lenS);
+	_pStr[lenz + lenS] = 0;
+
+	return _pStr;
+
+}
+
+
+const char* reverse_str(const char* _str)
+{
+	const std::size_t lenz = std::strlen(_str);
+	char* _ps = new char[lenz];
+
+	for (std::size_t i = 0,j = lenz; j > 0; )
+		_ps[i++] = _str[--j];
+
+	_ps[lenz] = 0;
+	return _ps;
+}
+
 
 // bit status information
+template < typename T >
 struct bitInfo
 {
-	UINT X, numBits;
+	T X;  
+	unsigned int numBits;
 };
 
 
 
 // pack the entire bits of the vector into a UINT var
-const UINT bitsPack(const std::vector<bitInfo>& _vb)
+template <typename T>
+const unsigned int bitsPack(const std::vector<bitInfo<T>>& _vb)
 {
-	UINT _bx = 0b0, _Ax = 0b0;
-	UINT _n = 0;
+	T _bx = 0b0, _Ax = 0b0;
+	unsigned int _n = 0;
 
 	for (const auto& ub : _vb)
 	{
@@ -45,7 +78,7 @@ const UINT bitsPack(const std::vector<bitInfo>& _vb)
 
 
 
-const UINT unpack_bit(const UINT _nonPacked, const UINT _packed)
+const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
 {
 	return _packed & _nonPacked;
 }
@@ -163,6 +196,7 @@ const int strtoint(const char* _sNum)
 
 
 
+
 const char* inttostr(const int nVal)
 {
 	char* _ss = new char[20];
@@ -223,19 +257,7 @@ struct num_of_bits
 
 
 
-const char* concat_str(char* _target, const char* _str)
-{
-	const std::size_t lenz = std::strlen(_target),
-					  lenS = std::strlen(_str);
-	
-	char* _pStr = new char[lenz + lenS];
-	std::strncpy(_pStr, _target, lenz);
-	std::strncpy(&_pStr[lenz], _str, lenS);
-	_pStr[lenz + lenS] = 0;
 
-	return _pStr;
-
-}
 
 
 // invert every bit in the bit array.
