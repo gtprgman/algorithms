@@ -46,6 +46,23 @@ const char* reverse_str(const char* _str)
 }
 
 
+
+const char* rtrim(const char* _string)
+{
+	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
+	char* _bss = new char[Len];
+
+	std::memset(_bss, 0, Len);
+
+	for (std::size_t i = 0; i < _Max; i++)
+		_bss[i] = _string[i];
+
+	
+	return _bss;
+}
+
+
+
 // bit status information
 template < typename T >
 struct bitInfo
