@@ -1,8 +1,8 @@
 #ifndef REQUIRE_H
-	#include "D:\MIXUTIL\User\Libs\mixutil.h"
+	#include "mixutil.h"
 #endif
 
-#include "D:\MIXUTIL\User\Libs\mixhuff.h"
+#include "mixhuff.h"
 
 
 
@@ -12,14 +12,18 @@ int main() {
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::vector<node> nod, fNod;
-	std::vector<BPAIR> vtPair;
+	std::map<int, char> mPair;
+	
 
-	for (const char& c : s)
+	for (const auto& c : s)
 		nod.push_back(c);
 
-	sort_Nodes<LINT>(nod, SZ);
 
-	filter_Nodes(fNod, nod); nod.clear();
+	sort_Nodes<int>(nod, SZ);
+
+	filter_Nodes(fNod, nod); 
+	
+	nod.clear();
 
 	sort_Nodes<double>(fNod, fNod.size());
 
@@ -27,16 +31,25 @@ int main() {
 
 	_TREE::Info(); RET;
 
+	build_huffman_code(mPair, _TREE::_Root);
 
-	build_huffman_code(vtPair,_TREE::_Root);
+	RET;
 
-	for (const BPAIR& bp : vtPair)
+
+	for (const std::pair<int, char>& mp : mPair)
 	{
-		RPRINT((char)bp._data); RPRINT("="); RPRINT(biXs.toBits(bp._val).data() );
+		RPRINT(mp.second); RPRINT("->"); RPRINT(biXs.toBits(mp.first).data());
 		RET;
 	}
+
+	fNod.clear(); 
+	mPair.clear();
+	_Map.clear();
+
+	RET;
 	
 
+	
 	RET2();
 	return -1;
 }
