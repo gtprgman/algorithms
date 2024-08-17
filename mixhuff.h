@@ -27,6 +27,7 @@ static LONGFLOAT CSIZE = 0.00;
 
 enum class huffDir : std::int8_t { UNKNOWN = -1, ZERO = 0, ONE = 1 };
 
+
 enum class tDir : std::int8_t {
 	UNKNOWN = -1,
 	LEFT = static_cast<std::int8_t>(huffDir::ONE),
@@ -45,8 +46,8 @@ struct NODE_T;
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	int _data : 8;
-	UINT _val : 32;
+	char _data : 8;
+	int _val : 32;
 };
 
 
@@ -378,8 +379,6 @@ struct NODE_T {
 #define ROOT2P(_p) (NODE2P)(_p)
 
 
-
-
 inline bool ASSERT_P(const node* _ptr = nullptr) {
 	return (_ptr != nullptr);
 }
@@ -487,7 +486,6 @@ inline const node* RECENT() {
 
 
 
-
 /* returns the frequency value of a node as specified by a pointer to any
   node in the tree.
 */
@@ -551,8 +549,6 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 }
 
 
-
-
 #define ROW_FDATA_PRINT(_p) {\
 	RPRINT(_p->FrequencyData()); RPRINT(","); RPRINT(_p->Freq());\
 	RET;\
@@ -593,7 +589,6 @@ inline void NPRINT(const std::vector<node>& _vn) {
 #endif
 
 
-
 // marks a node for deletion
 inline const bool DELETED(const node* const _p) {
 	bool flDel = 0;
@@ -620,13 +615,12 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 
 
 
-
 // construct a complete huffman tree data structure
 void build_huffman_tree(std::vector<node>&);
 
 
 // build a complete table data from the huffman encoded bits pattern
-void build_huffman_code(std::vector<BPAIR>&, const node*);
+void build_huffman_code(std::map<int,char>&, const node*);
 
 /* sort nodes in the vector in decreasing order, the size_t
    argument should be the total size of the vector. */
@@ -839,7 +833,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 
-	
 	void node::Add(node& _fv) 
 	{
 		node* _pNode = nullptr;
@@ -1058,8 +1051,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 
 
 	 
-
-
 	inline void build_huffman_tree(std::vector<node>& _fNods)
 	{
 		const std::size_t TSZ = _fNods.size();
@@ -1081,13 +1072,17 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		_TREE::_Root->links[R]->setCode(R);
 		node* _rightLeft = _TREE::_Root->links[R]; // _rightLeft points to the right branches
 
+		bool _nDir = false;
 		*_rightLeft = _fNods[halfTSz];
-		PRINT("Debug Info:"); RPRINT(_rightLeft->dataValue()); RET;
 
 		for (std::size_t j = halfTSz + 1; j < TSZ; j++)
-			_rightLeft->Add(_fNods.at(j));
+		{
+			_nDir = !(_nDir);
+			_rightLeft->links[_nDir] = (node*)ALLOC_N(_fNods[j]);
+			_rightLeft->setCode(_nDir);
+			_rightLeft = _rightLeft->links[_nDir];
+		}
 
-		
 		
 		_rightLeft = nullptr;
 	}
@@ -1369,7 +1364,7 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 
 
 
-inline void build_huffman_code(std::vector<BPAIR>& vtPair, const node* _fRoot) 
+inline void build_huffman_code(std::map<int,char>& _mPair, const node* _fRoot) 
 {
 	node* _pt = nullptr;
 	char* _bt = (char*)"0";
@@ -1378,55 +1373,63 @@ inline void build_huffman_code(std::vector<BPAIR>& vtPair, const node* _fRoot)
 	if (_fRoot != nullptr) _pt = (node*)_fRoot;
 	else return;
 
-	// encoding bits pattern from the left branches..
-	ULONG _leftEnd = L_HEIGHT(_pt);
-
-	for (ULONG i = 1; i <= _leftEnd; i++)
+	// encoding bits pattern on the left branches..
+	while (_pt != nullptr)
 	{
 		if (ASSERT_P(_pt->links[L]))
 		{
 			_pt = _pt->links[L];
 
-			if (_pt->Visited()) continue;
+			if (_pt->Value() > 0)
+			{
+				_bt = (char*)concat_str(_bt, inttostr(L));
+				_bpt._data = _pt->dataValue();
+				_bpt._val = biXs.value_from_bitstr(_bt);
+				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+				_bpt = {};
 
-			_bt = (char*)concat_str(_bt, inttostr(L));
-
-			_bpt._data = _pt->Value();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			vtPair.push_back(_bpt);
-			_bpt = {};
-
-			passed_by(_pt); // signed as visited
+				// check its neighbour right node
+				if (ASSERT_P(_pt->links[R]))
+				{
+					if (_pt->links[R]->Value() > 0 && !_pt->links[R]->Visited() )
+					{
+						_bt = (char*)concat_str(_bt, inttostr(R));
+						_bpt._data = _pt->links[R]->dataValue();
+						_bpt._val = biXs.value_from_bitstr(_bt);
+						_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+						_bpt = {};
+						_bt = (char*)rtrim(_bt);
+						passed_by(_pt->links[R]);
+					}
+				}
+			}
 		}
-		else
-			break;
+		else break;
 	}
+	// Encoding left branches succeeded !!
 
-	// encoding bits pattern from the right branches..
+	
+	
+	// encoding bits pattern on the right branches..
 	_pt = (node*)_fRoot;
 	_bpt = {};
 	_bt = (char*)"1";
-	
-	ULONG _rightLeftEnd = R_HEIGHT(_pt);
+	bool _pDir = false;
 
-	for (ULONG j = 1; j <= _rightLeftEnd; j++)
+	_pt = _pt->links[R]; // point to right branches..
+	PRINT(_pt->dataValue());
+
+	while (_pt != nullptr)
 	{
-		if (ASSERT_P(_pt->links[R]))
+		_pDir = !(_pDir);
+
+		if (ASSERT_P(_pt->links[_pDir]))
 		{
-			_pt = _pt->links[R];
-			if (_pt->Visited()) continue;
-
-			_bt = (char*)concat_str(_bt, inttostr(R));
-
-			_bpt._data = _pt->Value();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			vtPair.push_back(_bpt);
-			_bpt = {};
-
-			passed_by(_pt); // signed as visited
+			_pt = _pt->links[_pDir];
+			PRINT(_pt->dataValue());
 		}
-		else
-			break;
+		else break;
+
 	}
 
 	_pt = nullptr;
