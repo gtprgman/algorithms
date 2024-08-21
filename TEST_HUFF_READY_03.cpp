@@ -9,7 +9,7 @@
 
 int main() {
 	
-	std::string s = "Ada Ate Apple.";
+	std::string s = "She Sells Shells in the Sea Shore.";
 	const std::size_t SZ = s.size();
 	std::vector<node> nod, fNod;
 	std::map<int, char> mPair;
@@ -26,6 +26,8 @@ int main() {
 	nod.clear();
 
 	sort_Nodes<double>(fNod, fNod.size());
+
+	//NPRINT(fNod);
 
 	build_huffman_tree(fNod);
 
@@ -44,12 +46,11 @@ int main() {
 
 	fNod.clear(); 
 	mPair.clear();
-	_Map.clear();
+
 
 	RET;
 	
 
-	
 	RET2();
 	return -1;
 }
