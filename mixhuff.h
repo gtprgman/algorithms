@@ -1,4 +1,4 @@
-/* Debugging Stages --> in Progress */
+/* Using GPL v. 3.0 License */
 #pragma once
 
 #ifndef REQUIRE_H
@@ -165,7 +165,7 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 	std::vector<std::unique_ptr<node>> _repo;
 	std::vector<node*> _nRepo;
-	std::map<int, node*> _Map; // used primarily for debugging purposes.
+	//std::map<int, node*> _Map; // used primarily for debugging purposes.
 	
 	// custom deleter for std::unique_ptr<node>
 	struct N_DELETER {
@@ -180,7 +180,6 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 			for (node* p_ : _nRepo) p_->~node();
 		}
 	};
-
 #endif
 
 
@@ -200,11 +199,8 @@ static struct _Deallocator {
 		}
 		_repo.clear();
 	}
-
-	 
+ 
 } _Deleter;
-
-
 
 #endif
 
@@ -379,6 +375,8 @@ struct NODE_T {
 #define ROOT2P(_p) (NODE2P)(_p)
 
 
+
+
 inline bool ASSERT_P(const node* _ptr = nullptr) {
 	return (_ptr != nullptr);
 }
@@ -486,6 +484,7 @@ inline const node* RECENT() {
 
 
 
+
 /* returns the frequency value of a node as specified by a pointer to any
   node in the tree.
 */
@@ -549,6 +548,8 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 }
 
 
+
+
 #define ROW_FDATA_PRINT(_p) {\
 	RPRINT(_p->FrequencyData()); RPRINT(","); RPRINT(_p->Freq());\
 	RET;\
@@ -561,18 +562,6 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 }
 
 
-/* construct an instantaneous node object with a data specified as '_ch',
- this can be used anytime whenever we want an instantaneous node object,
- despite of whether a data tree has been built or not, especially in the
- case where we want to supply an instantaneous node object as argument to
- the search_Node function. */ 
-#define nodeX(_ch) node((int)_ch)
-
-
-/* construct an instantaneous NODE_T object with a data specified as '_ch' 
-   this is useful whenever we want an instantaneous NODE_T object supplied
-   as argument to the vector_search function */
-#define nodeY(_ch) (int)_ch
 
 #define ZEROES(var1, var2) var1 = var2 = 0.00
 
@@ -587,6 +576,7 @@ inline void NPRINT(const std::vector<node>& _vn) {
 
 
 #endif
+
 
 
 // marks a node for deletion
@@ -614,6 +604,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 }
 
 
+/* Prototypes section .. */
 
 // construct a complete huffman tree data structure
 void build_huffman_tree(std::vector<node>&);
@@ -648,11 +639,6 @@ void range_sort(std::vector<node>&, const int, const int);
 	void merge_sort(std::vector<node>&, const std::size_t);
 #endif
 
-
-/* search a node in the vector container using binary search method,
-   this function can apply only to a sorted data value in vector node. */
-template < class T>
-const bool vector_search(const std::vector<T>&, const NODE_T& ,T&);
 
 /*  Filter nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
@@ -832,7 +818,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-
 	void node::Add(node& _fv) 
 	{
 		node* _pNode = nullptr;
@@ -848,14 +833,14 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[L];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
+				//_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 			else {
 				_pThis->links[L] = (CONST_PTR)ALLOC_N(&_fv);
 				(_pThis->links[L])->setCode(L);
 				(_pThis->links[L])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[L];
-				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
+				//_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -865,7 +850,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				_pNode = _pThis->links[R];
 				_pNode->Add(_fv);
 				node::_recent = (CONST_PTR)PNODE(VALT<double>(_fv));
-				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
+				//_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 
 			}
 			else {
@@ -873,7 +858,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 				(_pThis->links[R])->setCode(R);
 				(_pThis->links[R])->setCount(_pThis->Count() + 1.0);
 				node::_recent = _pThis->links[R];
-				_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
+				//_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 			}
 
 		}
@@ -885,7 +870,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 			_fv.setFrequencyData(fc);
 			_pThis->Add(_fv);
 			node::_recent = (CONST_PTR)PNODE(fc);
-			_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
+			//_Map.emplace(std::pair<int, node*>(_fv, node::_recent));
 		}
 	
 		// automatically add to garbage collector
@@ -894,12 +879,10 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	
 
 
-
 	// the total size of a data source
 	void node::setSize(const std::size_t _sizes) {
 		_totSizes = (const double)_sizes;
 	}
-
 
 
 
@@ -1050,7 +1033,7 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	 
+	 // global functions
 	inline void build_huffman_tree(std::vector<node>& _fNods)
 	{
 		const std::size_t TSZ = _fNods.size();
@@ -1238,56 +1221,6 @@ void range_sort(std::vector<node>& _vn, const int L, const int R) {
 
 
 
-
-template < class T >
-inline const bool vector_search(const std::vector<T>& _vecNod, const NODE_T& _fNod, T& _vElem) {
-	UINT vecSize = 0, M = 0, L = 0, R = 0;
-	UINT L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
-	NODE_T Uc; // Uc: user's value
-	T Vc; // Vector's value
-
-	if (_vecNod.empty()) return 0;
-
-	vecSize = (UINT)_vecNod.size();
-	R = vecSize;
-	R1 = R;
-	M = (L + R) / 2;
-
-
-	Uc = _fNod; // user's value
-
-	do {
-		Vc = _vecNod[M];  // vector's value
-
-		if (Uc() < Vc()) {
-			L = M;
-			R = R1;
-		}
-		else if (Uc() > Vc()) {
-			L = L1;
-			R = M;
-		}
-
-		else if (Uc() == Vc()) {
-			_vElem = _vecNod.at(M);
-			break;
-		}
-
-		L1 = L;
-		R1 = R;
-		M = (L + R) / 2;
-
-		++nSeek;
-		if ((M < 0) || (M > vecSize)) break;
-		if (nSeek > vecSize) break;
-
-	} while (Uc() != Vc());
-
-	return (Uc() == Vc());
-}
-
-
-
 void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
 {
 	int val = _nod._v;
@@ -1363,7 +1296,6 @@ inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src
 
 
 
-
 inline void build_huffman_code(std::map<int,char>& _mPair, const node* _fRoot) 
 {
 	node* _pt = nullptr;
@@ -1399,7 +1331,7 @@ inline void build_huffman_code(std::map<int,char>& _mPair, const node* _fRoot)
 						_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
 						_bpt = {};
 						_bt = (char*)rtrim(_bt);
-						passed_by(_pt->links[R]);
+						_pt->links[R]->setVisit(true);
 					}
 				}
 			}
@@ -1416,21 +1348,49 @@ inline void build_huffman_code(std::map<int,char>& _mPair, const node* _fRoot)
 	_bt = (char*)"1";
 	bool _pDir = false;
 
-	_pt = _pt->links[R]; // point to right branches..
-	PRINT(_pt->dataValue());
-
+	
 	while (_pt != nullptr)
 	{
-		_pDir = !(_pDir);
 
 		if (ASSERT_P(_pt->links[_pDir]))
 		{
+			if (_pt->links[_pDir]->Visited())
+			{
+				_pt = _pt->links[_pDir]; // points to the visited node
+				_pDir = !(_pDir); // changes direction
+				continue;
+			}
+
 			_pt = _pt->links[_pDir];
-			PRINT(_pt->dataValue());
+			
+			if (_pt->Value() > 0)
+			{
+				_bt = (char*)concat_str(_bt, inttostr(_pDir));
+				_bpt._data = _pt->dataValue();
+				_bpt._val = biXs.value_from_bitstr(_bt);
+				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+				_bpt = {};
+				_pt->setVisit(true);
+			}
+
+			// check its neighbour node
+			if (ASSERT_P(_pt->links[!_pDir]) && _pt->links[!_pDir]->Value() > 0 )
+			{
+				_bt = (char*)concat_str(_bt, inttostr(!_pDir));
+				_bpt._data = _pt->links[!_pDir]->dataValue();
+				_bpt._val = biXs.value_from_bitstr(_bt);
+				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+				_bpt = {};
+
+				_bt = (char*)rtrim(_bt);
+				_pt->links[!_pDir]->setVisit(true);
+			}
+			_pDir = !(_pDir);
 		}
 		else break;
-
 	}
+
+	// Encoding right branches succeeded !!
 
 	_pt = nullptr;
 }
