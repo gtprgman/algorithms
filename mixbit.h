@@ -18,6 +18,41 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 
 
+// uppercase the specified char
+const char upCase(const int _c)
+{
+	if (_c <= 0) return _c;
+
+	// is _c already in upper case??
+	if (_c >= 65 && _c <= 90)
+		return _c;
+
+	
+	int _ch = 0b00100000 ^ _c;
+
+	return _ch;
+}
+
+
+
+
+// downcase the specified char
+const char downCase(const int _cAlpha)
+{
+	if (_cAlpha <= 0) return _cAlpha;
+
+	// is _cAlpha already in lower case??
+	if (_cAlpha >= 97 && _cAlpha <= 122)
+		return _cAlpha;
+
+	int _cLow = 0b01100000 | _cAlpha;
+
+	return _cLow;
+}
+
+
+
+
 const char* concat_str(char* _target, const char* _str)
 {
 	const std::size_t lenz = std::strlen(_target),
@@ -29,8 +64,9 @@ const char* concat_str(char* _target, const char* _str)
 	_pStr[lenz + lenS] = 0;
 
 	return _pStr;
-
 }
+
+
 
 
 const char* reverse_str(const char* _str)
@@ -47,6 +83,50 @@ const char* reverse_str(const char* _str)
 
 
 
+
+// return n number of characters from the left end of the string
+const char* lstr(const char* _srcStr, const std::size_t _nGrab)
+{
+	char* _ps = nullptr;
+	const std::size_t lenX = std::strlen(_srcStr);
+
+	if (_nGrab > lenX) return nullptr;
+
+	_ps = new char[_nGrab];
+
+	for (std::size_t i = 0; i < _nGrab; i++)
+		_ps[i] = _srcStr[i];
+
+
+	_ps[_nGrab] = 0;
+
+	return _ps;
+}
+
+
+
+// return n number of characters from the right end of the string
+const char* rstr(const char* _sStr, const std::size_t _nChars)
+{
+	const std::size_t lenR = std::strlen(_sStr) - 1;
+	char* _pss = nullptr;
+
+	if (_nChars == 0 || _nChars > lenR) return nullptr;
+
+	_pss = new char[_nChars];
+
+	for (std::size_t j = 0; j < _nChars; j++)
+		_pss[j] = _sStr[lenR - j];
+
+	
+	_pss[_nChars] = 0;
+
+	return _pss;
+}
+
+
+
+
 const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
@@ -57,28 +137,43 @@ const char* rtrim(const char* _string)
 	for (std::size_t i = 0; i < _Max; i++)
 		_bss[i] = _string[i];
 
-	
+
 	return _bss;
 }
 
 
 
+
 // bit status information
-template < typename T >
+template <typename BitSZ = unsigned int>
 struct bitInfo
 {
-	T X;  
-	unsigned int numBits;
+	bitInfo(): X(0), numBits(0) {};
+
+	bitInfo(const int _x, BitSZ _bitSz)
+	{
+		X = _x;
+		numBits = _bitSz;
+	}
+
+	~bitInfo()
+	{
+		X = 0;
+		numBits = 0;
+	}
+
+	int X : 8;  
+	BitSZ numBits : 32;
 };
 
 
 
 // pack the entire bits of the vector into a UINT var
-template <typename T>
+template < typename T >
 const unsigned int bitsPack(const std::vector<bitInfo<T>>& _vb)
 {
-	T _bx = 0b0, _Ax = 0b0;
-	unsigned int _n = 0;
+	int _bx = 0b0, _Ax = 0b0;
+	T _n = 0;
 
 	for (const auto& ub : _vb)
 	{
@@ -274,6 +369,45 @@ struct num_of_bits
 
 
 
+// convert a specified decimal constant to its binary form
+template < typename T >
+struct to_binary
+{
+	using value_type = typename T;
+	
+	static const std::string eval(const value_type _dec)
+	{
+		unsigned int _bsz = num_of_bits<unsigned int>::eval(_dec) + 1;
+		_value = _dec;
+		
+		if (_bsz > 0)
+			_bs = new char[_bsz];
+
+		for (unsigned int i = 0; i < _bsz; i++)
+		{
+			_bs[i] = (_value % 2)? 49 : 48;
+			_value >>= 1;
+		}
+
+		_value = 0;
+		_bs[_bsz] = 0;
+		_bs = (char*)reverse_str(_bs);
+		return _bs;
+	}
+
+private:
+	static value_type _value;
+	static char* _bs;
+};
+
+
+template <class T>
+T to_binary<T>::_value = 0;
+
+template <class T>
+char* to_binary<T>::_bs = nullptr;
+
+
 
 
 
@@ -437,7 +571,8 @@ struct BitN
 		_bitStr = "0";
 
 		for (std::deque<bool>::iterator _pb = _vBits.begin(); _pb != _vBits.end(); _pb++)
-			strcat((char*)_bitStr.c_str(), (*_pb)? (char*)"1" : (char*)"0");
+			strcat((char*)_bitStr.data(), (*_pb)? (const char*)"1" : (const char*)"0");
+			
 		
 		return _bitStr;
 	}
@@ -505,7 +640,7 @@ struct BitN
 		return _bitStr;
 	}
 
-	const size_t bitSize() const { return _bitLen; }
+	const size_t bitSize() const { return std::strlen(_bitStr.data()); }
 
 
 	// returns a string representation of a fixed point binary bits.
