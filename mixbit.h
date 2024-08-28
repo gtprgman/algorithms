@@ -18,6 +18,7 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 
 
+
 // uppercase the specified char
 const char upCase(const int _c)
 {
@@ -32,7 +33,6 @@ const char upCase(const int _c)
 
 	return _ch;
 }
-
 
 
 
@@ -52,7 +52,6 @@ const char downCase(const int _cAlpha)
 
 
 
-
 const char* concat_str(char* _target, const char* _str)
 {
 	const std::size_t lenz = std::strlen(_target),
@@ -65,7 +64,6 @@ const char* concat_str(char* _target, const char* _str)
 
 	return _pStr;
 }
-
 
 
 
@@ -84,7 +82,7 @@ const char* reverse_str(const char* _str)
 
 
 
-// return n number of characters from the left end of the string
+// take the n number of characters from the left end of the string
 const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 {
 	char* _ps = nullptr;
@@ -105,7 +103,103 @@ const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 
 
 
-// return n number of characters from the right end of the string
+/* get a number of characters from a string starting from a position specified
+   by '_start', then take n characters specified by '_nChars'. The position is
+   zero-based array indexes.
+*/
+const char* snapStr(const char* _srcStr, const int _start, const int _nChars)
+{
+	char* _snp = nullptr;
+	const unsigned int _ssz = (unsigned int)std::strlen(_srcStr);
+	const unsigned int _nGrab = (_start + _nChars) - 1; 
+
+	if (_nGrab > _ssz) return nullptr;
+
+	_snp = new char[_nGrab];
+
+	std::memset(_snp, 0, (std::size_t)_nGrab);
+
+	for (int j = 0, i = _start; j < _nChars; i++, j++)
+		_snp[j] = _srcStr[i];
+
+	_snp[_nGrab] = 0;
+
+	return _snp;
+}
+
+
+/* replace number of characters of a string with a character specified by '_tpChr' ,
+   the position in the string is zero-based array indexes. 
+*/
+const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const int _Count)
+{
+	char* _tpStr = nullptr;
+	const unsigned int _lenT = (unsigned int)std::strlen(_pStr);
+	const unsigned int _nTap = (_First + _Count) - 1; 
+
+	if (_nTap > _lenT) return nullptr;
+
+	_tpStr = new char[_lenT];
+
+	std::strncpy(_tpStr, _pStr, (std::size_t)_lenT);
+
+	for (unsigned int j = _First; j <= _nTap; j++)
+		_tpStr[j] = _tpChr;
+
+	_tpStr[_lenT] = 0;
+
+	return _tpStr;
+}
+
+
+
+
+
+/* pad the right end of a string with number of unique characters specified by '_padC'.
+   the '_Count' argument is based on zero index array accesses. */
+const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
+{
+	char* _rtms = nullptr;
+	const unsigned int _ssLen = (unsigned int)std::strlen(_ssStr);
+	const unsigned int _rStart = _ssLen - 1;
+	int _nPads = (int)(_ssLen - _Count); 
+
+	_rtms = new char[_ssLen];
+
+	std::strncpy(_rtms, _ssStr, (std::size_t)_ssLen);
+
+	for (int r = _rStart; r >= _nPads; r--)
+		_rtms[r] = _padC;
+
+
+	_rtms[_ssLen] = 0;
+
+	return _rtms;
+}
+
+
+
+
+/*pad the left end of a string with number of unique chars specified by '_padCh' ,
+  using zero-based index array accesses. */
+const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
+{
+	const unsigned int lenSt = (unsigned int)std::strlen(_uStr);
+	char* _lPadStr = new char[lenSt];
+
+	std::strncpy(_lPadStr, _uStr, lenSt);
+
+	for (int i = 0; i < _Count; i++)
+		_lPadStr[i] = _padCh;
+
+	_lPadStr[lenSt] = 0;
+	return _lPadStr;
+}
+
+
+
+
+// take the n number of characters from the right end of the string
 const char* rstr(const char* _sStr, const std::size_t _nChars)
 {
 	const std::size_t lenR = std::strlen(_sStr) - 1;
@@ -375,7 +469,7 @@ struct to_binary
 {
 	using value_type = typename T;
 	
-	static const std::string eval(const value_type _dec)
+	static inline const std::string eval(const value_type _dec)
 	{
 		unsigned int _bsz = num_of_bits<unsigned int>::eval(_dec) + 1;
 		_value = _dec;
@@ -400,12 +494,46 @@ private:
 	static char* _bs;
 };
 
-
+// static members initializer
 template <class T>
 T to_binary<T>::_value = 0;
 
 template <class T>
 char* to_binary<T>::_bs = nullptr;
+
+
+
+
+template <class T >
+struct bin_to_dec
+{
+	using value_type = typename T;
+
+	// the bit string is assumed to be in little-endian order.
+	static inline const value_type eval(const std::string&& _strBits)
+	{
+		std::size_t lenMax = std::strlen(_strBits.data());
+		std::size_t _maxBit = lenMax - 1;
+		int k = 0, b = 0;
+		
+		for (std::size_t i = _maxBit; i > 0; i--)
+		{
+			b = (_strBits[i] == 49)? 1 : 0;
+			_Dec += b * (int)std::pow(2, k++);
+		}
+
+		b = (_strBits[0] == 49)? 1 : 0;
+		_Dec += b * (int)std::pow(2, _maxBit);
+
+		return _Dec;
+	}
+
+private:
+	static value_type _Dec;
+};
+// static member initializer
+template <class T>
+ T bin_to_dec<T>::_Dec = 0;
 
 
 
@@ -474,6 +602,7 @@ const bool* bits_from_str(const std::string& _cBits)
 }
 
 
+
 struct BitN
 {
 	BitN() :_bitLen(0) {}
@@ -493,43 +622,22 @@ struct BitN
 	
 	BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
 	{
-		_vBits.erase(_vBits.begin(), _vBits.end());
 
-		for (const auto& _b : _bitL)
-			_vBits.push_front(_b);
-
-		_bitLen = _vBits.size();
+		toBits(value_from_bitlist(_bitL) );
 	}
 
 
-	void setBits(const std::initializer_list<bool>& _bitL)
+	void setBits(const std::string&& _bitL)
 	{
-		_vBits.erase(_vBits.begin(), _vBits.end());
-
-		for (iList<bool>::iterator _pb = _bitL.begin(); _pb != _bitL.end(); _pb++)
-		{
-			_vBits.push_front(*_pb);
-		}
-
-		_bitLen = _vBits.size();
+		_bitStr = _bitL;
+		_bitLen = _bitStr.size();
 	}
 
 
 
 	const int value_from_bitstr(const std::string& _bits)
 	{
-		int _v = 0, j = 0, _exp = 0;
-		const int _nBits = (int)std::strlen(_bits.c_str());
-
-		bool* _pb = new bool[_nBits];
-
-		for (j = (_nBits - 1); j >= 0; j--,_exp++)
-		{
-			 _pb[j] = (_bits.c_str()[j] == 49)? true : false;
-			 _v += (int)(_pb[j] * (0b1 << _exp) );
-		}
-
-		delete[] _pb;
+		int _v = bin_to_dec<int>::eval(_bits.data());
 
 		return _v;
 	}
@@ -537,15 +645,6 @@ struct BitN
 
 	const std::string& Bits()
 	{
-		_bitStr.clear();
-		_bitStr = "0";
-	
-		for (std::deque<bool>::iterator _pb = _vBits.begin();
-			_pb != _vBits.end(); _pb++)
-		{
-			strcat((char*)_bitStr.c_str(), (*_pb)? (char*)"1" : (char*)"0");
-		}
-		
 		return _bitStr;
 	}
 
@@ -553,27 +652,12 @@ struct BitN
 	const std::string& toBits(const unsigned _val)
 	{
 		unsigned _dec = _val;
-		bool _bv = 0;
 
-		_bitStr.clear();
-		_vBits.erase(_vBits.begin(), _vBits.end());
+		_bitStr.clear(); 
 
-		while (_dec > 1)
-		{
-			_bv = _dec % 2;
-			_vBits.push_front(_bv);
-			_dec >>= 1;
-		};
-
-		_vBits.push_front(1);
-		_bitLen = _vBits.size();
-
-		_bitStr = "0";
-
-		for (std::deque<bool>::iterator _pb = _vBits.begin(); _pb != _vBits.end(); _pb++)
-			strcat((char*)_bitStr.data(), (*_pb)? (const char*)"1" : (const char*)"0");
-			
+		_bitStr = to_binary<unsigned int>::eval(_val);
 		
+		_bitLen = _bitStr.size();
 		return _bitStr;
 	}
 
@@ -632,7 +716,7 @@ struct BitN
 			// convert back the bit array into bits string
 			_bitStr = "\0";
 			_bitStr = str_from_bits(_bits, MAX_BIT);
-			_bitLen = std::strlen(_bitStr.c_str());
+			_bitLen = _bitStr.size();
 			
 		}
 
@@ -640,7 +724,7 @@ struct BitN
 		return _bitStr;
 	}
 
-	const size_t bitSize() const { return std::strlen(_bitStr.data()); }
+	const size_t bitSize() const { return _bitStr.size(); }
 
 
 	// returns a string representation of a fixed point binary bits.
@@ -734,7 +818,6 @@ struct BitN
 
 
 private:
-	std::deque<bool> _vBits;
 	std::string _bitStr;
 	std::size_t _bitLen;
 };
