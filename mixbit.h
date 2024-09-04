@@ -69,16 +69,15 @@ const char* concat_str(char* _target, const char* _str)
 
 const char* reverse_str(const char* _str)
 {
-	const std::size_t lenz = std::strlen(_str);
+	const std::size_t lenz = std::strlen(_str), _max = lenz - 1;
 	char* _ps = new char[lenz];
 
-	for (std::size_t i = 0,j = lenz; j > 0; )
-		_ps[i++] = _str[--j];
+	for (int i = 0,j = (int)_max; j >= 0; )
+		_ps[i++] = _str[j--];
 
 	_ps[lenz] = 0;
 	return _ps;
 }
-
 
 
 
@@ -153,8 +152,6 @@ const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const
 
 
 
-
-
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
 const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
@@ -163,6 +160,8 @@ const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
 	const unsigned int _ssLen = (unsigned int)std::strlen(_ssStr);
 	const unsigned int _rStart = _ssLen - 1;
 	int _nPads = (int)(_ssLen - _Count); 
+
+	if ((unsigned int)_Count > _ssLen) return nullptr;
 
 	_rtms = new char[_ssLen];
 
@@ -179,13 +178,14 @@ const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
 
 
 
-
 /*pad the left end of a string with number of unique chars specified by '_padCh' ,
   using zero-based index array accesses. */
 const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
 {
 	const unsigned int lenSt = (unsigned int)std::strlen(_uStr);
 	char* _lPadStr = new char[lenSt];
+
+	if ((unsigned int)_Count > lenSt) return nullptr;
 
 	std::strncpy(_lPadStr, _uStr, lenSt);
 
@@ -195,8 +195,6 @@ const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
 	_lPadStr[lenSt] = 0;
 	return _lPadStr;
 }
-
-
 
 
 // take the n number of characters from the right end of the string
@@ -220,21 +218,17 @@ const char* rstr(const char* _sStr, const std::size_t _nChars)
 
 
 
-
 const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
-	char* _bss = new char[Len];
+	char* _bss = new char[_Max];
 
-	std::memset(_bss, 0, Len);
-
-	for (std::size_t i = 0; i < _Max; i++)
-		_bss[i] = _string[i];
-
-
+	std::memset(_bss, 0, _Max);
+	std::strncpy(_bss, _string, _Max);
+	_bss[_Max] = 0;
+	
 	return _bss;
 }
-
 
 
 
@@ -281,7 +275,6 @@ const unsigned int bitsPack(const std::vector<bitInfo<T>>& _vb)
 
 	return _Ax;
 }
-
 
 
 const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
@@ -402,7 +395,6 @@ const int strtoint(const char* _sNum)
 
 
 
-
 const char* inttostr(const int nVal)
 {
 	char* _ss = new char[20];
@@ -503,7 +495,6 @@ char* to_binary<T>::_bs = nullptr;
 
 
 
-
 template <class T >
 struct bin_to_dec
 {
@@ -516,6 +507,8 @@ struct bin_to_dec
 		std::size_t _maxBit = lenMax - 1;
 		int k = 0, b = 0;
 		
+		_Dec = 0;
+
 		for (std::size_t i = _maxBit; i > 0; i--)
 		{
 			b = (_strBits[i] == 49)? 1 : 0;
@@ -534,8 +527,6 @@ private:
 // static member initializer
 template <class T>
  T bin_to_dec<T>::_Dec = 0;
-
-
 
 
 
@@ -602,7 +593,6 @@ const bool* bits_from_str(const std::string& _cBits)
 }
 
 
-
 struct BitN
 {
 	BitN() :_bitLen(0) {}
@@ -619,7 +609,6 @@ struct BitN
 	}
 
 	
-	
 	BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
 	{
 
@@ -632,7 +621,6 @@ struct BitN
 		_bitStr = _bitL;
 		_bitLen = _bitStr.size();
 	}
-
 
 
 	const int value_from_bitstr(const std::string& _bits)
