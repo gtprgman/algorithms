@@ -1,6 +1,7 @@
 /* Using GPL v. 3.0 License */
 #pragma once
 
+
 #ifndef REQUIRE_H
 #include "mixutil.h"
 #endif
@@ -49,7 +50,6 @@ struct BPAIR
 	char _data : 8;
 	int _val : 32;
 };
-
 
 
 
@@ -231,8 +231,12 @@ static struct _Deallocator {
 #define _TYPE_INFO_H
 	#include <typeinfo>
 
+
 struct _TREE {
 	static node* _Root;
+
+	// determined whether a schematic view is chosen
+	static bool ENCODE_SCHEMA;
 
 	static inline void Info()
 	{
@@ -241,9 +245,25 @@ struct _TREE {
 		RCOUNT(_Root);
 		RET2();
 	}
+
+	// construct a complete huffman tree data structure
+	static inline void build_huffman_tree(std::vector<node>&);
+
+	// extract a schematic diagram of the build-up huffman tree. (Debugging)
+	static inline void plot_huffman_tree(const node* const);
+
+	// build a complete table data from the huffman encoded bits pattern
+	static inline void encode_tree(std::map<int,char>&, const node* const);
+
+private:
+	/* traversing the entire branches of the huffman tree and encode every visited leaf node.
+	   NB: The huffman tree must be built and exists before this function could apply. */
+	static inline void traverse_encode(std::map<int,char>&,const node* const);
+
 };
 
 node* _TREE::_Root = nullptr;
+bool _TREE::ENCODE_SCHEMA = false;
 
 #endif
 
@@ -288,7 +308,6 @@ struct NODE_T {
 	}
 
 	
-
 	NODE_T(node&& _rvn) {
 		_v = _rvn.Value();
 		_freq = _rvn.FrequencyData();
@@ -336,7 +355,6 @@ struct NODE_T {
 	}
 
 
-	
 	const int operator()() const {
 		return _v;
 	}
@@ -377,7 +395,6 @@ struct NODE_T {
 #define CONST_PTR node* const
 #define NODE2P const node** const
 #define ROOT2P(_p) (NODE2P)(_p)
-
 
 
 
@@ -480,13 +497,10 @@ constexpr const node* PNODE(const double _fv) {
 }
 
 
-
 // returns the last modified node's data
 inline const node* RECENT() {
 	return (node::_recent);
 }
-
-
 
 
 /* returns the frequency value of a node as specified by a pointer to any
@@ -553,7 +567,6 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 
 
 
-
 #define ROW_FDATA_PRINT(_p) {\
 	RPRINT(_p->FrequencyData()); RPRINT(","); RPRINT(_p->Freq());\
 	RET;\
@@ -582,7 +595,6 @@ inline void NPRINT(const std::vector<node>& _vn) {
 #endif
 
 
-
 // marks a node for deletion
 inline const bool DELETED(const node* const _p) {
 	bool flDel = 0;
@@ -608,19 +620,7 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 }
 
 
-
-
-// construct a complete huffman tree data structure
-void build_huffman_tree(std::vector<node>&);
-
-
-// build a complete table data from the huffman encoded bits pattern
-void build_huffman_code(std::map<int,char>&, const node* const);
-
-
-// extract the schematic diagram of the build-up huffman tree. (Debugging)
-void nodes_tree_hierarchy(const node* const);
-
+#ifndef MX_HUFF_IMPLS
 
 /* sort nodes in the vector in decreasing order, the size_t
    argument should be the total size of the vector. */
@@ -659,6 +659,9 @@ void filter_Nodes(std::vector<node>&, const std::vector<node>&);
 */ 
 void add_Nodes(std::vector<node>&, const NODE_T);
 
+#include "mixhuff_impls.h"
+
+#endif
 
 	// Node Class Impl..
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
@@ -667,7 +670,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 		this->links[L] = nullptr;
 		this->links[R] = nullptr;
 	}
-
 
 
 	node::node(const char _uChar) : xDir(tDir::UNKNOWN), _fdata(0.00),
@@ -887,12 +889,10 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 	
 
-
 	// the total size of a data source
 	void node::setSize(const std::size_t _sizes) {
 		_totSizes = (const double)_sizes;
 	}
-
 
 
 	void node::setRoot(const node** const _uRoot = nullptr) {
@@ -903,11 +903,9 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-
 	void node::setRoot_stack(const node* const _root) {
 		node::_main = (CONST_PTR)_root;
 	}
-
 
 
 	constexpr const node* node::Find(const double fc) {
@@ -916,7 +914,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 		
 
-	
 	void node::setData(const int uc) {
 		_data = uc;
 	}
@@ -980,7 +977,6 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	const bool node::Deleted() const { return _deleted;  }
 
 
-	
 	// implicit conversion
 	node::operator NODE_T() const {
 		NODE_T nc(_data, _fdata);
@@ -1042,408 +1038,60 @@ void add_Nodes(std::vector<node>&, const NODE_T);
 	}
 
 
-	 // global functions
-	inline void build_huffman_tree(std::vector<node>& _fNods)
-	{
-		const std::size_t TSZ = _fNods.size();
-		const std::size_t halfTSz = (TSZ / 2);
 
-		_TREE::_Root = (CONST_PTR)ALLOC_N<node>(NODE_T(0,100.00) );
-		_TREE::_Root->setCode(0);
-		node::setRoot(ROOT2P(&_TREE::_Root));
-		node::setSize(TSZ);
-
-	
-		// fill up the first half of the branches..
-		for (std::size_t i = 0; i < halfTSz; i++)
-			_TREE::_Root->Add(_fNods.at(i));
-
-
-		// spill up to the right branches of the tree
-		// create a new branches before appended to the right of the root
-		_TREE::_Root->links[R] = (CONST_PTR)ALLOC_N<node>(NODE_T(0, 0.00));
-		_TREE::_Root->links[R]->setCode(R);
-		node* _rightLeft = _TREE::_Root->links[R]; // _rightLeft points to the right branches
-
-		int _nDir = 0;
-		*_rightLeft = _fNods[halfTSz];
-
-		for (std::size_t j = halfTSz + 1; j < TSZ; j++)
-		{
-			_nDir = !_nDir;
-			_rightLeft->links[_nDir] = (node*)ALLOC_N(_fNods[j]);
-			_rightLeft->setCode(_nDir);
-			_rightLeft = _rightLeft->links[_nDir];
-		}
-
-		
-		_rightLeft = nullptr;
-	}
-
-
-
-
-template <class N >
-inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
-	UINT j = 0, k = 0, r = 0, t = 0;
-	const UINT	_Max = (UINT)_Len;
-	N _v1, _v3, _v2, _v4;
-	NODE_T _n1, _n3, _n2, _n4;
-
-	if (vn.empty()) return;
-
-	// apply quick sort on each half of the set
-	for (UINT n = 0, e = (_Max / 2), u = _Max, d = e, l = e;
-		(n < e) && (u > e); n++, l++, d--, u--) {
-
-		_v1 = VALT<N>(vn[n]);
-		_v3 = VALT<N>(vn[d]);
-
-		if (_v1 < _v3) {
-			_n1 = vn[n];
-			vn[n] = vn[d];
-			vn[d] = _n1;
-		}
-
-		_v2 = VALT<N>(vn[l]);
-		_v4 = VALT<N>(vn[u]);
-
-		if (_v2 < _v4) {
-			_n2 = vn[l];
-			vn[l] = vn[u];
-			vn[u] = _n2;
-		}
-	}
-
-
-// apply n times insertion sort to each half of the set
- for(UINT g = 0; g < _Max; g++) 
-	for (UINT i = 0, m = (_Max / 2); (i < m) && (m < _Max); i++, m++) {
-		t = i; r = t + 1;
-		j = m; k = j + 1;
-
-		_v1 = VALT<N>(vn[t]); // smaller
-		_v3 = VALT<N>(vn[r]); // greater
-
-		_v2 = VALT<N>(vn[j]); // smaller
-		_v4 = VALT<N>(vn[k]); // greater
-
-
-		while (t >= 0 && j >= m) {
-
-			if (_v1 < _v3) {
-				_n1 = vn[t]; // preserve the smaller
-				vn[t] = vn[r];  // assign greater to the preceding position
-				vn[r] = _n1;
-			}
-
-			if (_v2 < _v4) {
-				_n2 = vn[j];
-				vn[j] = vn[k];
-				vn[k] = _n2;
-			}
-
-			--t; r = t + 1;
-			--j; k = j + 1;
-		}
-	}
-}
-
-
-
-template <class N>
-void range_sort(std::vector<node>& _vn, const int L, const int R) {
-	NODE_T tiny;
-	UINT q = 0, p = 0, lim = 0;
-	UINT mid = (L + R) / 2;
-
-	while ((R - mid) < (mid - L)) --mid;
-
-	for (UINT i = 0; i < mid; i++)
-	{
-		lim = mid + i;
-		if (lim > R) break;
-
-		q = i; p = q + 1;
-
-		while (q >= 0) {
-			if ( VALT<N>(_vn[q]) < VALT<N>(_vn[p]) ) {
-				tiny = _vn[q];
-				_vn[q] = _vn[p];
-				_vn[p] = tiny;
-			}
-
-			if ( VALT<N>(_vn[q]) < VALT<N>(_vn[lim]) ) {
-				tiny = _vn[q];
-				_vn[q] = _vn[lim];
-				_vn[lim] = tiny;
-			}
-
-			q--; p--;
-		}
-	} // ..phase 1 passed
-
-	lim = R;
-
-	for (UINT t = 0; t < mid; t++, lim--) {
-		p = t; q = p + 1;
-
-		if (lim < 0) break;
-
-		if ( VALT<N>(_vn[p]) < VALT<N>(_vn[q]) ) {
-			tiny = _vn[p];
-			_vn[p] = _vn[q];
-			_vn[q] = tiny;
-		}
-
-		if (VALT<N>(_vn[p]) < VALT<N>(_vn[lim]) ) {
-			tiny = _vn[p];
-			_vn[p] = _vn[lim];
-			_vn[lim] = tiny;
-		}
-	}
-}
-
-
-
-#ifdef MIXHUFF_USE_THREAD
-	template < class N >
-	void merge_sort(std::vector<node>& _vn, const std::size_t _Size) {
-		if (_Size < 10) return;
-
-		std::size_t l = 0, r = 0;
-		std::size_t nDivs = _Size / 4;
-		std::thread* pt = new std::thread[4];
-
-		for (std::size_t k = 0; k < 4; k++) {
-			r = l + nDivs;
-
-			pt[k] = std::thread{ [&_vn,l,r]() {
-				range_sort<N>(_vn, l, r);
-			} };
-
-			pt[k].join();
-
-			l += nDivs;
-		}
-	}
-#endif
-
-
-
-void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod) 
+inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 {
-	int val = _nod._v;
-	node _tmp;
+	const std::size_t TSZ = _fNods.size();
+	const std::size_t halfTSz = (TSZ / 2);
 
-	if (_nodes.empty()) {
-		if (_nod() != 0)
-		{
-			HS<NODE_T> = cElem<NODE_T>(_nod._v);
-			_nodes.push_back(_nod);
-		}
-		return;
-	}
+	_TREE::_Root = (CONST_PTR)ALLOC_N<node>(NODE_T(0, 100.00));
+	_TREE::_Root->setCode(0);
+	node::setRoot(ROOT2P(&_TREE::_Root));
+	node::setSize(TSZ);
 
-	// if an element has been added before..
-	if (HS<NODE_T>.get(_nod._v)._v > 0) return;
-	else
+
+	// fill up the first half of the branches..
+	for (std::size_t i = 0; i < halfTSz; i++)
+		_TREE::_Root->Add(_fNods.at(i));
+
+
+	// spill up to the right branches of the tree
+	// create a new branches before appended to the right of the root
+	_TREE::_Root->links[R] = (CONST_PTR)ALLOC_N<node>(NODE_T(0, 0.00));
+	_TREE::_Root->links[R]->setCode(R);
+	node* _rightLeft = _TREE::_Root->links[R]; // _rightLeft points to the right branches
+
+	int _nDir = 0;
+	*_rightLeft = _fNods[halfTSz];
+
+	for (std::size_t j = halfTSz + 1; j < TSZ; j++)
 	{
-		_nodes.push_back(_nod);
+		_nDir = !_nDir;
+		_rightLeft->links[_nDir] = (node*)ALLOC_N(_fNods[j]);
+		_rightLeft->setCode(_nDir);
+		_rightLeft = _rightLeft->links[_nDir];
 	}
-		
-	return;
+
+
+	_rightLeft = nullptr;
 }
 
 
 
-
-inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
-	PRINT("Filtering.. "); RET;
-
-	double _count = 0.00, fc = 0.00;
-	std::size_t i = 0;
-	const std::size_t LENZ = _src.size();
-	NODE_T nc;
-	CSIZE = (LONGFLOAT)LENZ;
-
-	if (_src.empty()) return;
-
-	for (i = 0; i < LENZ; i++) {
-		if (_src[i].Value() == 0) continue;
-		else {
-			nc = _src[i];
-			break;
-		}
-	}
-
-	for (; i < LENZ; i++) {
-		// comparing value of both side
-		if (nc._v == _src[i].Value()) {
-			++_count;
-			fc = (_count / CSIZE) * 100.00;
-		}
-		else {
-			nc._freq = fc;
-			ZEROES(_count, fc); // clear temporary vars
-			add_Nodes(_dest, nc);
-
-			if (_src[i].Value() != _src[i + 1].Value()) {
-				nc = _src[i];
-				nc._freq = (1.00 / CSIZE) * 100.00;
-				add_Nodes(_dest, nc);
-				nc._v = _src[i + 1].Value();
-				continue;
-			}
-			else {
-				nc = _src[i];
-				++_count;
-			}
-		}
-	}
-	HS<NODE_T>.Sweep();
-}
-
-
-
-inline void build_huffman_code(std::map<int,char>& _mPair, const node* const _fRoot) 
+inline void _TREE::plot_huffman_tree(const node* const _fRoot)
 {
-	node* _pt = (node*)_fRoot;
-	char* _bt = (char*)"0";
-	BPAIR _bpt = {};
 
-	// extracting left branches info..
-	while (_pt != nullptr)
-	{
-		if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L]; 
-		else break;
+	std::map<int, char> _map = {};
+	traverse_encode(_map, _fRoot);
 
-		if (_pt->Value() > 0 && !_pt->Visited())
-		{
-			_bt = (char*)concat_str(_bt, inttostr(L));
-			_bpt._data = _pt->dataValue();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-			_bpt = {};
-			_pt->setVisit(true);
-		}
-
-		if (ASSERT_P(_pt->links[R]) && _pt->links[R]->Value() > 0 && !_pt->links[R]->Visited())
-		{
-			_bt = (char*)concat_str(_bt, inttostr(R));
-			_bpt._data = _pt->links[R]->dataValue();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-			_bpt = {};
-			_bt = (char*)rtrim(_bt);
-			_pt->links[R]->setVisit(true);
-		}
-	}
-	// Encoding left branches succeeded !!
-
-	
-	
-	// encoding bits pattern on the right branches..
-	_pt = (node*)_fRoot;
-	_bt = (char*)"1";
-	_bpt = {};
-	int _Dir = 0;
-
-
-	while (_pt != nullptr)
-	{
-		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir];
-		else break;
-
-		if (_pt->Value() > 0 && !_pt->Visited())
-		{
-			_bt = (char*)concat_str(_bt, inttostr(_Dir));
-			_bpt._data = _pt->dataValue();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-			_bpt = {};
-			_pt->setVisit(true);
-		}
-
-		if (ASSERT_P(_pt->links[!_Dir]) && _pt->links[!_Dir]->Value() > 0 &&
-			!_pt->links[!_Dir]->Visited())
-		{
-			_Dir = !_Dir; // changes direction
-			_pt = _pt->links[_Dir]; // point to next node
-			_bt = (char*)concat_str(_bt, inttostr(_Dir));
-			_bpt._data = _pt->dataValue();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-			_bpt = {};
-			_bt = (char*)rtrim(_bt);
-			_pt->setVisit(true);
-		}
-
-		_Dir = !_Dir; //changes direction
-	}
-
-	// Encoding Right Branches Succeeded !!
-	_pt = nullptr;
 }
 
 
-
-void nodes_tree_hierarchy(const node* const _fRoot)
+#undef ENCODE_SCHEMA
+inline void _TREE::encode_tree(std::map<int,char>& _mPair, const node* const _fRoot)
 {
-	node* _pft = (node*)_fRoot;
-	char* _bit = (char*)"0";
-
-
-	// extracting left branches info..
-	while (_pft != nullptr)
-	{
-		if (ASSERT_P(_pft->links[L])) _pft = _pft->links[L]; else break;
-
-		if (_pft->Value() > 0 && !_pft->Visited())
-		{
-			_bit = (char*)concat_str(_bit, inttostr(L));
-			_pft->setVisit(true);
-			RPRINT(_bit); RPRINT("->"); RPRINT(_pft->dataValue()); RET;
-		}
-
-		if (ASSERT_P(_pft->links[R]) && _pft->links[R]->Value() > 0 && !_pft->links[R]->Visited())
-		{
-			_bit = (char*)concat_str(_bit, inttostr(R));
-			_pft->links[R]->setVisit(true);
-			RPRINT(_bit); RPRINT("->"); RPRINT(_pft->links[R]->dataValue()); RET;
-			_bit = (char*)rtrim(_bit);
-		}
-	}
-
-
-	/* Processing on Right Branches.. */
-	_pft = (node*)_fRoot;
-	_bit = (char*)"1";
-	int _Dir = 0;
 	
-	// extracting right branches info..
-	while (_pft != nullptr)
-	{
-		if (ASSERT_P(_pft->links[_Dir]) ) _pft = _pft->links[_Dir];
-		else break;
-
-		if (_pft->Value() > 0 && !_pft->Visited())
-		{
-			_bit = (char*)concat_str(_bit, inttostr(_Dir));
-			RPRINT(_bit); RPRINT("->"); RPRINT(_pft->dataValue()); RET;
-		}
-
-		if (ASSERT_P(_pft->links[!_Dir]) && _pft->links[!_Dir]->Value() > 0 &&
-			!_pft->links[!_Dir]->Visited())
-		{
-			_Dir = !_Dir; // changes direction
-			_pft = _pft->links[_Dir]; // point to next node
-			_bit = (char*)concat_str(_bit, inttostr(_Dir));
-			RPRINT(_bit); RPRINT("->"); RPRINT(_pft->dataValue()); RET;
-			_bit = (char*)rtrim(_bit);
-		}
-
-		_Dir = !_Dir; //changes direction
-	}
+	traverse_encode(_mPair, _fRoot);
+	
 }
 
