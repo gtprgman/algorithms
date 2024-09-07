@@ -6,8 +6,8 @@
 
 
 
-
-int main() {
+int main() 
+{
 	
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
@@ -30,30 +30,38 @@ int main() {
 
 	//NPRINT(fNod); RET;
 
-	build_huffman_tree(fNod);
+	_TREE::build_huffman_tree(fNod);
+	
+
+	RET;
 
 	/*
-	 Debugging purposes, this funct should be execute independently
-	 without precede or after call to 'build_huffman_code()' 
-	 
+	 Debugging purposes ... 
+	 the function below should be execute independently
+	 without precede or after call to '_TREE::encode_tree()' 
 	*/
-	//nodes_tree_hierarchy(_TREE::_Root);
+
+/*
+	_TREE::ENCODE_SCHEMA = true;
+	_TREE::plot_huffman_tree(_TREE::_Root);
+*/
 
 	RET;
 	
-
-	build_huffman_code(mPair, _TREE::_Root);
+	_TREE::ENCODE_SCHEMA = false;
+	_TREE::encode_tree(mPair, _TREE::_Root);
 
 	RET;
 
+
 	for (const std::pair<int, char>& mp : mPair)
 	{
-		//RPRINT(mp.second); RPRINT("->"); RPRINT(biXs.toBits(mp.first).data() );
-		bfo.push_back({ mp.first,num_of_bits<unsigned int>::eval(mp.first) + 1 });
+		RPRINT(mp.second); RPRINT("->"); RPRINT(biXs.toBits(mp.first).data());
+		//bfo.push_back({ mp.first,num_of_bits<unsigned int>::eval(mp.first) + 1 });
 
 		RET;
-	}
 
+	}
 
 	RET;
 	
