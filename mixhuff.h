@@ -398,23 +398,23 @@ struct NODE_T {
 
 
 
-inline bool ASSERT_P(const node* _ptr = nullptr) {
+inline static bool ASSERT_P(const node* _ptr = nullptr) {
 	return (_ptr != nullptr);
 }
 
 
-inline node* const LEFT(const node* const _any) {
+inline static node* const LEFT(const node* const _any) {
 	return ISNULL(_any)? nullptr : _any->links[L];
 }
 
 
-inline node* const RIGHT(const node* const _any) { 
+inline static node* const RIGHT(const node* const _any) { 
 	return ISNULL(_any)? nullptr : _any->links[R];
 }
 
 
 // get the number of nodes in the outer left branches relative to the root node.
-inline const ULONG L_HEIGHT(const node* const _pRoot ) {
+inline static const ULONG L_HEIGHT(const node* const _pRoot ) {
 	ULONG cnt = 0;
 	node* _Curr = (node* const)_pRoot;
 	if (nullptr == _Curr) return 0;
@@ -430,7 +430,7 @@ inline const ULONG L_HEIGHT(const node* const _pRoot ) {
 
 
 // get the number of nodes in the outer right branches relative to the root node.
-inline const ULONG R_HEIGHT(const node* const _pRoot) {
+inline static const ULONG R_HEIGHT(const node* const _pRoot) {
 	ULONG nums = 0;
 	node* _curr = (node* const)_pRoot;
 	if (nullptr == _curr) return 0;
@@ -472,7 +472,7 @@ constexpr inline const N VALX(const node* const _p) {
 
 
 // convert a specified node to the frequency node
-inline const node TO_FREQ_NODE(const node& _nod) {
+inline static const node TO_FREQ_NODE(const node& _nod) {
 	node _fNod = _nod.FrequencyData(); // construct frequency node
 	_fNod.setData(_nod.Value());
 	return _fNod;
@@ -498,7 +498,7 @@ constexpr const node* PNODE(const double _fv) {
 
 
 // returns the last modified node's data
-inline const node* RECENT() {
+inline static const node* RECENT() {
 	return (node::_recent);
 }
 
@@ -506,7 +506,7 @@ inline const node* RECENT() {
 /* returns the frequency value of a node as specified by a pointer to any
   node in the tree.
 */
-inline const double FREQX(const node* _Nod) {
+inline static const double FREQX(const node* _Nod) {
 	return _Nod->FrequencyData();
 }
 
@@ -525,14 +525,14 @@ constexpr std::size_t inline total_values(const T& _any, const UINT _Count) {
 
 
 // puts a mark-up on a node as 'visited'
-inline void passed_by(const node* const _p = nullptr ) {
+inline static void passed_by(const node* const _p = nullptr ) {
 	if (!_p->Visited())
 		((node* const)_p)->setVisit(true);
 }
 
 
 
-inline void print_vf(const node* const _p) {
+inline static void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
 		printf("(%d.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
@@ -584,7 +584,7 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 
 
 // Print a collection of nodes from the vector
-inline void NPRINT(const std::vector<node>& _vn) {
+inline static void NPRINT(const std::vector<node>& _vn) {
 	for (const node& _ne : _vn) {
 		RPRINT( _ne.dataValue() ); RPRINT(" ");
 		RPRINT(_ne.FrequencyData() ); RET;
@@ -596,7 +596,7 @@ inline void NPRINT(const std::vector<node>& _vn) {
 
 
 // marks a node for deletion
-inline const bool DELETED(const node* const _p) {
+inline static const bool DELETED(const node* const _p) {
 	bool flDel = 0;
 	if (!_p->Deleted()) {
 		((node* const)_p)->setDelete(true);
@@ -607,13 +607,13 @@ inline const bool DELETED(const node* const _p) {
 
 
 // puts a node to the garbage list
-inline void COLLECT(const node* const _p) {
+inline static void COLLECT(const node* const _p) {
 	_Deleter.push((node* const)_p);
 }
 
 
 // transform into vector node
-inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
+inline static void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
 	PRINT("Adding.. ");
 	for (const auto& e : _source)
 		if (e._v != 0) _target.push_back(e);
@@ -625,14 +625,14 @@ inline void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _so
 /* sort nodes in the vector in decreasing order, the size_t
    argument should be the total size of the vector. */
 template <class N>
-void sort_Nodes(std::vector<node>&, const std::size_t);
+inline static void sort_Nodes(std::vector<node>&, const std::size_t);
 
 /* sort the nodes in decreasing order using partial sort methods,
   the first element's pos should be 0 and the last element should be (n - 1), 
   you should precede the call to this one before calling any subsequent sorting
   mechanism */ 
 template <class N>
-void range_sort(std::vector<node>&, const int, const int);
+inline static void range_sort(std::vector<node>&, const int, const int);
 
 
 #ifndef MIXHUFF_USE_THREAD
@@ -645,19 +645,19 @@ void range_sort(std::vector<node>&, const int, const int);
  vector.
 */
 	template< class N >
-	void merge_sort(std::vector<node>&, const std::size_t);
+inline static void merge_sort(std::vector<node>&, const std::size_t);
 #endif
 
 
 /*  Filter nodes to a separate vector container,
 	the nodes in the source vector must be sorted before apply the filter. */ 
-void filter_Nodes(std::vector<node>&, const std::vector<node>&);
+inline static void filter_Nodes(std::vector<node>&, const std::vector<node>&);
 
 /* add a node to the vector container, the method incorporate
    methods for restricting any data with the same value for being
    entered twice.
 */ 
-void add_Nodes(std::vector<node>&, const NODE_T);
+inline static void add_Nodes(std::vector<node>&, const NODE_T);
 
 #include "mixhuff_impls.h"
 
@@ -1080,18 +1080,13 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 
 inline void _TREE::plot_huffman_tree(const node* const _fRoot)
 {
-
 	std::map<int, char> _map = {};
 	traverse_encode(_map, _fRoot);
-
 }
 
 
-#undef ENCODE_SCHEMA
 inline void _TREE::encode_tree(std::map<int,char>& _mPair, const node* const _fRoot)
 {
-	
 	traverse_encode(_mPair, _fRoot);
-	
 }
 
