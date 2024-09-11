@@ -9,8 +9,14 @@
 #endif
 
 
-#define MX_BIT
 
+#ifndef MX_BIT
+	#define MX_BIT
+#endif
+
+
+#define halfSz(_Tot_) (_Tot_ / 2) - 1
+#define oneAdder(_v_) _v_ + 1
 
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
@@ -19,8 +25,9 @@ constexpr unsigned QWORD = 64;
 
 
 
+
 // uppercase the specified char
-const char upCase(const int _c)
+inline static const char upCase(const int _c)
 {
 	if (_c <= 0) return _c;
 
@@ -36,8 +43,9 @@ const char upCase(const int _c)
 
 
 
+
 // downcase the specified char
-const char downCase(const int _cAlpha)
+inline static const char downCase(const int _cAlpha)
 {
 	if (_cAlpha <= 0) return _cAlpha;
 
@@ -52,7 +60,8 @@ const char downCase(const int _cAlpha)
 
 
 
-const char* concat_str(char* _target, const char* _str)
+
+inline static const char* concat_str(char* _target, const char* _str)
 {
 	const std::size_t lenz = std::strlen(_target),
 		lenS = std::strlen(_str);
@@ -67,7 +76,8 @@ const char* concat_str(char* _target, const char* _str)
 
 
 
-const char* reverse_str(const char* _str)
+
+inline static const char* reverse_str(const char* _str)
 {
 	const std::size_t lenz = std::strlen(_str), _max = lenz - 1;
 	char* _ps = new char[lenz];
@@ -81,8 +91,9 @@ const char* reverse_str(const char* _str)
 
 
 
+
 // take the n number of characters from the left end of the string
-const char* lstr(const char* _srcStr, const std::size_t _nGrab)
+inline static const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 {
 	char* _ps = nullptr;
 	const std::size_t lenX = std::strlen(_srcStr);
@@ -102,11 +113,12 @@ const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 
 
 
+
 /* get a number of characters from a string starting from a position specified
    by '_start', then take n characters specified by '_nChars'. The position is
    zero-based array indexes.
 */
-const char* snapStr(const char* _srcStr, const int _start, const int _nChars)
+inline static const char* snapStr(const char* _srcStr, const int _start, const int _nChars)
 {
 	char* _snp = nullptr;
 	const unsigned int _ssz = (unsigned int)std::strlen(_srcStr);
@@ -130,7 +142,7 @@ const char* snapStr(const char* _srcStr, const int _start, const int _nChars)
 /* replace number of characters of a string with a character specified by '_tpChr' ,
    the position in the string is zero-based array indexes. 
 */
-const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const int _Count)
+inline static const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const int _Count)
 {
 	char* _tpStr = nullptr;
 	const unsigned int _lenT = (unsigned int)std::strlen(_pStr);
@@ -152,9 +164,11 @@ const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const
 
 
 
+
+
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
-const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
+inline static const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
 {
 	char* _rtms = nullptr;
 	const unsigned int _ssLen = (unsigned int)std::strlen(_ssStr);
@@ -178,9 +192,10 @@ const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
 
 
 
+
 /*pad the left end of a string with number of unique chars specified by '_padCh' ,
   using zero-based index array accesses. */
-const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
+inline static const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
 {
 	const unsigned int lenSt = (unsigned int)std::strlen(_uStr);
 	char* _lPadStr = new char[lenSt];
@@ -197,8 +212,10 @@ const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
 }
 
 
+
+
 // take the n number of characters from the right end of the string
-const char* rstr(const char* _sStr, const std::size_t _nChars)
+inline static const char* rstr(const char* _sStr, const std::size_t _nChars)
 {
 	const std::size_t lenR = std::strlen(_sStr) - 1;
 	char* _pss = nullptr;
@@ -218,7 +235,8 @@ const char* rstr(const char* _sStr, const std::size_t _nChars)
 
 
 
-const char* rtrim(const char* _string)
+
+inline static const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
 	char* _bss = new char[_Max];
@@ -229,6 +247,7 @@ const char* rtrim(const char* _string)
 	
 	return _bss;
 }
+
 
 
 
@@ -250,18 +269,22 @@ struct bitInfo
 		numBits = 0;
 	}
 
-	int X : 8;  
+	int X : 32;  
 	BitSZ numBits : 32;
 };
 
 
 
-// pack the entire bits of the vector into a UINT var
+// pack the entire bits of the vector into a UINT vector
 template < typename T >
-const unsigned int bitsPack(const std::vector<bitInfo<T>>& _vb)
+inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	int _bx = 0b0, _Ax = 0b0;
+	const std::size_t _vcSz = _vb.size(), _nIter = halfSz(_vcSz);
+	std::size_t	_loopn = 0;
+
 	T _n = 0;
+
 
 	for (const auto& ub : _vb)
 	{
@@ -271,16 +294,25 @@ const unsigned int bitsPack(const std::vector<bitInfo<T>>& _vb)
 		_Ax <<= _n;
 		_Ax |= _bx;
 
-	}
+		++_loopn;
 
-	return _Ax;
+		if (_loopn > _nIter)
+		{
+			_packed.push_back(_Ax);
+
+			_Ax = 0b0;
+			_loopn = 0;
+		}
+	}
 }
 
 
-const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
+
+inline static const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
 {
 	return _packed & _nonPacked;
 }
+
 
 
 // fixed point numeric type.
@@ -378,7 +410,7 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 
 
 // Convert alphanumeric string '0,1,2..9' to integer
-const int strtoint(const char* _sNum)
+inline static const int strtoint(const char* _sNum)
 {
 	int _result = 0;
 	const int _len = (int)std::strlen(_sNum);
@@ -395,7 +427,8 @@ const int strtoint(const char* _sNum)
 
 
 
-const char* inttostr(const int nVal)
+
+inline static const char* inttostr(const int nVal)
 {
 	char* _ss = new char[20];
 	std::deque<char> _cTube;
@@ -463,7 +496,8 @@ struct to_binary
 	
 	static inline const std::string eval(const value_type _dec)
 	{
-		unsigned int _bsz = num_of_bits<unsigned int>::eval(_dec) + 1;
+		_bs = nullptr;
+		unsigned int _bsz = oneAdder(num_of_bits<unsigned int>::eval(_dec));
 		_value = _dec;
 		
 		if (_bsz > 0)
@@ -492,6 +526,9 @@ T to_binary<T>::_value = 0;
 
 template <class T>
 char* to_binary<T>::_bs = nullptr;
+
+
+
 
 
 
@@ -530,8 +567,10 @@ template <class T>
 
 
 
+
+
 // invert every bit in the bit array.
-void invert_bits(bool _pb[], const unsigned nBits)
+inline static void invert_bits(bool _pb[], const unsigned nBits)
 {
 	for (unsigned j = 0; j < nBits; j++)
 	{
@@ -542,7 +581,7 @@ void invert_bits(bool _pb[], const unsigned nBits)
 
 
 // get a bit character from a position in the bit array as specified by '_pb'.
-const char* char_from_bit(const bool _pb[], const int _index)
+inline static const char* char_from_bit(const bool _pb[], const int _index)
 {
 	return (_pb[_index])? (char*)"1" : (char*)"0";
 }
@@ -550,7 +589,7 @@ const char* char_from_bit(const bool _pb[], const int _index)
 
 
 // get a value from a position in the bit array 
-const unsigned n_of_bit(const bool _pb[], const int _index)
+inline static const unsigned n_of_bit(const bool _pb[], const int _index)
 {
 	return _pb[_index];
 }
@@ -558,7 +597,7 @@ const unsigned n_of_bit(const bool _pb[], const int _index)
 
 
 // obtain a full bits string from the bit array specified by '_pb'.
-const std::string str_from_bits(const bool _pb[], const unsigned nBits)
+inline static const std::string str_from_bits(const bool _pb[], const unsigned nBits)
 {
 	char* _ss = new char[nBits];
 
@@ -572,7 +611,7 @@ const std::string str_from_bits(const bool _pb[], const unsigned nBits)
 
 /* obtain a bits from string data, this includes the most significant bits padded
    to the left of primary bits */
-const bool* bits_from_str(const std::string& _cBits)
+inline static const bool* bits_from_str(const std::string& _cBits)
 {
 	
 	const unsigned numBits = (unsigned)std::strlen(_cBits.data());
@@ -593,6 +632,7 @@ const bool* bits_from_str(const std::string& _cBits)
 }
 
 
+
 struct BitN
 {
 	BitN() :_bitLen(0) {}
@@ -609,6 +649,7 @@ struct BitN
 	}
 
 	
+	
 	BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
 	{
 
@@ -621,6 +662,7 @@ struct BitN
 		_bitStr = _bitL;
 		_bitLen = _bitStr.size();
 	}
+
 
 
 	const int value_from_bitstr(const std::string& _bits)
@@ -665,7 +707,7 @@ struct BitN
 	}
 
 
-	// obtains a 2-complement bits string from a specific signed value ( + / - )
+	// obtain a 2-complement bits string from a specific signed value ( + / - )
 	const std::string& to_signed_bits(const int _signed_v)
 	{
 		_bitStr.clear();
