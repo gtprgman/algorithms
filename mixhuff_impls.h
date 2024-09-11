@@ -1,10 +1,14 @@
 #pragma once
 
-#define MX_HUFF_IMPLS
+
+
+#ifndef MX_HUFF_IMPLS
+	#define MX_HUFF_IMPLS
+#endif
 
 
 template <class N >
-inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
+inline static void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 	UINT j = 0, k = 0, r = 0, t = 0;
 	const UINT	_Max = (UINT)_Len;
 	N _v1, _v3, _v2, _v4;
@@ -72,14 +76,14 @@ inline void sort_Nodes(std::vector<node>& vn, const std::size_t _Len) {
 
 
 template <class N>
-void range_sort(std::vector<node>& _vn, const int L, const int R) {
+inline static void range_sort(std::vector<node>& _vn, const int L, const int R) {
 	NODE_T tiny;
-	UINT q = 0, p = 0, lim = 0;
-	UINT mid = (L + R) / 2;
+	int q = 0, p = 0, lim = 0;
+	int mid = (L + R) / 2;
 
 	while ((R - mid) < (mid - L)) --mid;
 
-	for (UINT i = 0; i < mid; i++)
+	for (int i = 0; i < mid; i++)
 	{
 		lim = mid + i;
 		if (lim > R) break;
@@ -105,7 +109,7 @@ void range_sort(std::vector<node>& _vn, const int L, const int R) {
 
 	lim = R;
 
-	for (UINT t = 0; t < mid; t++, lim--) {
+	for (int t = 0; t < mid; t++, lim--) {
 		p = t; q = p + 1;
 
 		if (lim < 0) break;
@@ -129,11 +133,11 @@ void range_sort(std::vector<node>& _vn, const int L, const int R) {
 
 #ifdef MIXHUFF_USE_THREAD
 template < class N >
-void merge_sort(std::vector<node>& _vn, const std::size_t _Size) {
-	if (_Size < 10) return;
+inline static void merge_sort(std::vector<node>& _vn, const std::size_t _Size) {
+	if (_Size < (std::size_t)10) return;
 
-	std::size_t l = 0, r = 0;
-	std::size_t nDivs = _Size / 4;
+	int l = 0, r = 0;
+	int nDivs = (int)_Size / 4;
 	std::thread* pt = new std::thread[4];
 
 	for (std::size_t k = 0; k < 4; k++) {
@@ -152,7 +156,7 @@ void merge_sort(std::vector<node>& _vn, const std::size_t _Size) {
 
 
 
-void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
+inline static void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
 {
 	int val = _nod._v;
 	node _tmp;
@@ -178,8 +182,7 @@ void add_Nodes(std::vector<node>& _nodes, const NODE_T _nod)
 
 
 
-inline void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
-	PRINT("Filtering.. "); RET;
+inline static void filter_Nodes(std::vector<node>& _dest, const std::vector<node>& _src) {
 
 	double _count = 0.00, fc = 0.00;
 	std::size_t i = 0;
