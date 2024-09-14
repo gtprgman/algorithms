@@ -9,7 +9,6 @@
 #endif
 
 
-
 #ifndef MX_BIT
 	#define MX_BIT
 #endif
@@ -22,8 +21,6 @@ constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
-
-
 
 
 // uppercase the specified char
@@ -43,7 +40,6 @@ inline static const char upCase(const int _c)
 
 
 
-
 // downcase the specified char
 inline static const char downCase(const int _cAlpha)
 {
@@ -58,6 +54,48 @@ inline static const char downCase(const int _cAlpha)
 	return _cLow;
 }
 
+
+// scan a specific string pattern within '_aStr' and return the found position in '_aStr'.
+inline static const int strPos(const char* _aStr, const char* _cStr)
+{
+	const std::size_t _Sz1 = std::strlen(_aStr),
+					  _Sz2 = std::strlen(_cStr);
+	int _Pos = 0;
+
+	if (!_Sz1 || !_Sz2) return 0;
+	if (_Sz2 > _Sz1) return -1;
+
+	for (std::size_t gf = 0; gf < _Sz1; gf++, _Pos++)
+	{
+		if (std::strncmp(&_aStr[gf], _cStr, _Sz2)) continue;
+		else break;
+	}
+	return _Pos;
+}
+
+
+// scan a substring '_searchStr' within '_Str0' and return the found substring in '_Str0'.
+inline static const char* scanStr(const char* _Str0, const char* _searchStr)
+{
+	const std::size_t _lenZ = std::strlen(_Str0), 
+					  _lenX = std::strlen(_searchStr);
+	
+	if (!_lenX || !_lenZ) return nullptr;
+	if (_lenX > _lenZ) return nullptr;
+
+	char* _SF = new char[_lenX];
+	std::memset(_SF, 0, _lenX);
+
+	for (std::size_t fi = 0; fi < _lenZ; fi++)
+	{
+		if (std::strncmp(&_Str0[fi], _searchStr, _lenX)) continue;
+		_SF = std::strncpy(_SF, &_Str0[fi], _lenX);
+		break;
+	}
+
+	_SF[_lenX] = 0;
+	return _SF;
+}
 
 
 
@@ -76,7 +114,6 @@ inline static const char* concat_str(char* _target, const char* _str)
 
 
 
-
 inline static const char* reverse_str(const char* _str)
 {
 	const std::size_t lenz = std::strlen(_str), _max = lenz - 1;
@@ -88,7 +125,6 @@ inline static const char* reverse_str(const char* _str)
 	_ps[lenz] = 0;
 	return _ps;
 }
-
 
 
 
@@ -110,7 +146,6 @@ inline static const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 
 	return _ps;
 }
-
 
 
 
@@ -164,8 +199,6 @@ inline static const char* tapStr(const char* _pStr, const char _tpChr, const int
 
 
 
-
-
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
 inline static const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
@@ -192,7 +225,6 @@ inline static const char* rtrimx(const char* _ssStr, const int _Count, const cha
 
 
 
-
 /*pad the left end of a string with number of unique chars specified by '_padCh' ,
   using zero-based index array accesses. */
 inline static const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
@@ -210,7 +242,6 @@ inline static const char* ltrimx(const char* _uStr, const int _Count, const char
 	_lPadStr[lenSt] = 0;
 	return _lPadStr;
 }
-
 
 
 
@@ -235,7 +266,6 @@ inline static const char* rstr(const char* _sStr, const std::size_t _nChars)
 
 
 
-
 inline static const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
@@ -247,7 +277,6 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
-
 
 
 
@@ -280,11 +309,10 @@ template < typename T >
 inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	int _bx = 0b0, _Ax = 0b0;
-	const std::size_t _vcSz = _vb.size(), _nIter = halfSz(_vcSz);
-	std::size_t	_loopn = 0;
+	const std::size_t _vcSz = _vb.size(), _nIter = 1;
+	std::size_t _loopn = 0;
 
 	T _n = 0;
-
 
 	for (const auto& ub : _vb)
 	{
@@ -409,15 +437,46 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 }
 
 
-// Convert alphanumeric string '0,1,2..9' to integer
-inline static const int strtoint(const char* _sNum)
+// return how much number of decimal digits which appeared in a constant integer '_v'.
+inline static const int num_of_dec(const int _v)
 {
-	int _result = 0;
-	const int _len = (int)std::strlen(_sNum);
+	if (_v <= 0) return 0;
 
-	for (int _c = 0, _Exp = 0, i = (_len - 1); i >= 0; i--)
+	int _dec = _v, _count = 0, nMod=0;
+
+	while (_dec > 0)
 	{
-		_c = _sNum[i] ^ 0b00110000; // xor with the alphanumeric ascii bit mask
+		++_count;
+		nMod = _dec % 10;
+		_dec /= 10;
+	}
+
+	return _count;
+}
+
+
+
+// Convert alphanumeric string '0,1,2..9' to integer
+inline static const int strtoint(std::string&& _sNum)
+{
+	const std::size_t _len = _sNum.size();
+	char* _sf = new char[_len];
+	
+	std::memset(_sf, 0, _len);
+	std::strncpy(_sf, _sNum.data(), _len);
+
+	int _iNum = atoi(_sNum.data()),
+		_maxPos = (int)(_len - 1), 
+		_c = 0, _low = 0, _result = 0;
+
+	
+	if (_iNum < 0) ++_low;
+
+	//PRINT(_iNum);
+
+	for (int _Exp = 0, i = _maxPos; i >= _low; i--)
+	{
+		_c = _sf[i] ^ 0b00110000; // xor with the alphanumeric ascii bit mask
 		_result += _c * (int)std::pow(10, _Exp++);
 
 	}
@@ -427,39 +486,55 @@ inline static const int strtoint(const char* _sNum)
 
 
 
-
 inline static const char* inttostr(const int nVal)
 {
-	char* _ss = new char[20];
-	std::deque<char> _cTube;
-	int nDiv = nVal, _mod = 0, cnt = 0;
+	// max. spaces for negative integer
+	const int nDigits = oneAdder(num_of_dec(std::abs(nVal))); 
 
-	*_ss = '\0';
-	char _ch = '0';
+	// max. spaces for positive integer.
+	const int nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
 
+	char _ch;  char* _ss = nullptr;
+	int nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
+
+
+	// if value is 0 (zero)
 	if (!nDiv) {
-		_ss[0] = '0';
+		_ss = new char[1];
+		std::memset(_ss, 0, 1);
+		_ss[0] = 48;
 		_ss[1] = 0;
 		return _ss;
 	}
+
+	// if value is negative
+	if (nVal < 0) {
+		_ss = new char[nDigits];
+		std::memset(_ss, 0, nDigits);
+		_ss[0] = '-';
+		decDigs = nDigits;
+		cnt++;
+	}
+	else
+	{
+		_ss = new char[nDecs];
+		std::memset(_ss, 0, nDecs);
+		decDigs = nDecs;
+		cnt++;
+	}
+	
 
 	while (nDiv > 0)
 	{
 		_mod = nDiv % 10;
 		_ch = '0' + (char)_mod;
-		_cTube.push_front(_ch);
-		nDiv /= 10; ++cnt;
+		_ss[decDigs - cnt] = _ch;
+		nDiv /= 10; 
+		cnt++;
 	}
 
-	for (int i = 0; i < cnt; i++)
-	{
-		_ch = _cTube.at(i);
-		_ss[i] = _ch;
-	}
-
-	_ss[cnt] = '\0';
-	_cTube.clear();
-
+	_ss[decDigs] = 0;
+	
 	return _ss;
 }
 
@@ -530,8 +605,6 @@ char* to_binary<T>::_bs = nullptr;
 
 
 
-
-
 template <class T >
 struct bin_to_dec
 {
@@ -564,8 +637,6 @@ private:
 // static member initializer
 template <class T>
  T bin_to_dec<T>::_Dec = 0;
-
-
 
 
 
