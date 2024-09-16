@@ -22,8 +22,281 @@ constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 
+// the max. number of bits evaluated by 'BIT_TOKEN()'
+unsigned MAX_BIT = 0;
+
+
+// returns a specific named token which evaluates to a max. number of bits.
+constexpr unsigned BIT_TOKEN(const unsigned nBits)
+{
+	if (nBits <= BYTE) MAX_BIT = BYTE;
+	else if (nBits > BYTE && nBits <= WORD) MAX_BIT = WORD;
+	else if (nBits > WORD && nBits <= DWORD) MAX_BIT = DWORD;
+	else MAX_BIT = 128 - QWORD;
+
+	return MAX_BIT;
+}
+
+
+// invert every bit in the bit array.
+inline static void invert_bits(bool _pb[], const unsigned nBits)
+{
+	for (unsigned j = 0; j < nBits; j++)
+	{
+		_pb[j] = !_pb[j];
+	}
+}
+
+
+// get a bit character from a position in the bit array as specified by '_pb'.
+inline static const char* char_from_bit(const bool _pb[], const int _index)
+{
+	return (_pb[_index]) ? (char*)"1" : (char*)"0";
+}
+
+
+// get a value from a position in the bit array 
+inline static const unsigned n_of_bit(const bool _pb[], const int _index)
+{
+	return _pb[_index];
+}
+
+
+// obtain a full bits string from the bit array specified by '_pb'.
+inline static const std::string str_from_bits(const bool _pb[], const unsigned nBits)
+{
+	char* _ss = new char[nBits];
+
+	for (unsigned i = 0; i < nBits; i++)
+		_ss[i] = (_pb[i]) ? '1' : '0';
+
+	_ss[nBits] = '\0';
+	return _ss;
+}
+
+
+/* obtain a bits from string data, this includes the most significant bits padded
+   to the left of primary bits */
+inline static const bool* bits_from_str(const std::string& _cBits)
+{
+
+	const unsigned numBits = (unsigned)std::strlen(_cBits.data());
+	unsigned nZeros = BIT_TOKEN(numBits) - numBits;
+
+	bool* _pb = new bool[nZeros + numBits];
+
+	// pad trailing bits with '0'
+	for (unsigned z = 0; z < nZeros; z++) _pb[z] = false;
+
+	// top-up leading bits with '_cBits'
+	for (unsigned i = 0; i < numBits; i++)
+	{
+		_pb[nZeros++] = (_cBits.c_str()[i] == 49) ? true : false;
+	}
+
+	return _pb;
+}
+
 
 // uppercase the specified char
+inline static const char upCase(const int);
+
+// downcase the specified char
+inline static const char downCase(const int);
+
+// scan a specific string pattern within the target string and return the found position in the target string.
+inline static const int strPos(const char*, const char*);
+
+// scan a substring within the target string and return the found substring in the target string.
+inline static const char* scanStr(const char*, const char*);
+
+inline static const char* concat_str(char* , const char*);
+
+// take the n number of characters from the left end of the string
+inline static const char* lstr(const char*, const std::size_t);
+
+/* get a number of characters from a string starting from a position specified
+   by '_start', then take n characters specified by '_nChars'. The position is
+   zero-based array indexes.
+*/
+inline static const char* snapStr(const char*, const int, const int);
+
+/* replace number of characters of a string with a character specified by '_tpChr' ,
+   the position in the string is zero-based array indexes.
+*/
+inline static const char* tapStr(const char*, const char, const int, const int);
+
+/* pad the right end of a string with number of unique characters specified by '_padC'.
+   the '_Count' argument is based on zero index array accesses. */
+inline static const char* rtrimx(const char*, const int, const char);
+
+/*pad the left end of a string with number of unique chars specified by '_padCh' ,
+  using zero-based index array accesses. */
+inline static const char* ltrimx(const char*, const int, const char _padCh);
+
+// take the n number of characters from the right end of the string
+inline static const char* rstr(const char*, const std::size_t);
+
+inline static const char* rtrim(const char*);
+
+inline static const char* reverse_str(const char*);
+
+
+// evaluate to how much number of bits that made up a constant value '_v'
+template < class T >
+struct num_of_bits
+{
+	using type = typename T;
+
+	static const type eval(const type _v)
+	{
+		type cnt = 0;
+		type _val = _v;
+
+		while (_val > 0)
+		{
+			_val >>= 1;
+			++cnt;
+		}
+
+		return cnt;
+	}
+};
+
+
+
+// convert a specified decimal constant to its binary form
+template < typename T >
+struct to_binary
+{
+	using value_type = typename T;
+
+	static inline const std::string eval(const value_type _dec)
+	{
+		_bs = nullptr;
+		unsigned int _bsz = oneAdder(num_of_bits<unsigned int>::eval(_dec));
+		_value = _dec;
+
+		if (_bsz > 0)
+			_bs = new char[_bsz];
+
+		for (unsigned int i = 0; i < _bsz; i++)
+		{
+			_bs[i] = (_value % 2) ? 49 : 48;
+			_value >>= 1;
+		}
+
+		_value = 0;
+		_bs[_bsz] = 0;
+		_bs = (char*)reverse_str(_bs);
+		return _bs;
+	}
+
+private:
+	static value_type _value;
+	static char* _bs;
+};
+
+// static members initializer
+template <class T>
+T to_binary<T>::_value = 0;
+
+template <class T>
+char* to_binary<T>::_bs = nullptr;
+
+
+
+template <class T >
+struct bin_to_dec
+{
+	using value_type = typename T;
+
+	// the bit string is assumed to be in little-endian order.
+	static inline const value_type eval(const std::string&& _strBits)
+	{
+		std::size_t lenMax = std::strlen(_strBits.data());
+		std::size_t _maxBit = lenMax - 1;
+		int k = 0, b = 0;
+
+		_Dec = 0;
+
+		for (std::size_t i = _maxBit; i > 0; i--)
+		{
+			b = (_strBits[i] == 49) ? 1 : 0;
+			_Dec += b * (int)std::pow(2, k++);
+		}
+
+		b = (_strBits[0] == 49) ? 1 : 0;
+		_Dec += b * (int)std::pow(2, _maxBit);
+
+		return _Dec;
+	}
+
+private:
+	static value_type _Dec;
+};
+// static member initializer
+template <class T>
+T bin_to_dec<T>::_Dec = 0;
+
+
+
+struct BitN
+{
+	BitN();
+	BitN(const int);
+	BitN(const char*);
+	BitN(const std::initializer_list<bool>&);
+	
+	void setBits(const std::string&&);
+	const int value_from_bitstr(const std::string&);
+	const std::string& Bits();
+	const std::string& toBits(const unsigned);
+	const int value_from_bitlist(const iList2<bool>&);
+	const std::string& to_signed_bits(const int);
+	const std::string& to_fixed_point_bits(const std::string&, const double);
+	const std::size_t bitSize() const;
+	void operator()() const;
+
+private:
+	std::string _bitStr;
+	std::size_t _bitLen;
+};
+
+
+// fixed point numeric type
+template <const unsigned BITS>
+struct fixN
+{
+	fixN();
+	fixN(const double);
+	fixN(const int);
+
+	void operator= (const double);
+	void operator= (const int);
+	const double operator()();
+	const int operator()(const int) const;
+	const double decimal();
+	const double rational();
+
+	operator int() const;
+	operator double() const;
+
+private:
+	int _nVal;
+
+	const int scale = BITS / 2;
+
+	const int fXMask = ((int)std::pow(2, BITS) - 1) & ((int)std::pow(2, scale) - 1);
+	const int iXMask = 0xFFFF << scale;
+
+	const double toFix(const double);
+	const double toDouble(const int);
+	const int toFixInt(const int);
+	const int fixtoInt(const int);
+};
+
+
 inline static const char upCase(const int _c)
 {
 	if (_c <= 0) return _c;
@@ -32,15 +305,12 @@ inline static const char upCase(const int _c)
 	if (_c >= 65 && _c <= 90)
 		return _c;
 
-	
 	int _ch = 0b00100000 ^ _c;
 
 	return _ch;
 }
 
 
-
-// downcase the specified char
 inline static const char downCase(const int _cAlpha)
 {
 	if (_cAlpha <= 0) return _cAlpha;
@@ -55,12 +325,12 @@ inline static const char downCase(const int _cAlpha)
 }
 
 
-// scan a specific string pattern within '_aStr' and return the found position in '_aStr'.
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-					  _Sz2 = std::strlen(_cStr);
+			_Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
+	bool _bFound = false;
 
 	if (!_Sz1 || !_Sz2) return 0;
 	if (_Sz2 > _Sz1) return -1;
@@ -68,17 +338,19 @@ inline static const int strPos(const char* _aStr, const char* _cStr)
 	for (std::size_t gf = 0; gf < _Sz1; gf++, _Pos++)
 	{
 		if (std::strncmp(&_aStr[gf], _cStr, _Sz2)) continue;
-		else break;
+		else {
+			_bFound = true;
+			break;
+		}
 	}
-	return _Pos;
+	return (_bFound)? _Pos: -1;
 }
 
 
-// scan a substring '_searchStr' within '_Str0' and return the found substring in '_Str0'.
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-					  _lenX = std::strlen(_searchStr);
+			_lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -98,7 +370,6 @@ inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 }
 
 
-
 inline static const char* concat_str(char* _target, const char* _str)
 {
 	const std::size_t lenz = std::strlen(_target),
@@ -113,7 +384,6 @@ inline static const char* concat_str(char* _target, const char* _str)
 }
 
 
-
 inline static const char* reverse_str(const char* _str)
 {
 	const std::size_t lenz = std::strlen(_str), _max = lenz - 1;
@@ -125,7 +395,6 @@ inline static const char* reverse_str(const char* _str)
 	_ps[lenz] = 0;
 	return _ps;
 }
-
 
 
 // take the n number of characters from the left end of the string
@@ -146,7 +415,6 @@ inline static const char* lstr(const char* _srcStr, const std::size_t _nGrab)
 
 	return _ps;
 }
-
 
 
 /* get a number of characters from a string starting from a position specified
@@ -198,7 +466,6 @@ inline static const char* tapStr(const char* _pStr, const char _tpChr, const int
 }
 
 
-
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
 inline static const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
@@ -224,7 +491,6 @@ inline static const char* rtrimx(const char* _ssStr, const int _Count, const cha
 }
 
 
-
 /*pad the left end of a string with number of unique chars specified by '_padCh' ,
   using zero-based index array accesses. */
 inline static const char* ltrimx(const char* _uStr, const int _Count, const char _padCh = ' ')
@@ -242,7 +508,6 @@ inline static const char* ltrimx(const char* _uStr, const int _Count, const char
 	_lPadStr[lenSt] = 0;
 	return _lPadStr;
 }
-
 
 
 // take the n number of characters from the right end of the string
@@ -265,7 +530,6 @@ inline static const char* rstr(const char* _sStr, const std::size_t _nChars)
 }
 
 
-
 inline static const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
@@ -277,7 +541,6 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
-
 
 
 // bit status information
@@ -310,9 +573,10 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 {
 	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
-	std::size_t _loopn = 0;
+	std::size_t	_loopn = 0;
 
 	T _n = 0;
+
 
 	for (const auto& ub : _vb)
 	{
@@ -335,7 +599,6 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 }
 
 
-
 inline static const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
 {
 	return _packed & _nonPacked;
@@ -343,99 +606,108 @@ inline static const unsigned int unpack_bit(const unsigned _nonPacked, const uns
 
 
 
-// fixed point numeric type.
+// Implementations to fixN Class..
 template < const unsigned BITS >
-struct fixN
+fixN<BITS>::fixN(): _nVal(0){}
+
+
+template < const unsigned BITS >
+fixN<BITS>::fixN(const double x)
 {
-	fixN(): _nVal(0){}
-
-	fixN(const double x)
-	{
 		*this = x;
-	}
-
-	fixN(const int x)
-	{
-		*this = x;
-	}
-
-
-	void operator= (const double x)
-	{
-		_nVal = toFix(x);
-	}
-
-	void operator= (int x)
-	{
-		_nVal = toFixInt(x);
-	}
-	
-	const double operator()()
-	{
-		return toDouble(_nVal);
-	}
-
-	const int operator()(int c)
-	{
-		return fixToInt(_nVal);
-	}
-
-	const double decimal()
-	{
-		return toDouble((_nVal & iXMask ));
-	}
-
-	const double rational()
-	{
-		return  toDouble((_nVal & fXMask) );
-	}
-
-	
-private:
-	int _nVal;
-
-	const int scale = BITS / 2;
-
-	const int fXMask = ((int)std::pow(2,BITS) - 1) & ((int)std::pow(2,scale) - 1);
-	const int iXMask = 0xFFFF << scale;
-
-	const double toFix(const double x)
-	{
-		return x *(double)(1 << scale);
-	}
-
-	const double toDouble(const int x)
-	{
-		return (double)x / (double)(1 << scale);
-	}
-
-	const int toFixInt(int x)
-	{
-		return x << scale;
-	}
-
-	const int fixToInt(int x)
-	{
-		return x >> scale;
-	}
-
-};
-
-// the max. number of bits evaluated by 'BIT_TOKEN()'
-unsigned MAX_BIT = 0;
-
-
-// returns a specific named token which evaluates to a max. number of bits.
-constexpr unsigned BIT_TOKEN(const unsigned nBits)
-{
-	if (nBits <= BYTE) MAX_BIT = BYTE;
-	else if (nBits > BYTE && nBits <= WORD) MAX_BIT = WORD;
-	else if (nBits > WORD && nBits <= DWORD) MAX_BIT = DWORD;
-	else MAX_BIT = 128 - QWORD;
-
-	return MAX_BIT;
 }
 
+
+template<const unsigned BITS>
+fixN<BITS>::fixN(const int x)
+{
+		*this = x;
+}
+
+
+template < const unsigned BITS >
+void fixN<BITS>::operator= (const double x)
+{
+	_nVal = (int)toFix(x);
+}
+
+
+template <const unsigned BITS >
+void fixN<BITS>::operator= (int x)
+{
+	_nVal = toFixInt(x);
+}
+	
+
+template <const unsigned BITS >
+const double fixN<BITS>::operator()()
+{
+	return toDouble(_nVal);
+}
+
+	
+template <const unsigned BITS >
+const int fixN<BITS>::operator()(const int c) const
+{
+	return fixtoInt(_nVal);
+}
+
+	
+template < const unsigned BITS >
+const double fixN<BITS>::decimal()
+{
+	return toDouble((_nVal & iXMask ));
+}
+
+
+template <const unsigned BITS >
+const double fixN<BITS>::rational()
+{
+	return  toDouble((_nVal & fXMask) );
+}
+
+	
+template <const unsigned BITS>
+const double fixN<BITS>::toFix(const double x)
+{
+	return x *(double)(1 << scale);
+}
+
+
+template <const unsigned BITS>
+const double fixN<BITS>::toDouble(const int x)
+{
+	return (double)x / (double)(1 << scale);
+}
+
+	
+template <const unsigned BITS>
+const int fixN<BITS>::toFixInt(int x)
+{
+		return x << scale;
+}
+
+
+template <const unsigned BITS>
+const int fixN<BITS>::fixtoInt(const int x)
+{
+		return x >> scale;
+}
+
+
+template <const unsigned BITS>
+fixN<BITS>::operator double() const
+{
+	return toDouble(_nVal);
+}
+
+
+template <const unsigned BITS>
+fixN<BITS>::operator int() const
+{
+	return toFixInt(_nVal);
+
+}
 
 // return how much number of decimal digits which appeared in a constant integer '_v'.
 inline static const int num_of_dec(const int _v)
@@ -455,35 +727,42 @@ inline static const int num_of_dec(const int _v)
 }
 
 
-
 // Convert alphanumeric string '0,1,2..9' to integer
 inline static const int strtoint(std::string&& _sNum)
 {
 	const std::size_t _len = _sNum.size();
 	char* _sf = new char[_len];
-	
+	std::string _sfs;
+	int _bv = 0;
+
 	std::memset(_sf, 0, _len);
 	std::strncpy(_sf, _sNum.data(), _len);
 
-	int _iNum = atoi(_sNum.data()),
+	int _iNum = strPos(_sNum.data(),"-"),
 		_maxPos = (int)(_len - 1), 
-		_c = 0, _low = 0, _result = 0;
+		_c = 0, _result = 0,
+		_Exp = 0;
 
-	
-	if (_iNum < 0) ++_low;
-
-	//PRINT(_iNum);
-
-	for (int _Exp = 0, i = _maxPos; i >= _low; i--)
+	if (_iNum >= 0)
 	{
-		_c = _sf[i] ^ 0b00110000; // xor with the alphanumeric ascii bit mask
-		_result += _c * (int)std::pow(10, _Exp++);
-
+		_sf = std::strncpy(&_sf[1], &_sNum[1], _maxPos);
+		_sf[_maxPos] = 0;
+		--_maxPos;
 	}
 
+		for (int i = _maxPos; i >= 0; i--)
+		{
+			_c = _sf[i] ^ 0b00110000;
+			_bv = _bv + _c * (int)std::pow(10, _Exp++);
+		};
+
+	
+	_result = ((_iNum) >= 0)? _bv - (2 * _bv) : _bv;
+	
+	_sfs.clear();
+	std::memset(_sf, 0, _len);
 	return _result;
 }
-
 
 
 inline static const char* inttostr(const int nVal)
@@ -540,203 +819,37 @@ inline static const char* inttostr(const int nVal)
 
 
 
-// evaluate to how much number of bits that made up a constant value '_v'
-template < class T >
-struct num_of_bits
-{
-	using type = typename T;
+// Implementation to BitN class..
 
-	static const type eval(const type _v)
-	{
-		type cnt = 0; 
-		type _val = _v;
+	BitN::BitN():_bitLen(0) {}
 
-		while (_val > 0)
-		{
-			_val >>= 1;
-			++cnt;
-		}
-		
-		return cnt;
-	}
-};
-
-
-
-// convert a specified decimal constant to its binary form
-template < typename T >
-struct to_binary
-{
-	using value_type = typename T;
-	
-	static inline const std::string eval(const value_type _dec)
-	{
-		_bs = nullptr;
-		unsigned int _bsz = oneAdder(num_of_bits<unsigned int>::eval(_dec));
-		_value = _dec;
-		
-		if (_bsz > 0)
-			_bs = new char[_bsz];
-
-		for (unsigned int i = 0; i < _bsz; i++)
-		{
-			_bs[i] = (_value % 2)? 49 : 48;
-			_value >>= 1;
-		}
-
-		_value = 0;
-		_bs[_bsz] = 0;
-		_bs = (char*)reverse_str(_bs);
-		return _bs;
-	}
-
-private:
-	static value_type _value;
-	static char* _bs;
-};
-
-// static members initializer
-template <class T>
-T to_binary<T>::_value = 0;
-
-template <class T>
-char* to_binary<T>::_bs = nullptr;
-
-
-
-
-template <class T >
-struct bin_to_dec
-{
-	using value_type = typename T;
-
-	// the bit string is assumed to be in little-endian order.
-	static inline const value_type eval(const std::string&& _strBits)
-	{
-		std::size_t lenMax = std::strlen(_strBits.data());
-		std::size_t _maxBit = lenMax - 1;
-		int k = 0, b = 0;
-		
-		_Dec = 0;
-
-		for (std::size_t i = _maxBit; i > 0; i--)
-		{
-			b = (_strBits[i] == 49)? 1 : 0;
-			_Dec += b * (int)std::pow(2, k++);
-		}
-
-		b = (_strBits[0] == 49)? 1 : 0;
-		_Dec += b * (int)std::pow(2, _maxBit);
-
-		return _Dec;
-	}
-
-private:
-	static value_type _Dec;
-};
-// static member initializer
-template <class T>
- T bin_to_dec<T>::_Dec = 0;
-
-
-
-// invert every bit in the bit array.
-inline static void invert_bits(bool _pb[], const unsigned nBits)
-{
-	for (unsigned j = 0; j < nBits; j++)
-	{
-		_pb[j] = !_pb[j];
-	}
-}
-
-
-
-// get a bit character from a position in the bit array as specified by '_pb'.
-inline static const char* char_from_bit(const bool _pb[], const int _index)
-{
-	return (_pb[_index])? (char*)"1" : (char*)"0";
-}
-
-
-
-// get a value from a position in the bit array 
-inline static const unsigned n_of_bit(const bool _pb[], const int _index)
-{
-	return _pb[_index];
-}
-
-
-
-// obtain a full bits string from the bit array specified by '_pb'.
-inline static const std::string str_from_bits(const bool _pb[], const unsigned nBits)
-{
-	char* _ss = new char[nBits];
-
-	for (unsigned i = 0; i < nBits; i++)
-		_ss[i] =  (_pb[i])? '1' : '0';
-	
-	_ss[nBits] = '\0';
-	return _ss;
-}
-
-
-/* obtain a bits from string data, this includes the most significant bits padded
-   to the left of primary bits */
-inline static const bool* bits_from_str(const std::string& _cBits)
-{
-	
-	const unsigned numBits = (unsigned)std::strlen(_cBits.data());
-	unsigned nZeros = BIT_TOKEN(numBits) - numBits;
-
-	bool* _pb = new bool[nZeros + numBits];
-
-	// pad trailing bits with '0'
-	for (unsigned z = 0; z < nZeros; z++) _pb[z] = false;
-
-	// top-up leading bits with '_cBits'
-	for (unsigned i = 0; i < numBits; i++)
-	{
-		_pb[nZeros++] = (_cBits.c_str()[i] == 49)? true : false;
-	}
-
-	return _pb;
-}
-
-
-
-struct BitN
-{
-	BitN() :_bitLen(0) {}
-
-	BitN(const int _val)  
+	BitN::BitN(const int _val)  
 	{
 		_bitStr = (_val > 0)? toBits(_val) : to_signed_bits(_val);
 		
 	}
 
-	BitN(const char* _strFixBits)
+	BitN::BitN(const char* _strFixBits)
 	{
 		to_fixed_point_bits(_strFixBits, 0.1);
 	}
 
 	
-	
-	BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
+	BitN::BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
 	{
 
 		toBits(value_from_bitlist(_bitL) );
 	}
 
 
-	void setBits(const std::string&& _bitL)
+	void BitN::setBits(const std::string&& _bitL)
 	{
 		_bitStr = _bitL;
 		_bitLen = _bitStr.size();
 	}
 
 
-
-	const int value_from_bitstr(const std::string& _bits)
+	const int BitN::value_from_bitstr(const std::string& _bits)
 	{
 		int _v = bin_to_dec<int>::eval(_bits.data());
 
@@ -744,13 +857,13 @@ struct BitN
 	}
 
 
-	const std::string& Bits()
+	const std::string& BitN::Bits()
 	{
 		return _bitStr;
 	}
 
 
-	const std::string& toBits(const unsigned _val)
+	const std::string& BitN::toBits(const unsigned _val)
 	{
 		unsigned _dec = _val;
 
@@ -763,7 +876,7 @@ struct BitN
 	}
 
 
-	const int value_from_bitlist(const iList2<bool>& _bits)
+	const int BitN::value_from_bitlist(const iList2<bool>& _bits)
 	{
 		int _bExp = 0, _v = 0;
 		_bExp = (int)(_bits.size() - 1); 
@@ -779,7 +892,7 @@ struct BitN
 
 
 	// obtain a 2-complement bits string from a specific signed value ( + / - )
-	const std::string& to_signed_bits(const int _signed_v)
+	const std::string& BitN::to_signed_bits(const int _signed_v)
 	{
 		_bitStr.clear();
 		bool* _bits = nullptr;
@@ -825,11 +938,11 @@ struct BitN
 		return _bitStr;
 	}
 
-	const size_t bitSize() const { return _bitStr.size(); }
+	const size_t BitN::bitSize() const { return _bitStr.size(); }
 
 
 	// returns a string representation of a fixed point binary bits.
-	const std::string& to_fixed_point_bits(const std::string& _cf, const double _epsilon)
+	const std::string& BitN::to_fixed_point_bits(const std::string& _cf, const double _epsilon)
 	{
 		size_t _sz = std::strlen(_cf.data());
 		size_t _point = _cf.find_first_of(".", 0);
@@ -912,14 +1025,8 @@ struct BitN
 		return _bitStr;
 	}
 
-	void operator()() const
+	void BitN::operator()() const
 	{
 		std::cout << _bitStr.data() << "\n\n";
 	}
-
-
-private:
-	std::string _bitStr;
-	std::size_t _bitLen;
-};
 
