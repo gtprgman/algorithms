@@ -16,6 +16,7 @@
 
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
 #define oneAdder(_v_) _v_ + 1
+#define SPACE (char)32
 
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
@@ -107,6 +108,9 @@ inline static const char downCase(const int);
 // scan a specific string pattern within the target string and return the found position in the target string.
 inline static const int strPos(const char*, const char*);
 
+// scan a byte value within the specified string pattern and return the found position in the string being scanned
+inline static const int strNPos(const char*, const int);
+
 // scan a substring within the target string and return the found substring in the target string.
 inline static const char* scanStr(const char*, const char*);
 
@@ -129,6 +133,9 @@ inline static const char* tapStr(const char*, const char, const int, const int);
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
 inline static const char* rtrimx(const char*, const int, const char);
+
+// removes extra spaces before and after the specified letter words
+inline static const char* LRTrim(const char*);
 
 /*pad the left end of a string with number of unique chars specified by '_padCh' ,
   using zero-based index array accesses. */
@@ -297,6 +304,7 @@ private:
 };
 
 
+
 inline static const char upCase(const int _c)
 {
 	if (_c <= 0) return _c;
@@ -305,6 +313,7 @@ inline static const char upCase(const int _c)
 	if (_c >= 65 && _c <= 90)
 		return _c;
 
+	
 	int _ch = 0b00100000 ^ _c;
 
 	return _ch;
@@ -345,6 +354,26 @@ inline static const int strPos(const char* _aStr, const char* _cStr)
 	}
 	return (_bFound)? _Pos: -1;
 }
+
+
+
+inline static const int strNPos(const char* _StSrc, const int _chr)
+{
+	int _iPos = 0;
+	const int _maxSz = (int)std::strlen(_StSrc);
+	bool _cFnd = false;
+
+	for (_iPos = 0; _iPos < _maxSz; _iPos++)
+	{
+		if (_StSrc[_iPos] == _chr) {
+			_cFnd = true;
+			break;
+		}
+	}
+
+	return (_cFnd)? _iPos : -1;
+}
+
 
 
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
@@ -530,6 +559,28 @@ inline static const char* rstr(const char* _sStr, const std::size_t _nChars)
 }
 
 
+inline static const char* LRTrim(const char* _Sstr)
+{
+	const int _maxLen = (int)std::strlen(_Sstr);
+	char* _newSt = (char*)"";
+	int _jPos = 0, _k = 0;
+
+	// skipping through the first blank character spaces
+	for (_jPos = 0; _jPos < _maxLen; _jPos++)
+	{
+		if (_Sstr[_jPos] == 32) continue;
+		else break;
+	}
+
+	for (; _jPos < _maxLen; _jPos++, _k++)
+		_newSt = (char*)concat_str(_newSt, &_Sstr[_jPos]);
+
+
+	_newSt[_k] = 0;
+	return _newSt;
+}
+
+
 inline static const char* rtrim(const char* _string)
 {
 	const std::size_t Len = std::strlen(_string), _Max = Len - 1;
@@ -573,10 +624,9 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 {
 	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
-	std::size_t	_loopn = 0;
+	std::size_t _loopn = 0;
 
 	T _n = 0;
-
 
 	for (const auto& ub : _vb)
 	{
@@ -1029,4 +1079,5 @@ inline static const char* inttostr(const int nVal)
 	{
 		std::cout << _bitStr.data() << "\n\n";
 	}
+
 
