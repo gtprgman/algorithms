@@ -11,78 +11,43 @@ int main()
 	
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
-	std::vector<node> nod, fNod;
-	std::vector<UINT> bsPck;
-	std::vector<bitInfo<unsigned int> > bfo;
-	std::map<int, char> mPair;
+	std::priority_queue<node> pq;
+	std::vector<node> fNod;
+
+	for (const auto& e : s)
+		pq.push(e);
 	
 
-	for (const auto& c : s)
-		nod.push_back(c);
-
-	merge_sort<int>(nod, nod.size());
-	sort_Nodes<int>(nod, SZ);
-	
-	filter_Nodes(fNod, nod); 
-	
-	nod.clear();
-
-	merge_sort<double>(fNod, fNod.size());
-	sort_Nodes<double>(fNod, fNod.size());
-
-	//NPRINT(fNod); RET;
-
-	_TREE::build_huffman_tree(fNod);
-
-	RET;
-
-	/*
-	 Debugging purposes ... 
-	 the function below should be execute independently
-	 without precede or after call to '_TREE::encode_tree()' 
-	*/
-
-	//_TREE::ENCODE_SCHEMA = true;
-	//_TREE::plot_huffman_tree(_TREE::_Root);
-
-	RET;
-
-
-	_TREE::ENCODE_SCHEMA = false;
-	_TREE::encode_tree(mPair, _TREE::_Root);
-
-
-	RET;
-
-
-	for (const std::pair<int, char>& mp : mPair)
+	for (; !pq.empty(); )
 	{
-		//RPRINT(mp.second); RPRINT("->"); RPRINT(biXs.toBits(mp.first).data());
-		bfo.push_back({ mp.first,num_of_bits<unsigned int>::eval(mp.first) + 1 });
-
-		RET;
+		filter_pq_nodes(fNod, (NODE_T)pq.top(),pq.size());
+		pq.pop();
 	}
 
-	RET;
-	
-
-	bitsPack<UINT>(bsPck,bfo);
-
-	for (const auto& _bi : bsPck)
-	{
-		PRINT(to_binary<UINT>::eval(_bi).data());
-	}
-
-
-	RET;
-
-	RET2();
+	std::priority_queue<node, std::vector<node>,
+		freqLess<node>> fpq{ fNod.begin(), fNod.end() };
 
 
 	fNod.clear();
-	mPair.clear();
-	bfo.clear();
 
+	for (NODE_T _nf = 0; !fpq.empty(); )
+	{
+		_nf = fpq.top();
+		fNod.push_back(_nf);
+		fpq.pop();
+	}
+
+	RET;
+
+	_TREE::build_huffman_tree(fNod);
+
+	_TREE::ENCODE_SCHEMA = true;
+	_TREE::plot_huffman_tree(_TREE::_Root);
+
+	
+	fNod.clear();
+
+	RET2();
 	return -1;
 }
 
