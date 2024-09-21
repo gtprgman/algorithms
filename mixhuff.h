@@ -3,19 +3,11 @@
 
 
 #ifndef REQUIRE_H
-#include "mixutil.h"
+	#include "mixutil.h"
 #endif
 
 
 static LONGFLOAT CSIZE = 0.00;
-
-
-#ifndef MX_HASH
-	#include "mixhash.h"
-	template <class Ty>
-	cHash<cElem<Ty>> HS(4096); // a preset of 4K size
-#endif
-
 
 
 
@@ -160,7 +152,7 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 
 #ifndef HUFF_TREE 
 	#include <vector>
-	#include <deque>
+	#include <queue>
 	#include <map>
 
 	std::vector<std::unique_ptr<node>> _repo;
@@ -397,7 +389,6 @@ struct NODE_T {
 #define ROOT2P(_p) (NODE2P)(_p)
 
 
-
 inline static bool ASSERT_P(const node* _ptr = nullptr) {
 	return (_ptr != nullptr);
 }
@@ -445,7 +436,6 @@ inline static const ULONG R_HEIGHT(const node* const _pRoot) {
 }
 
 
-
 // returns the value of a node as specified by a reference to any node in the tree.
 template < class N >
 constexpr inline const N VALT(const node& _Nod) {
@@ -470,7 +460,6 @@ constexpr inline const N VALX(const node* const _p) {
 }
 
 
-
 // convert a specified node to the frequency node
 inline static const node TO_FREQ_NODE(const node& _nod) {
 	node _fNod = _nod.FrequencyData(); // construct frequency node
@@ -479,14 +468,12 @@ inline static const node TO_FREQ_NODE(const node& _nod) {
 }
 
 
-
 /* extracts information from a node with a frequency value '_fv'
    ,this function needs to be initiated with a call to 'setRoot()' before used.
 */ 
 constexpr const node* NODE(const double _fv) {
 	return (node::_main)->Find(_fv);
 }
-
 
 
 /* Get a pointer to any node of the tree with a specified value '_fv'
@@ -511,6 +498,16 @@ inline static const double FREQX(const node* _Nod) {
 }
 
 
+// Extract nodes information from the vector
+inline static void NPRINT(const std::vector<node>& _vn)
+{
+	for (const node& _e : _vn)
+	{
+		RPRINT(_e.dataValue()); RPRINT("->"); RPRINT(_e.FrequencyData());
+		RET;
+	}
+}
+
 
 // evaluates the sum of total elements' value in the array with '_Count' elements
 template <class T >
@@ -523,7 +520,6 @@ constexpr std::size_t inline total_values(const T& _any, const UINT _Count) {
 }
 
 
-
 // puts a mark-up on a node as 'visited'
 inline static void passed_by(const node* const _p = nullptr ) {
 	if (!_p->Visited())
@@ -531,13 +527,11 @@ inline static void passed_by(const node* const _p = nullptr ) {
 }
 
 
-
 inline static void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
 		printf("(%d.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
-
 
 
 // searches a particular node's value relative to the root node
@@ -579,20 +573,18 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 }
 
 
-
 #define ZEROES(var1, var2) var1 = var2 = 0.00
-
-
-// Print a collection of nodes from the vector
-inline static void NPRINT(const std::vector<node>& _vn) {
-	for (const node& _ne : _vn) {
-		RPRINT( _ne.dataValue() ); RPRINT(" ");
-		RPRINT(_ne.FrequencyData() ); RET;
-	}
-}
-
-
 #endif
+
+
+template < class T = node>
+struct freqLess
+{
+	const bool operator()(const T& _First, const T& _Second)
+	{
+		return _First.FrequencyData() < _Second.FrequencyData();
+	}
+};
 
 
 // marks a node for deletion
@@ -622,46 +614,13 @@ inline static void transForm(std::vector<node>& _target, const std::vector<NODE_
 
 #ifndef MX_HUFF_IMPLS
 
-/* sort nodes in the vector in decreasing order, the size_t
-   argument should be the total size of the vector. */
-template <class N>
-inline static void sort_Nodes(std::vector<node>&, const std::size_t);
-
-/* sort the nodes in decreasing order using partial sort methods,
-  the first element's pos should be 0 and the last element should be (n - 1), 
-  you should precede the call to this one before calling any subsequent sorting
-  mechanism */ 
-template <class N>
-inline static void range_sort(std::vector<node>&, const int, const int);
-
-
-#ifndef MIXHUFF_USE_THREAD
-#define MIXHUFF_USE_THREAD
-	#include <thread>
-/*
- Use threading processes to sort each subdivided data set,
- the total datum to be sorted must be greater than 10 ( n > 10 ),
- the '_Size' parameter argument should be the total size of the 
- vector.
-*/
-	template< class N >
-inline static void merge_sort(std::vector<node>&, const std::size_t);
-#endif
-
-
-/*  Filter nodes to a separate vector container,
-	the nodes in the source vector must be sorted before apply the filter. */ 
-inline static void filter_Nodes(std::vector<node>&, const std::vector<node>&);
-
-/* add a node to the vector container, the method incorporate
-   methods for restricting any data with the same value for being
-   entered twice.
-*/ 
-inline static void add_Nodes(std::vector<node>&, const NODE_T);
+/* Filter priority queue nodes and compute the frequency of each node */
+inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t);
 
 #include "mixhuff_impls.h"
 
 #endif
+
 
 	// Node Class Impl..
 	node::node() : xDir(tDir::UNKNOWN), _data(0), _fdata(0.00),
@@ -1071,7 +1030,6 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 		_rightLeft->setCode(_nDir);
 		_rightLeft = _rightLeft->links[_nDir];
 	}
-
 
 	_rightLeft = nullptr;
 }
