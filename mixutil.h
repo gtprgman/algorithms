@@ -32,6 +32,7 @@ using LONGFLOAT = long double;
 typedef LongRange LINT;
 typedef LONGFLOAT LFLOAT;
 
+
 #define RET std::cout << "\n";
 
 #define PRINT(_t) std::cout << (_t) << "\n";
@@ -169,7 +170,7 @@ struct iList2 {
 
 
 	// overloaded assignment operator
-	constexpr const iList2<tElem>& operator= ( const std::initializer_list<tElem>& rList ) noexcept {
+	constexpr const iList2<tElem>& operator=( const std::initializer_list<tElem>& rList ) noexcept {
 		_mFirst = rList.begin();  
 		_mLast = rList.end();
 
@@ -271,17 +272,17 @@ struct type_aspect_if< Ty, true >
 	public:
 		static const bool Result = std::is_fundamental<type_>::value;
 	};
-
+	
 
 
 	struct isNumeric
 	{
-	   template < typename T >
-	   static const bool eval(const T _v) {
-		return std::is_integral_v<decltype(_v)>;
-	   }
-	};
+		template < typename T >
+		static const bool eval(const T _v) {
+			return std::is_integral_v<decltype(_v)>;
+		}
 
+	};
 
 	
 	template < class LV >
@@ -337,7 +338,7 @@ struct type_aspect_if< Ty, true >
 	};
 	
 
-
+	
 
 namespace mix {
 
@@ -345,7 +346,7 @@ namespace mix {
 		using value_type = std::nullptr_t;
 
 		nullType(): _nan(nullptr) {};
-		nullType(std::nullptr_t const) {}
+		nullType(std::nullptr_t const): _nan(std::nullptr_t()) {}
 		
 		_NODISCARD operator value_type() const {
 			return _nan;
@@ -456,7 +457,7 @@ namespace mix {
 	
 	
 	
-	
+
 	template < class ret, class entity >
 	struct ptrTraits< ret(_cdecl entity::*)() > {
 		using type = ret(_cdecl entity::*)();
@@ -464,7 +465,6 @@ namespace mix {
 		using rootType = typename entity;
 		enum {isPointerToMember = _BOOLC(std::is_member_pointer_v<type> ) };
 	};
-	
 	
 	
 	
@@ -527,7 +527,25 @@ namespace mix {
 	};
 	
 	
-	
+	/*
+	  this one is credited to: https://www.cppstories.com/2024/unroll-templates-lambdas-and-fold/
+	*/
+	namespace auto_looper
+	{
+		template <class Fn, std::size_t... I>
+		void loopsn(const Fn& _fn, const std::index_sequence<I...>)
+		{
+			(_fn(I), ...);
+		}
+
+		template <int N, class Fn >
+		void forLoop(const Fn& _fnc)
+		{
+			loopsn(_fnc,std::make_index_sequence<N>());
+		}
+	}
+
+
 	namespace data {
 		
 		class Bucket  {
@@ -802,6 +820,6 @@ namespace mix {
 	{
 		FOR_EACH_PRINT(begin, end);
 	}
-
-		
+	
 };
+
