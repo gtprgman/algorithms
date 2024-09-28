@@ -12,7 +12,9 @@ int main()
 	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
-	std::vector<node> fNod;
+	std::vector<node> fuNod;
+	std::map<int, char> mPair;
+
 
 	for (const auto& e : s)
 		pq.push(e);
@@ -20,32 +22,39 @@ int main()
 
 	for (; !pq.empty(); )
 	{
-		filter_pq_nodes(fNod, (NODE_T)pq.top(),pq.size());
+		filter_pq_nodes(fuNod, (NODE_T)pq.top(),pq.size());
 		pq.pop();
 	}
 
+
+	
 	std::priority_queue<node, std::vector<node>,
-		freqLess<node>> fpq{ fNod.begin(), fNod.end() };
+		fqLess<node>> fpq{ fuNod.begin(), fuNod.end() };
 
+	RET;
 
-	fNod.clear();
+	fuNod.clear();
 
 	for (NODE_T _nf = 0; !fpq.empty(); )
 	{
 		_nf = fpq.top();
-		fNod.push_back(_nf);
+		fuNod.push_back(_nf);
 		fpq.pop();
 	}
 
+
+	//NPRINT(fuNod);
+
 	RET;
 
-	_TREE::build_huffman_tree(fNod);
+	_TREE::build_huffman_tree(fuNod);
 
-	_TREE::ENCODE_SCHEMA = true;
 	_TREE::plot_huffman_tree(_TREE::_Root);
 
 	
-	fNod.clear();
+	
+	fuNod.clear();
+	
 
 	RET2();
 	return -1;
