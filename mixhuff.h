@@ -6,9 +6,10 @@
 	#include "mixutil.h"
 #endif
 
+using namespace mix::auto_looper;
+
 
 static LONGFLOAT CSIZE = 0.00;
-
 
 
 // Forward Declaration of Any Immediate Required Elements..
@@ -227,9 +228,6 @@ static struct _Deallocator {
 struct _TREE {
 	static node* _Root;
 
-	// determined whether a schematic view is chosen
-	static bool ENCODE_SCHEMA;
-
 	static inline void Info()
 	{
 		RET2();
@@ -248,16 +246,16 @@ struct _TREE {
 	static inline void encode_tree(std::map<int,char>&, const node* const);
 
 private:
-	/* traversing the entire branches of the huffman tree and encode every visited leaf node.
+	/* traversing the entire branches of the huffman tree and encodes every visited leaf node.
 	   NB: The huffman tree must be built and exists before this function could apply. */
-	static inline void traverse_encode(std::map<int,char>&,const node* const);
+	static inline void traverse_encode(std::map<int,char>&,const node* const, const int);
 
 };
 
 node* _TREE::_Root = nullptr;
-bool _TREE::ENCODE_SCHEMA = false;
 
 #endif
+
 
 
 // to construct a temporary node object, uses this structure for safety reason
@@ -436,6 +434,7 @@ inline static const ULONG R_HEIGHT(const node* const _pRoot) {
 }
 
 
+
 // returns the value of a node as specified by a reference to any node in the tree.
 template < class N >
 constexpr inline const N VALT(const node& _Nod) {
@@ -459,13 +458,6 @@ constexpr inline const N VALX(const node* const _p) {
 	return _v;
 }
 
-
-// convert a specified node to the frequency node
-inline static const node TO_FREQ_NODE(const node& _nod) {
-	node _fNod = _nod.FrequencyData(); // construct frequency node
-	_fNod.setData(_nod.Value());
-	return _fNod;
-}
 
 
 /* extracts information from a node with a frequency value '_fv'
@@ -509,29 +501,13 @@ inline static void NPRINT(const std::vector<node>& _vn)
 }
 
 
-// evaluates the sum of total elements' value in the array with '_Count' elements
-template <class T >
-constexpr std::size_t inline total_values(const T& _any, const UINT _Count) {
-	std::size_t nums = 0;
-	for (UINT j = 0; j < _Count; j++)
-		nums = nums + (std::size_t)_any[j];
-
-	return nums;
-}
-
-
-// puts a mark-up on a node as 'visited'
-inline static void passed_by(const node* const _p = nullptr ) {
-	if (!_p->Visited())
-		((node* const)_p)->setVisit(true);
-}
-
 
 inline static void print_vf(const node* const _p) {
 	if (ASSERT_P(_p))
 		printf("(%d.00, %.2f %%Fqr)\n", (_p)->Value(), (const double)(_p->FrequencyData()));
 	else std::cout << 0.00 << "\n";
 }
+
 
 
 // searches a particular node's value relative to the root node
@@ -560,25 +536,13 @@ constexpr inline const node* seek_n(const node* const uRoot, const double fv) {
 }
 
 
-
-#define ROW_FDATA_PRINT(_p) {\
-	RPRINT(_p->FrequencyData()); RPRINT(","); RPRINT(_p->Freq());\
-	RET;\
-}
-
-
-#define ROW_DATA_PRINT(_p) { \
-	RPRINT(_p->Value()); RPRINT(","); RPRINT(_p->Freq()); \
-	RET;\
-}
-
-
 #define ZEROES(var1, var2) var1 = var2 = 0.00
+
 #endif
 
 
 template < class T = node>
-struct freqLess
+struct fqLess
 {
 	const bool operator()(const T& _First, const T& _Second)
 	{
@@ -604,15 +568,10 @@ inline static void COLLECT(const node* const _p) {
 }
 
 
-// transform into vector node
-inline static void transForm(std::vector<node>& _target, const std::vector<NODE_T>& _source) {
-	PRINT("Adding.. ");
-	for (const auto& e : _source)
-		if (e._v != 0) _target.push_back(e);
-}
-
 
 #ifndef MX_HUFF_IMPLS
+constexpr int ENCODE_SCHEMA = -1;
+constexpr int ENCODE_TREE = 0;
 
 /* Filter priority queue nodes and compute the frequency of each node */
 inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t);
@@ -857,7 +816,7 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 	void node::setRoot(const node** const _uRoot = nullptr) {
 		if (node::_ppRoot == nullptr) node::_ppRoot = (node**)_uRoot;
 		if (*_ppRoot != *_uRoot) *_ppRoot = (node*)*_uRoot;
-		(*node::_ppRoot)->setCode(L);
+		(*node::_ppRoot)->setCode(ROOT);
 		_main = (CONST_PTR)*_ppRoot;
 	}
 
@@ -1011,8 +970,10 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 
 	// fill up the first half of the branches..
 	for (std::size_t i = 0; i < halfTSz; i++)
-		_TREE::_Root->Add(_fNods.at(i));
-
+	{
+		node _ntd = _fNods.at(i);
+		_TREE::_Root->Add(_ntd);
+	}
 
 	// spill up to the right branches of the tree
 	// create a new branches before appended to the right of the root
@@ -1022,6 +983,7 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 
 	int _nDir = 0;
 	*_rightLeft = _fNods[halfTSz];
+	_rightLeft->setCode(_nDir);
 
 	for (std::size_t j = halfTSz + 1; j < TSZ; j++)
 	{
@@ -1031,20 +993,20 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 		_rightLeft = _rightLeft->links[_nDir];
 	}
 
+
 	_rightLeft = nullptr;
 }
-
 
 
 inline void _TREE::plot_huffman_tree(const node* const _fRoot)
 {
 	std::map<int, char> _map = {};
-	traverse_encode(_map, _fRoot);
+	traverse_encode(_map, _fRoot,ENCODE_SCHEMA);
 }
 
 
 inline void _TREE::encode_tree(std::map<int,char>& _mPair, const node* const _fRoot)
 {
-	traverse_encode(_mPair, _fRoot);
+	traverse_encode(_mPair, _fRoot,ENCODE_TREE);
 }
 
