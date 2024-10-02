@@ -9,11 +9,13 @@
 int main() 
 {
 	
-	std::string s = "Ada Ate Apple.";
+	std::string s = "She Sells Shells in the Sea Shore.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
 	std::map<int, char> mPair;
+	std::vector<bitInfo<UINT>> bfo;
+	std::vector<UINT> packed;
 
 
 	for (const auto& e : s)
@@ -27,7 +29,6 @@ int main()
 	}
 
 
-	
 	std::priority_queue<node, std::vector<node>,
 		fqLess<node>> fpq{ fuNod.begin(), fuNod.end() };
 
@@ -49,12 +50,32 @@ int main()
 
 	_TREE::build_huffman_tree(fuNod);
 
-	_TREE::plot_huffman_tree(_TREE::_Root);
+	_TREE::encode_tree(mPair, _TREE::_Root);
 
+
+	for (const std::pair<int, char>& mp : mPair)
+	{
+		//RPRINT(mp.second); RPRINT("->"); RPRINT(to_binary<int>::eval(mp.first).data());
+		//RET;
+		bfo.push_back({ mp.first, oneAdder(num_of_bits<UINT>::eval(mp.first))});
+
+	}
 	
 	
+	bitsPack(packed, bfo);
+
+	for (const auto& bi : packed)
+	{
+		PRINT(to_binary<UINT>::eval(bi).data());
+	}
+	
+
 	fuNod.clear();
-	
+	mPair.clear();
+
+	bfo.clear();
+	packed.clear();
+
 
 	RET2();
 	return -1;
