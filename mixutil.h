@@ -538,7 +538,7 @@ namespace mix {
 			(_fn(I), ...);
 		}
 
-		template <int N, class Fn >
+		template <const int N, class Fn >
 		void forLoop(const Fn& _fnc)
 		{
 			loopsn(_fnc,std::make_index_sequence<N>());
