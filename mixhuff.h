@@ -250,6 +250,11 @@ private:
 	   NB: The huffman tree must be built and exists before this function could apply. */
 	static inline void traverse_encode(std::map<int,char>&,const node* const, const int);
 
+	// proceed on the subnode's right branches
+	inline static void iterRight(const node* const, const int, char*&, BPAIR&, std::map<int, char>&);
+
+	// enforce unique bits
+	inline static void enforce_unique(std::string&, char*&);
 };
 
 node* _TREE::_Root = nullptr;
@@ -998,6 +1003,7 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 }
 
 
+
 inline void _TREE::plot_huffman_tree(const node* const _fRoot)
 {
 	std::map<int, char> _map = {};
@@ -1009,4 +1015,5 @@ inline void _TREE::encode_tree(std::map<int,char>& _mPair, const node* const _fR
 {
 	traverse_encode(_mPair, _fRoot,ENCODE_TREE);
 }
+
 
