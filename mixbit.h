@@ -636,7 +636,7 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 		_Ax <<= _n;
 		_Ax |= _bx;
 
-		++_loopn;
+		_loopn++;
 
 		if (_loopn > _nIter)
 		{
