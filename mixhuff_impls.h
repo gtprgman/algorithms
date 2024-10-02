@@ -7,16 +7,10 @@
 
 #endif
 
-// proceed on the subnode right branches
-inline static void iterRight(const node* const,const int, char*&, BPAIR&, std::map<int,char>&);
-
-
-// to make sure that the traversed node is bit-differentiable
-inline static void enforce_unique_bit_R(std::string& _s0, std::string& _s1, char*&);
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
-				const std::size_t _maxLen)
+									const std::size_t _maxLen)
 {
 	NODE_T _nt = _NodT; // fetch new node every time the function is called
 	double _fqr = 0.00;
@@ -61,7 +55,7 @@ inline void _TREE::traverse_encode(std::map<int, char>& _mPair, const node* cons
 
 		if (_pt->Value() > 0 && !_pt->Visited())
 		{
-			if (_encNum < 0)
+			if (_encNum == ENCODE_SCHEMA)
 			{
 				_bt = (char*)concat_str(_bt, inttostr(L));
 				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
@@ -96,7 +90,7 @@ inline void _TREE::traverse_encode(std::map<int, char>& _mPair, const node* cons
 
 		if (_pt->Value() > 0 && !_pt->Visited())
 		{
-			if (_encNum < 0)
+			if (_encNum == ENCODE_SCHEMA)
 			{
 				_bt = (char*)concat_str(_bt, inttostr(_Dir));
 				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
@@ -149,60 +143,65 @@ inline void _TREE::traverse_encode(std::map<int, char>& _mPair, const node* cons
 
 
 
-inline static void iterRight(const node* const _pRoot, const int _enc, char*& _bt, BPAIR& _bpt,
-							std::map<int,char>& _mPair)
+inline void _TREE::iterRight(const node* const _pRoot, const int _enc, char*& _bt, BPAIR& _bpt,
+	std::map<int, char>& _mPair)
 {
 	node* _pt = (node*)_pRoot;
-	std::string _bts = _bt, _btc;
+	std::string _bts = _bt, _btc = "\0";
+	const int _C = R_HEIGHT(_pRoot);
 
 	while (_pt != nullptr)
 	{
 		if (ASSERT_P(_pt) && _pt->Value() > 0 && !_pt->Visited())
 		{
-			if (_enc < 0)
+			if (_enc == ENCODE_SCHEMA)
 			{
 				_bt = (char*)concat_str(_bt, inttostr(R));
 
-				if (_pt->links[R] == nullptr) {
-					std::strncpy(_btc.data(), _bt, _bts.size());
-					enforce_unique_bit_R(_bts, _btc, _bt);
+				if (!_btc.empty()) {
+					enforce_unique(_btc, _bt);
+					_bt = _btc.data();
 				}
-				
+
 				_pt->setVisit(true);
 				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-				_bt = (char*)rtrim(_bt);
+				_btc.assign(_bt);
 			}
 			else
 			{
 				_bt = (char*)concat_str(_bt, inttostr(R));
-				
-				if (_pt->links[R] == nullptr) {
-					std::strncpy(_btc.data(), _bt, _bts.size());
-					enforce_unique_bit_R(_bts, _btc, _bt);
+
+				if (!_btc.empty()) {
+					enforce_unique(_btc, _bt);
+					_bt = _btc.data();
 				}
 
 				_bpt._data = _pt->dataValue();
 				_bpt._val = biXs.value_from_bitstr(_bt);
 				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+				_btc.assign(_bt);
+
 				_bpt = {};
-				_bt = (char*)rtrim(_bt);
 				_pt->setVisit(true);
 			}
 		}
 		_pt = _pt->links[R];
 	}
+
 	_pt = nullptr;
 }
 
 
-inline static void enforce_unique_bit_R(std::string& _s0, std::string& _s1, char*& _bt)
+inline void _TREE::enforce_unique(std::string& _s0, char*& _bt)
 {
-	const std::size_t _oldMax = _s0.size();
+	int _bitV = 0;
+	const std::size_t _lenMax = _s0.size();
 
-	if (!strncmp(_s0.data(), _s1.data(), _oldMax))
+	if (!std::strncmp(_s0.data(), _bt,_lenMax))
 	{
-		_bt = (char*)rtrim(_bt);
-		_bt = (char*)concat_str(_bt, "1");
+		_bitV = bin_to_dec<int>::eval(_bt);
+		++_bitV;
+		_s0 = to_binary<int>::eval(_bitV);
 	}
 }
 
