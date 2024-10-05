@@ -6,7 +6,6 @@
 	#include "mixutil.h"
 #endif
 
-using namespace mix::auto_looper;
 
 
 static LONGFLOAT CSIZE = 0.00;
@@ -157,22 +156,25 @@ inline const node* const ALLOC_N<node*>(node* _nod) {
 	#include <map>
 
 	std::vector<std::unique_ptr<node>> _repo;
-	std::vector<node*> _nRepo;
+	std::vector<std::unique_ptr<node>> _nRepo;
 	//std::map<int, node*> _Map; // used primarily for debugging purposes.
 	
-	// custom deleter for std::unique_ptr<node>
-	struct N_DELETER {
+	// garbage collector for node*
+	static struct N_DELETER {
 		void operator()(node* _p0) {
 			_nRepo.emplace_back(_p0->links[R]);
 			
 			while (nullptr != _p0) {
-				_nRepo.emplace_back(_p0->links[L]);
-				_p0 = _p0->links[0];
+				_nRepo.emplace_back(_p0);
+				_p0 = _p0->links[L];
+			}
+			for (std::vector<std::unique_ptr<node>>::iterator _it = _nRepo.begin(); 
+				_it != _nRepo.end(); _it++) {
+				_it->reset(nullptr);
 			}
 
-			for (node* p_ : _nRepo) p_->~node();
 		}
-	};
+	} _Nodes_Eraser;
 
 #endif
 
@@ -189,15 +191,12 @@ static struct _Deallocator {
 		for (std::vector<std::unique_ptr<node>>::iterator vi = _repo.begin();
 			vi != _repo.end(); vi++) {
 			vi->reset(nullptr);
-			vi->release();
 		}
 		_repo.clear();
 	}
 
 	 
 } _Deleter;
-
-
 
 #endif
 
@@ -224,7 +223,6 @@ static struct _Deallocator {
 #define _TYPE_INFO_H
 	#include <typeinfo>
 
-
 struct _TREE {
 	static node* _Root;
 
@@ -236,28 +234,45 @@ struct _TREE {
 		RET2();
 	}
 
+	// get the encoded bits of data from a map
+	static inline std::map<int, char>&& CodeMap() {
+		return std::move(_mPair);
+	}
+
 	// construct a complete huffman tree data structure
 	static inline void build_huffman_tree(std::vector<node>&);
 
 	// extract a schematic diagram of the build-up huffman tree. (Debugging)
-	static inline void plot_huffman_tree(const node* const);
+	static inline void plot_huffman_tree();
 
 	// build a complete table data from the huffman encoded bits pattern
-	static inline void encode_tree(std::map<int,char>&, const node* const);
+	static inline void encode_tree();
+
+	// deallocate all created nodes on the tree
+	static inline void Destroy()
+	{
+		_Nodes_Eraser(_TREE::_Root);
+	}
 
 private:
-	/* traversing the entire branches of the huffman tree and encodes every visited leaf node.
-	   NB: The huffman tree must be built and exists before this function could apply. */
-	static inline void traverse_encode(std::map<int,char>&,const node* const, const int);
+	// extract a schematic view of a built huffman tree
+	static inline void extract_schema();
+
+	// extract encoded bits pattern of a built huffman tree
+	static inline void extract_code();
 
 	// proceed on the subnode's right branches
-	inline static void iterRight(const node* const, const int, char*&, BPAIR&, std::map<int, char>&);
+	inline static void iterSiblings(const node* const, const int, const int, char*&, BPAIR&, std::map<int, char>&);
 
 	// enforce unique bits
 	inline static void enforce_unique(std::string&, char*&);
+
+
+	static std::map<int, char> _mPair;
 };
 
 node* _TREE::_Root = nullptr;
+std::map<int, char> _TREE::_mPair = {};
 
 #endif
 
@@ -998,22 +1013,18 @@ inline void _TREE::build_huffman_tree(std::vector<node>& _fNods)
 		_rightLeft = _rightLeft->links[_nDir];
 	}
 
-
 	_rightLeft = nullptr;
 }
 
 
-
-inline void _TREE::plot_huffman_tree(const node* const _fRoot)
+inline void _TREE::plot_huffman_tree()
 {
-	std::map<int, char> _map = {};
-	traverse_encode(_map, _fRoot,ENCODE_SCHEMA);
+	extract_schema();
 }
 
 
-inline void _TREE::encode_tree(std::map<int,char>& _mPair, const node* const _fRoot)
+inline void _TREE::encode_tree()
 {
-	traverse_encode(_mPair, _fRoot,ENCODE_TREE);
+	extract_code();
 }
-
 
