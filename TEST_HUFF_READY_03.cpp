@@ -6,25 +6,23 @@
 
 
 
-int main() 
+int main()
 {
-	
-	std::string s = "She Sells Shells in the Sea Shore.";
+	std::string s = "Hello World You.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
-	std::map<int, char> mPair;
 	std::vector<bitInfo<UINT>> bfo;
 	std::vector<UINT> packed;
-
+	std::map<int, char> codeMap;
 
 	for (const auto& e : s)
 		pq.push(e);
-	
+
 
 	for (; !pq.empty(); )
 	{
-		filter_pq_nodes(fuNod, (NODE_T)pq.top(),pq.size());
+		filter_pq_nodes(fuNod, (NODE_T)pq.top(), pq.size());
 		pq.pop();
 	}
 
@@ -48,30 +46,37 @@ int main()
 
 	RET;
 
+
 	_TREE::build_huffman_tree(fuNod);
 
-	_TREE::encode_tree(mPair, _TREE::_Root);
+	_TREE::plot_huffman_tree();
 
+	codeMap = _TREE::CodeMap();
 
-	for (const std::pair<int, char>& mp : mPair)
+	_TREE::Destroy();
+
+	
+	for (std::map<int,char>::iterator mt = codeMap.begin(); mt != codeMap.end(); mt++)
 	{
-		//RPRINT(mp.second); RPRINT("->"); RPRINT(to_binary<int>::eval(mp.first).data());
-		//RET;
-		bfo.push_back({ mp.first, oneAdder(num_of_bits<UINT>::eval(mp.first))});
+		RPRINT(mt->second); RPRINT("->"); RPRINT(to_binary<UINT>::eval(mt->first).data());
+		RET;
+		//bfo.push_back({ mp.first, oneAdder(num_of_bits<UINT>::eval(mp.first))});
 
 	}
-	
-	
+
+
+	/*
 	bitsPack(packed, bfo);
 
 	for (const auto& bi : packed)
 	{
 		PRINT(to_binary<UINT>::eval(bi).data());
-	}
-	
 
+	}
+
+	*/
 	fuNod.clear();
-	mPair.clear();
+	codeMap.clear();
 
 	bfo.clear();
 	packed.clear();
@@ -79,5 +84,6 @@ int main()
 
 	RET2();
 	return -1;
+
 }
 
