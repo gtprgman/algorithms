@@ -1,7 +1,6 @@
 #pragma once
 
 
-
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
 
@@ -39,116 +38,103 @@ inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
 }
 
 
-
-inline void _TREE::traverse_encode(std::map<int, char>& _mPair, const node* const _fRoot,
-								  const int _encNum)
+inline void _TREE::extract_schema()
 {
-	node* _pt = (node*)_fRoot;
+	node* _pt = (node* const)_TREE::_Root;
 	char* _bt = (char*)"0";
-	BPAIR _bpt = {};
+	BPAIR _bpt = {0,0};
 
-	// extracting left branches info..
+	// processing left branches..
 	while (_pt != nullptr)
 	{
-		if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L];
-		else break;
+		if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L]; else break;
 
 		if (_pt->Value() > 0 && !_pt->Visited())
 		{
-			if (_encNum == ENCODE_SCHEMA)
-			{
-				_bt = (char*)concat_str(_bt, inttostr(L));
-				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-				_pt->setVisit(true);
-			}
-			else
-			{
-				_bt = (char*)concat_str(_bt, inttostr(L));
-				_bpt._data = _pt->dataValue();
-				_bpt._val = biXs.value_from_bitstr(_bt);
-				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-				_bpt = {};
-				_pt->setVisit(true);
-			}
+			_bt = (char*)concat_str(_bt, inttostr(L));
+			RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
+			_pt->setVisit(true);
 		}
-		iterRight(_pt->links[R], _encNum,_bt, _bpt, _mPair);
-		
+		iterSiblings(_pt, ENCODE_SCHEMA, R, _bt, _bpt, _TREE::_mPair);
 	}
-	// Encoding left branches succeeded !!
 
-	// encoding bits pattern on the right branches..
-	_pt = (node*)_fRoot;
+	_pt = (node* const)_TREE::_Root;
 	_bt = (char*)"1";
-	_bpt = {};
 	int _Dir = 0;
 
-
+	// processing on the right branches..
 	while (_pt != nullptr)
 	{
-		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir];
-		else break;
+		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir]; else break;
 
-		if (_pt->Value() > 0 && !_pt->Visited())
+		if ( (_pt->Value() > 0) && (!_pt->Visited()) )
 		{
-			if (_encNum == ENCODE_SCHEMA)
-			{
-				_bt = (char*)concat_str(_bt, inttostr(_Dir));
-				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-				_pt->setVisit(true);
-			}
-			else
-			{
-				_bt = (char*)concat_str(_bt, inttostr(_Dir));
-				_bpt._data = _pt->dataValue();
-				_bpt._val = biXs.value_from_bitstr(_bt);
-				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-				_bpt = {};
-				_pt->setVisit(true);
-			}
-		}
-
-		if (ASSERT_P(_pt->links[!_Dir]) && _pt->links[!_Dir]->Value() > 0 &&
-			!_pt->links[!_Dir]->Visited())
-		{
-
-			if (_encNum < 0)
-			{
-				_Dir = !_Dir;
-				_pt = _pt->links[_Dir];
-				_bt = (char*)concat_str(_bt, inttostr(_Dir));
-				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-				_bt = (char*)rtrim(_bt);
-				_pt->setVisit(true);
-			}
-			else
-			{
-				_Dir = !_Dir; // changes direction
-				_pt = _pt->links[_Dir]; // point to next node
-				_bt = (char*)concat_str(_bt, inttostr(_Dir));
-				_bpt._data = _pt->dataValue();
-				_bpt._val = biXs.value_from_bitstr(_bt);
-				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-				_bpt = {};
-				_bt = (char*)rtrim(_bt);
-				_pt->setVisit(true);
-			}
+			_bt = (char*)concat_str(_bt, inttostr(_Dir));
+			RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
+			_pt->setVisit(true);
 		}
 
 		_Dir = !_Dir; //changes direction
 	}
+	_pt = nullptr;
+}
 
-	// Encoding Right Branches Succeeded !!
+
+inline void _TREE::extract_code() 
+{
+	node* _pt = (node* const)_TREE::_Root;
+	char* _bt = (char*)"0";
+	BPAIR _bpt = {0,0};
+
+		// processing left branches..
+		while (_pt != nullptr)
+		{
+			if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L]; else break;
+
+			if ( (_pt->Value() > 0 ) && (!_pt->Visited()) )
+			{
+				_bt = (char*)concat_str(_bt, inttostr(L));
+				_bpt._data = _pt->dataValue();
+				_bpt._val = biXs.value_from_bitstr(_bt);
+				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+				_bpt = { 0,0 };
+				_pt->setVisit(true);
+			}
+			iterSiblings(_pt, ENCODE_TREE, R, _bt, _bpt, _mPair);
+		}
+	
+	// processing right branches..
+	_pt = (node* const)_TREE::_Root;
+	_bt = (char*)"1";
+	_bpt = {};
+	int _Dir = R;
+
+	while (_pt != nullptr)
+	{
+		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir]; else break;
+	
+		if ( (_pt->Value() > 0) && (!_pt->Visited()) )
+		{
+			_bt = (char*)concat_str(_bt, inttostr(_Dir)); 
+			_bpt._data = _pt->dataValue();
+			_bpt._val = biXs.value_from_bitstr(_bt);
+			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
+			_bpt = {0,0};
+			_pt->setVisit(true);
+		}
+		
+		_Dir = !_Dir; //changes direction
+	}
 	_pt = nullptr;
 }
 
 
 
-inline void _TREE::iterRight(const node* const _pRoot, const int _enc, char*& _bt, BPAIR& _bpt,
+inline void _TREE::iterSiblings(const node* const _pRoot, const int _enc, const int _Dirs,char*& _bt, BPAIR& _bpt,
 	std::map<int, char>& _mPair)
 {
 	node* _pt = (node*)_pRoot;
 	std::string _bts = _bt, _btc = "\0";
-	const int _C = R_HEIGHT(_pRoot);
 
 	while (_pt != nullptr)
 	{
@@ -181,11 +167,11 @@ inline void _TREE::iterRight(const node* const _pRoot, const int _enc, char*& _b
 				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
 				_btc.assign(_bt);
 
-				_bpt = {};
+				_bpt = {0,0};
 				_pt->setVisit(true);
 			}
 		}
-		_pt = _pt->links[R];
+		_pt = _pt->links[_Dirs];
 	}
 
 	_pt = nullptr;
