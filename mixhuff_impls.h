@@ -9,7 +9,7 @@
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
-									const std::size_t _maxLen)
+				   const std::size_t _maxLen)
 {
 	NODE_T _nt = _NodT; // fetch new node every time the function is called
 	double _fqr = 0.00;
@@ -38,156 +38,85 @@ inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
 }
 
 
-inline void _TREE::extract_schema()
+inline void _TREE::extract_schema(const std::vector<node>& _fpNods)
 {
-	node* _pt = (node* const)_TREE::_Root;
-	char* _bt = (char*)"0";
 	BPAIR _bpt = {0,0};
+	double _frq = 100.00;
+	int _Dir = 0, _recurr = 0;
+	int _sameVal = 0;
+	std::size_t _halfInit = 0;
 
-	// processing left branches..
-	while (_pt != nullptr)
-	{
-		if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L]; else break;
+	std::string _bts = "0";
 
-		if (_pt->Value() > 0 && !_pt->Visited())
-		{
-			_bt = (char*)concat_str(_bt, inttostr(L));
-			RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-			_pt->setVisit(true);
-		}
-		iterSiblings(_pt, ENCODE_SCHEMA, R, _bt, _bpt, _TREE::_mPair);
-	}
+	const std::size_t _TreeSizes = _fpNods.size();
+	const std::size_t _halfTreeSz = halfSz(_TreeSizes) + 1;
 
-	_pt = (node* const)_TREE::_Root;
-	_bt = (char*)"1";
-	int _Dir = 0;
-
-	// processing on the right branches..
-	while (_pt != nullptr)
-	{
-		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir]; else break;
-
-		if ( (_pt->Value() > 0) && (!_pt->Visited()) )
-		{
-			_bt = (char*)concat_str(_bt, inttostr(_Dir));
-			RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-			_pt->setVisit(true);
-		}
-
-		_Dir = !_Dir; //changes direction
-	}
-	_pt = nullptr;
-}
-
-
-inline void _TREE::extract_code() 
-{
-	node* _pt = (node* const)_TREE::_Root;
-	char* _bt = (char*)"0";
-	BPAIR _bpt = {0,0};
-
-		// processing left branches..
-		while (_pt != nullptr)
-		{
-			if (ASSERT_P(_pt->links[L])) _pt = _pt->links[L]; else break;
-
-			if ( (_pt->Value() > 0 ) && (!_pt->Visited()) )
-			{
-				_bt = (char*)concat_str(_bt, inttostr(L));
-				_bpt._data = _pt->dataValue();
-				_bpt._val = biXs.value_from_bitstr(_bt);
-				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-				_bpt = { 0,0 };
-				_pt->setVisit(true);
-			}
-			iterSiblings(_pt, ENCODE_TREE, R, _bt, _bpt, _mPair);
-		}
 	
-	// processing right branches..
-	_pt = (node* const)_TREE::_Root;
-	_bt = (char*)"1";
-	_bpt = {};
-	int _Dir = R;
-
-	while (_pt != nullptr)
+	// Processing on the left branches...
+	for (std::size_t i = 0; i < _halfTreeSz; i++)
 	{
-		if (ASSERT_P(_pt->links[_Dir])) _pt = _pt->links[_Dir]; else break;
-	
-		if ( (_pt->Value() > 0) && (!_pt->Visited()) )
-		{
-			_bt = (char*)concat_str(_bt, inttostr(_Dir)); 
-			_bpt._data = _pt->dataValue();
-			_bpt._val = biXs.value_from_bitstr(_bt);
-			_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-			_bpt = {0,0};
-			_pt->setVisit(true);
-		}
+		NODE_T _e = (NODE_T)_fpNods.at(i);
 		
-		_Dir = !_Dir; //changes direction
-	}
-	_pt = nullptr;
-}
+		if (_frq > _e._freq)
+			_Dir = L;
 
+		else if (_frq < _e._freq)
+			_Dir = R;
 
-
-inline void _TREE::iterSiblings(const node* const _pRoot, const int _enc, const int _Dirs,char*& _bt, BPAIR& _bpt,
-	std::map<int, char>& _mPair)
-{
-	node* _pt = (node*)_pRoot;
-	std::string _bts = _bt, _btc = "\0";
-
-	while (_pt != nullptr)
-	{
-		if (ASSERT_P(_pt) && _pt->Value() > 0 && !_pt->Visited())
+		else if (_frq == _e._freq)
 		{
-			if (_enc == ENCODE_SCHEMA)
+			_recurr++;
+			_Dir = R;
+
+			if (_recurr > 1)
 			{
-				_bt = (char*)concat_str(_bt, inttostr(R));
-
-				if (!_btc.empty()) {
-					enforce_unique(_btc, _bt);
-					_bt = _btc.data();
-				}
-
-				_pt->setVisit(true);
-				RPRINT(_bt); RPRINT("->"); RPRINT(_pt->dataValue()); RET;
-				_btc.assign(_bt);
-			}
-			else
-			{
-				_bt = (char*)concat_str(_bt, inttostr(R));
-
-				if (!_btc.empty()) {
-					enforce_unique(_btc, _bt);
-					_bt = _btc.data();
-				}
-
-				_bpt._data = _pt->dataValue();
-				_bpt._val = biXs.value_from_bitstr(_bt);
-				_mPair.emplace(std::pair<int, char>{_bpt._val, _bpt._data});
-				_btc.assign(_bt);
-
-				_bpt = {0,0};
-				_pt->setVisit(true);
+				_sameVal = biXs.value_from_bitstr(_bts.data());
+				++_sameVal; _bts.clear();
+				_bts.assign(biXs.toBits(_sameVal));
+				_bts = LRTrim(_bts.data());
+				RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_e._v);
+				RET;
+				_frq = _e._freq;
+				continue;
 			}
 		}
-		_pt = _pt->links[_Dirs];
+
+		_frq = _e._freq;
+
+		_bts = (char*)concat_str((char*)_bts.data(), inttostr(_Dir));
+		RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_e._v);
+		RET;
+		_halfInit = i;
 	}
 
-	_pt = nullptr;
-}
+	//Processing on the right branches...
+	_Dir = R;
+	_bts.clear();
+	_bts = "1";
+	_recurr = 0;
 
-
-inline void _TREE::enforce_unique(std::string& _s0, char*& _bt)
-{
-	int _bitV = 0;
-	const std::size_t _lenMax = _s0.size();
-
-	if (!std::strncmp(_s0.data(), _bt,_lenMax))
+	for (std::size_t j = _halfInit + 2; j < _TreeSizes; j++)
 	{
-		_bitV = bin_to_dec<int>::eval(_bt);
-		++_bitV;
-		_s0 = to_binary<int>::eval(_bitV);
+		NODE_T _nod = (NODE_T)_fpNods.at(j);
+		
+		if (_recurr > 1)
+		{
+			_sameVal = biXs.value_from_bitstr(_bts.data());
+			_sameVal += 7;
+			_bts.clear();
+
+			_bts.assign(biXs.toBits(_sameVal).data());
+			RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_nod._v);
+			RET;
+			continue;
+		}
+
+		_bts = (char*)concat_str((char*)_bts.data(), inttostr(_Dir));
+
+		RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_nod._v);
+		RET;
+
+		++_recurr;
 	}
 }
 
