@@ -8,7 +8,7 @@
 
 int main()
 {
-	std::string s = "Hello World You.";
+	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
@@ -41,40 +41,8 @@ int main()
 		fpq.pop();
 	}
 
-
-	//NPRINT(fuNod);
-
-	RET;
-
-
-	_TREE::build_huffman_tree(fuNod);
-
-	_TREE::plot_huffman_tree();
-
-	codeMap = _TREE::CodeMap();
-
-	_TREE::Destroy();
-
+	_TREE::plot_huffman_tree(fuNod);
 	
-	for (std::map<int,char>::iterator mt = codeMap.begin(); mt != codeMap.end(); mt++)
-	{
-		RPRINT(mt->second); RPRINT("->"); RPRINT(to_binary<UINT>::eval(mt->first).data());
-		RET;
-		//bfo.push_back({ mp.first, oneAdder(num_of_bits<UINT>::eval(mp.first))});
-
-	}
-
-
-	/*
-	bitsPack(packed, bfo);
-
-	for (const auto& bi : packed)
-	{
-		PRINT(to_binary<UINT>::eval(bi).data());
-
-	}
-
-	*/
 	fuNod.clear();
 	codeMap.clear();
 
@@ -84,6 +52,4 @@ int main()
 
 	RET2();
 	return -1;
-
 }
-
