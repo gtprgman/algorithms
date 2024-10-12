@@ -38,11 +38,7 @@ struct node {
 	node(const int); // for data tree
 	node(const double); // for frequency tree
 	node(const int, const double);
-	node(NODE_T&); // construct from a ref to NODE_T
-	node(NODE_T&&); // construct from rvalue NODE_T
-	node(const NODE_T&); // construct from a ref to const NODE_T
-
-	node(const NODE_T*); // construct from a ptr to const NODE_T
+	
 	node(node&); // simple copy
 	node(const node&); // overloaded copy
 	node(node&&) noexcept;	// move
@@ -57,13 +53,10 @@ struct node {
 	const int Value() const;
 	const char dataValue() const;
 	const double FrequencyData() const;
-	const double Count() const;
-	const int Code() const;
 
 	const node Release() const;
 	
 	// implicit conversion
-	operator NODE_T() const;
 	operator int() const;
 
 	const int operator()() const;
