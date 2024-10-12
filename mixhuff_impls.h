@@ -8,22 +8,24 @@
 
 
 
-inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
-				   const std::size_t _maxLen)
+inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
+									const std::size_t _maxLen)
 {
-	NODE_T _nt = _NodT; // fetch new node every time the function is called
-	double _fqr = 0.00;
+	node _nod = _Nod; //fetch new node from priority queue every time this function is called
+	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
 
-	if ((_target.empty()) && (_nt._v != 0) )
+	if ((_target.empty()) && (_nod.Value() != 0) )
 	{
-		++_nt._freq;
-		_target.push_back(_nt);
+		_fqr = _nod.FrequencyData();
+		++_fqr;
+		_nod.setFrequencyData(_fqr);
+		_target.push_back(_nod);
 		return;
 	}
 
-	if (_target[_p] == _nt)
+	if (_target[_p].Value() == _nod.Value())
 	{
 		_fqr = _target[_p].FrequencyData();
 		++_fqr;
@@ -31,92 +33,71 @@ inline static void filter_pq_nodes(std::vector<node>& _target, NODE_T&& _NodT,
 	}
 	else
 	{
-		++_nt._freq;
-		_target.push_back(_nt);
+		_fqr = _nod.FrequencyData();
+		++_fqr;
+		_nod.setFrequencyData(_fqr);
+		_target.push_back(_nod);
 		_q++; // increases the index in target vector
 	}
 }
 
 
-inline void _TREE::extract_schema(const std::vector<node>& _fpNods)
+inline void _TREE::create_encoding(const int _From, 
+				   const int _To,
+				   std::string& _bt,
+				   const std::vector<node>& _Vn)
 {
-	BPAIR _bpt = {0,0};
-	double _frq = 100.00;
-	int _Dir = 0, _recurr = 0;
-	int _sameVal = 0;
-	std::size_t _halfInit = 0;
+	int _Dir = 0, _recurr = 0, _sameVal = 0;
+	node _e = 0;
+	double _fq = 100.00;
 
-	std::string _bts = "0";
-
-	const std::size_t _TreeSizes = _fpNods.size();
-	const std::size_t _halfTreeSz = halfSz(_TreeSizes) + 1;
-
-	
-	// Processing on the left branches...
-	for (std::size_t i = 0; i < _halfTreeSz; i++)
+	// Processing the Encoding from vector data
+	for (int i = _From; i < _To; i++)
 	{
-		NODE_T _e = (NODE_T)_fpNods.at(i);
-		
-		if (_frq > _e._freq)
+		 _e = _Vn.at(i);
+
+		if (_fq > _e.FrequencyData())
 			_Dir = L;
 
-		else if (_frq < _e._freq)
+		else if (_fq < _e.FrequencyData())
 			_Dir = R;
 
-		else if (_frq == _e._freq)
+		else if (_fq == _e.FrequencyData())
 		{
 			_recurr++;
 			_Dir = R;
 
 			if (_recurr > 1)
 			{
-				_sameVal = biXs.value_from_bitstr(_bts.data());
-				++_sameVal; _bts.clear();
-				_bts.assign(biXs.toBits(_sameVal));
-				_bts = LRTrim(_bts.data());
-				RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_e._v);
-				RET;
-				_frq = _e._freq;
+				_sameVal = biXs.value_from_bitstr(_bt.data());
+				++_sameVal; _bt.clear();
+				_bt.assign(biXs.toBits(_sameVal).data());
+				_bt = LRTrim(_bt.data());
+				_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
+				_fq = _e.FrequencyData();
 				continue;
 			}
 		}
+		_fq = _e.FrequencyData();
 
-		_frq = _e._freq;
-
-		_bts = (char*)concat_str((char*)_bts.data(), inttostr(_Dir));
-		RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_e._v);
-		RET;
-		_halfInit = i;
+		_bt = (char*)concat_str((char*)_bt.data(), inttostr(_Dir));
+		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
 	}
+}
 
-	//Processing on the right branches...
-	_Dir = R;
-	_bts.clear();
+
+
+inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
+{
+	std::string _bts = "0";
+	const int _TreeSizes = (int)_fpNods.size();
+	const int _halfTreeSz = (int)halfSz(_TreeSizes) + 1;
+
+	if (!_vPair.empty()) _vPair.clear();
+	create_encoding(0, _halfTreeSz, _bts, _fpNods);
+
 	_bts = "1";
-	_recurr = 0;
+	create_encoding(_halfTreeSz, _TreeSizes, _bts, _fpNods);
 
-	for (std::size_t j = _halfInit + 2; j < _TreeSizes; j++)
-	{
-		NODE_T _nod = (NODE_T)_fpNods.at(j);
-		
-		if (_recurr > 1)
-		{
-			_sameVal = biXs.value_from_bitstr(_bts.data());
-			_sameVal += 7;
-			_bts.clear();
-
-			_bts.assign(biXs.toBits(_sameVal).data());
-			RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_nod._v);
-			RET;
-			continue;
-		}
-
-		_bts = (char*)concat_str((char*)_bts.data(), inttostr(_Dir));
-
-		RPRINT(_bts.data()); RPRINT("->"); RPRINT((char)_nod._v);
-		RET;
-
-		++_recurr;
-	}
 }
 
