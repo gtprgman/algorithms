@@ -26,8 +26,8 @@ struct NODE_T;
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	char _data : 8;
-	int _val : 32;
+	char _data;
+	int _val;
 };
 
 
@@ -67,12 +67,7 @@ struct node {
 	operator int() const;
 
 	const int operator()() const;
-	const bool operator< (const node&) const;
-	const bool operator> (const node&) const;
-	const bool operator!= (const node&) const;
-	const bool operator== (const node&) const;
 	void Print() const;
-	
 	
 private:
 	double _fdata;
@@ -82,22 +77,15 @@ private:
 
 
 
-#ifndef _DEALLOCS_H
-#define _DEALLOCS_H
-
-#ifndef HUFF_TREE 
+#ifndef HUFF_TREE
+#define HUFF_TREE
 	#include <vector>
 	#include <queue>
-	#include <map>
+
 	
 #endif
 
-#endif
 
-
-
-#ifndef HUFF_TREE
-#define HUFF_TREE
 
 #ifndef MX_BIT
 	#include "mixbit.h"
@@ -105,9 +93,7 @@ private:
 #endif
 
 
-#ifndef _DEALLOCS_H
-#include <vector>
-#endif
+
 
 #ifndef _TYPE_INFO_H
 #define _TYPE_INFO_H
@@ -116,150 +102,31 @@ private:
 struct _TREE {
 	
 	// get the encoded bits of data from a map
-	static inline std::map<int, char>&& CodeMap() {
-		return std::move(_mPair);
+	static inline std::vector<BPAIR>&& CodeMap() {
+		return std::move(_vPair);
 	}
 
-	// extract a schematic diagram of the build-up huffman tree. (Debugging)
-	static inline void plot_huffman_tree(const std::vector<node>&);
+	// create a huffman tree-view like scheme from the vector nodes data
+	static inline void plot_tree(const std::vector<node>&);
 
+
+	// reclaim allocated resources from _TREE
+	inline static  void Clean() {
+		_vPair.clear();
+	}
 	
 private:
-	// extract a schematic view of a built huffman tree
-	static inline void extract_schema(const std::vector<node>&);
+	// iterate through the dataset elements in the vector to project a certain section of tree-view
+	static inline void schema_Iter(const std::vector<node>&);
 
-	
-	static std::map<int, char> _mPair;
+	// directly create huffman encoding table from std::vector<node> without prebuilt the tree
+	static inline void create_encoding(const int, const int, std::string&, const std::vector<node>&);
+
+	static std::vector<BPAIR> _vPair;
 };
 
+std::vector<BPAIR> _TREE::_vPair = {};
 
-std::map<int, char> _TREE::_mPair = {};
-
-#endif
-
-
-// to construct a temporary node object, uses this structure for safety reason
-struct NODE_T {
-	int _v;
-	double _freq;
-
-	NODE_T() : _v(0), _freq(0.00) {}
-
-	~NODE_T() {
-		_v = 0;
-		_freq = 0.00;
-	}
-
-	NODE_T(const char _ch) {
-		_v = _ch;
-		_freq = 0.00;
-	}
-
-	NODE_T(const int _vc) {
-		_v = _vc;
-		_freq = 0.00;
-	}
-
-	NODE_T(const double _fc) {
-		_v = 0;
-		_freq = _fc;
-	}
-
-	NODE_T(const int _vc, const double _fc) {
-		_v = _vc;
-		_freq = _fc;
-	}
-
-
-	NODE_T(const node* _pNod)
-	{
-		_v = _pNod->Value();
-		_freq = _pNod->FrequencyData();
-	}
-
-	
-	NODE_T(node&& _rvn) {
-		_v = _rvn.Value();
-		_freq = _rvn.FrequencyData();
-		_rvn.~node();
-	}
-
-	NODE_T(const node& _uNod) {
-		_v = _uNod.Value();
-		_freq = _uNod.FrequencyData();
-	}
-
-	NODE_T(NODE_T& rNod) {
-		if (this == &rNod) return;
-		*this = rNod;
-	}
-
-	// NODE_T copy ctor
-	NODE_T(const NODE_T& _rNod) {
-		if (this == &_rNod) return;
-		*this = _rNod;
-	}
-
-	const NODE_T& operator= (const NODE_T& _nod) {
-		if (this == &_nod) return *this;
-		_v = _nod._v;
-		_freq = _nod._freq;
-
-		return *this;
-	}
-
-	// NODE_T rvalue ctor
-	NODE_T(NODE_T&& _rvNodT) {
-		if (this == &_rvNodT) return;
-		*this = std::move(_rvNodT);
-	}
-
-	
-	NODE_T&& operator= (NODE_T&& _rvNodT) {
-		if (this == &_rvNodT) return std::move(*this);
-		_v = _rvNodT._v;
-		_freq = _rvNodT._freq;
-		_rvNodT.~NODE_T();
-
-		return std::move(*this);
-	}
-
-
-	const int operator()() const {
-		return _v;
-	}
-
-
-	// implicit conversion
-	operator node() const {
-		node _nd(_v, _freq);
-		return _nd;
-	}
-
-	// implicit conversion
-	operator int() const
-	{
-		return _v;
-	}
-	
-	
-	const bool operator < (const NODE_T& rNodT) const {
-		return (_v < rNodT._v);
-	}
-
-	const bool operator != (const NODE_T& rNodT) const {
-		return (_v != rNodT._v);
-	}
-
-	const bool operator == (const NODE_T& rNodT) const {
-		return (_v == rNodT._v);
-	}
-
-	const bool operator > (const NODE_T& rNodT) const {
-		return (_v > rNodT._v);
-	}
-
-};
 
 
 // returns the value of a node as specified by a reference to any node in the tree.
@@ -316,7 +183,7 @@ struct fqLess
 #ifndef MX_HUFF_IMPLS
 
 /* Filter priority queue nodes and compute the frequency of each node */
-inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t);
+inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t);
 
 #include "mixhuff_impls.h"
 
@@ -352,34 +219,6 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 	}
 
 
-	/*
-	* construct a node from a temporary node object free of any entangled pointers
-	   relations, where only the data & frequency members are taking into consideration
-	*/ 
-
-	node::node(NODE_T& _NodT): _data(0), _fdata(0.00)
-	{
-		_data = _NodT._v;
-		_fdata = _NodT._freq;
-	}
-
-
-	node::node(const NODE_T& _tmpNod) : _data(0) , _fdata(0.00)
-	{
-		_data = _tmpNod._v;
-		_fdata = _tmpNod._freq;
-	}
-
-
-	node::node(NODE_T&& _nodT): _data(0), _fdata(0.00)
-	{
-		_data = _nodT._v;
-		_fdata = _nodT._freq;
-		
-		_nodT.~NODE_T();
-	}
-
-
 	node::node(node& rNod) {
 		if (this == &rNod) return;
 		*this = rNod;
@@ -398,18 +237,12 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 	}
 
 
-	node::node(const NODE_T* _pNodT)
-	{
-		this->_data = _pNodT->_v;
-		this->_fdata = _pNodT->_freq;
-	}
-
-
+	
 	const node& node::operator= (const node& rNod) {
 		if (this == &rNod) return (*this);
 
-		_data = rNod._data;
-		_fdata = rNod._fdata;
+		this->_data = rNod._data;
+		this->_fdata = rNod._fdata;
 		
 		return (*this);
 	}
@@ -418,8 +251,8 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 	node&& node::operator= (node&& rvNod) noexcept {
 		if (this == &rvNod) return std::move(*this);
 
-		_data = rvNod._data;
-		_fdata = rvNod._fdata;
+		this->_data = rvNod._data;
+		this->_fdata = rvNod._fdata;
 	
 		rvNod._data = 0;
 		rvNod._fdata = 0.00;
@@ -436,42 +269,34 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 
 
 	void node::setData(const int uc) {
-		_data = uc;
+		this->_data = uc;
 	}
 
 
 	void node::setFrequencyData(const double fc) {
-		_fdata = fc;
+		this->_fdata = fc;
 	}
 
 
 	// Get Accessor Methods..
 	const int node::Value() const {
-		return _data;
+		return this->_data;
 	}
 
 
 	const char node::dataValue() const {
-		return (char)_data;
+		return (char)this->_data;
 	}
 
 
 	const double node::FrequencyData() const {
-		return _fdata;
-	}
-
-	
-	// implicit conversion
-	node::operator NODE_T() const {
-		NODE_T nc(_data, _fdata);
-		
-		return std::forward<NODE_T>(nc);
+		return this->_fdata;
 	}
 
 	
 	// implicit conversion
 	node::operator int() const {
-		return _data;
+		return this->_data;
 	}
 
 	const node node::Release() const {
@@ -482,36 +307,18 @@ inline static void filter_pq_nodes(std::vector<node>&,NODE_T&&,const std::size_t
 
 
 	const int node::operator()() const {
-		return _data;
+		return this->_data;
 	}
 
-	const bool node::operator< (const node& _rNod) const {
-		return (_data < _rNod._data);
-	}
-
-
-	const bool node::operator> (const node& _rNod) const {
-		return (_data > _rNod._data);
-	}
-
-
-	const bool node::operator== (const node& _rNod) const{
-		return (_data == _rNod._data);
-	}
-
-	const bool node::operator != (const node& _rNod) const {
-		return (_data != _rNod._data);
-	}
-
+	
 	void node::Print() const {
 		RPRINT(this->_data); RPRINT("->"); RPRINT(this->_fdata);
 		RET;
 	}
 
 
-
-inline void _TREE::plot_huffman_tree(const std::vector<node>& _fpNods)
+inline void _TREE::plot_tree(const std::vector<node>& _fpNods)
 {
-	extract_schema(_fpNods);
+	schema_Iter(_fpNods);
 }
 
