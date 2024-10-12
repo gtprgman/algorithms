@@ -628,17 +628,17 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 
 	T _n = 0;
 
-	for (const auto& ub : _vb)
+	for (std::size_t i = 0; i < _vcSz; i++)
 	{
-		_bx = ub.X;
-		_n = ub.numBits;
+		_bx = _vb[i].X;
+		_n = _vb[i].numBits;
 
 		_Ax <<= _n;
 		_Ax |= _bx;
 
 		_loopn++;
 
-		if (_loopn > _nIter)
+		if ( (_loopn >= _nIter) || ((i + 1) == _vcSz) )
 		{
 			_packed.push_back(_Ax);
 
