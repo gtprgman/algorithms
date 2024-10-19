@@ -20,14 +20,11 @@ constexpr int L = 1;
 constexpr int ROOT = -1;
 
 
-struct NODE_T;
-
-
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
 	char _data;
-	int _val;
+	unsigned int _val;
 };
 
 
@@ -38,7 +35,7 @@ struct node {
 	node(const int); // for data tree
 	node(const double); // for frequency tree
 	node(const int, const double);
-	
+
 	node(node&); // simple copy
 	node(const node&); // overloaded copy
 	node(node&&) noexcept;	// move
@@ -53,6 +50,8 @@ struct node {
 	const int Value() const;
 	const char dataValue() const;
 	const double FrequencyData() const;
+	const double Count() const;
+	const int Code() const;
 
 	const node Release() const;
 	
@@ -94,9 +93,9 @@ private:
 
 struct _TREE {
 	
-	// get the encoded bits of data from a map
+	// get the encoded bits of data from A Vector 
 	static inline std::vector<BPAIR>&& CodeMap() {
-		return std::move(_vPair);
+		return std::forward<std::vector<BPAIR>&&>(_vPair);
 	}
 
 	// create a huffman tree-view like scheme from the vector nodes data
@@ -308,6 +307,7 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 		RPRINT(this->_data); RPRINT("->"); RPRINT(this->_fdata);
 		RET;
 	}
+
 
 
 inline void _TREE::plot_tree(const std::vector<node>& _fpNods)
