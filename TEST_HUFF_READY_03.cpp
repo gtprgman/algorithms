@@ -4,7 +4,6 @@
 
 #include "mixhuff.h"
 
-
 /*
 	The current stable version is Pointers-Free !!
 	You can now run the program in Debugging Mode, without a fear of crash.
@@ -14,7 +13,7 @@
 
 int main()
 {
-	std::string s = "Hello World You.";
+	std::string s = "Ada Ate Apple.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
@@ -35,7 +34,6 @@ int main()
 		pq.pop();
 	}
 
-	
 	RET;
 
 	// sort the data based on frequencies
@@ -54,29 +52,52 @@ int main()
 		fpq.pop();
 	}
 
-	
+	//NPRINT(fuNod); RET; 
+
 	_TREE::plot_tree(fuNod);
 
 	vCodeMap = _TREE::CodeMap();
 
+	bitInfo _bi = {};
 	// display the encoding table
-	for (std::vector<BPAIR>::iterator _Vit = vCodeMap.begin(); _Vit != vCodeMap.end(); _Vit++)
+	for (const BPAIR& _bp : vCodeMap)
 	{
-		//RPRINT(_Vit->_data); RPRINT("->"); RPRINT(to_binary<int>::eval(_Vit->_val).data());
-		bfo.push_back({ _Vit->_val,
-					  oneAdder(num_of_bits<UINT>::eval(_Vit->_val)) });
+	 /*
+		RPRINT(_bp._data); RPRINT("->"); RPRINT(to_binary<UINT>::eval(_bp._val).data());
+		RET;
+	  */
+
+		_bi.X = _bp._val;
+		_bi.numBits = oneAdder(num_of_bits<UINT>::eval(_bp._val));
+
+		bfo.push_back(_bi);
+		  
 		RET;
 	}
 
+	
 	bitsPack(packed, bfo);
 
 	// display the packed encoding data
 	for (const UINT ui : packed)
 	{
-		PRINT(to_binary<UINT>::eval(ui).data());;
+		PRINT( ui );
 	}
 
+	RET;
+
+	std::string _file = "D:\\DATA\\packed.sqz";
+
+	PRINT("Saving packed data.."); RET;
+	PRINT("Read and write-print saved data..");
+	RET;
+
 	
+	if (writePack(_file.data(), packed) > 0)
+		readPack(_file.data());
+
+
+
 	fuNod.clear();
 	vCodeMap.clear();
 	
@@ -89,3 +110,4 @@ int main()
 	return -1;
 
 }
+
