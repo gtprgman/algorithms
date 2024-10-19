@@ -15,7 +15,12 @@
 
 
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
-#define oneAdder(_v_) _v_ + 1
+
+constexpr const UINT oneAdder(const UINT _x)
+{
+	return _x + (UINT)1;
+}
+
 #define SPACE (char)32
 
 constexpr unsigned BYTE = 8;
@@ -612,7 +617,7 @@ struct bitInfo
 		numBits = 0;
 	}
 
-	int X : 32;  
+	uint32_t X : 32;  
 	BitSZ numBits : 32;
 };
 
@@ -622,7 +627,7 @@ struct bitInfo
 template < typename T >
 inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
-	int _bx = 0b0, _Ax = 0b0;
+	uint32_t _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
 	std::size_t _loopn = 0;
 
@@ -638,7 +643,7 @@ inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInf
 
 		_loopn++;
 
-		if ( (_loopn >= _nIter) || ((i + 1) == _vcSz) )
+		if ( (_loopn > _nIter) || ((i + 1) == _vcSz) )
 		{
 			_packed.push_back(_Ax);
 
