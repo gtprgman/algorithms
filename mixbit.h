@@ -29,6 +29,11 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 constexpr unsigned MULTIWORDS = 128;
 
+constexpr unsigned i4Mask = 0xF;
+constexpr unsigned i8Mask = 0xFF;
+constexpr unsigned i16Mask = 0xFFFF;
+constexpr unsigned i32Mask = 0xFFFFFFFF;
+
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
 
@@ -44,6 +49,22 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 
 	return MAX_BIT;
 }
+
+// 32-Bit Data Ordering structure
+struct _32Bit
+{
+	int AX = 0;
+	int8_t EAX[4];
+};
+
+
+// A Byte Data Unit
+struct Byte
+{
+	int8_t _Data = 0;
+
+	
+};
 
 
 struct BitN
@@ -189,13 +210,13 @@ inline static const char* inttostr(const int);
 inline static const unsigned int proper_bits(const int);
 
 // return the least significant portion of bits of a specified value '_v'
-inline static const unsigned int LoPart(const int);
+inline static const int LoPart(const int);
 
 // return the most significant portion of bits of a specified value '_v'
-inline static const unsigned int HiPart(const int);
+inline static const int HiPart(const int);
 
 // merge the MSB and LSB portions together to form a single unit of data
-inline static const unsigned int MergeBits(const int, const int);
+inline static const int MergeBits(const int, const int);
 
 inline static const char* rtrim(const char*);
 
@@ -310,76 +331,66 @@ inline static const unsigned int proper_bits(const int _n)
 }
 
 
-inline static const unsigned int LoPart(const int _v)
+inline static const int LoPart(const int _v)
 {
-	std::string _xBits = to_binary<int>::eval(_v).data();
-	const std::size_t _MidX = std::strlen(_xBits.data()) / 2,
-			_Max = (_xBits.size() - 1);
-
-	unsigned int _Result = 0;
-	char* _Lsb = new char[_MidX ];
-	BitN _bX;
-
-	std::memset(_Lsb, 0, (size_t)(_MidX + 1) );
+	int _Result = 0b0;
 	
-	for (std::size_t i = 0, j = _Max; (j > _MidX && i < _Max); i++, j--)
-		_Lsb[i] = _xBits[j];
-	
+	MAX_BIT = proper_bits(_v);
 
-	_Lsb = (char*)reverse_str(_Lsb);
-	_Result = _bX.value_from_bitstr(_Lsb);
-	_Lsb = nullptr;
+	switch (MAX_BIT)
+	{
+		case 8:
+			_Result = (i4Mask & _v);
+			break;
+
+		case 16:
+			_Result = (i8Mask & _v);
+			break;
+
+		case 32:
+			_Result = (i16Mask & _v);
+			break;
+
+		default:
+			break;
+	}
 
 	return _Result;
 }
 
 
-inline static const unsigned int HiPart(const int _v)
+inline static const int HiPart(const int _v)
 {
-	std::string _XBits = to_binary<int>::eval(_v).data();
-	const int _halfPart = (int)(_XBits.size() / 2);
-	char* _Msb = new char[_halfPart + 1];
-	unsigned int _result = 0;
-	BitN _btX;
+	int _ResX = 0b0;
 
-	std::memset(_Msb, 0, (size_t)(_halfPart + 1));
+	MAX_BIT = proper_bits(_v);
 
-	for (int i = 0, j = _halfPart; (j > 0 && i < _halfPart ); i++, j--)
-		_Msb[i] = _XBits[j];
+	switch (MAX_BIT)
+	{
+	case 8:
+		_ResX = (i4Mask << 4) & _v;
+		break;
 
-	
-	_Msb = (char*)reverse_str(_Msb);
-	_result = _btX.value_from_bitstr(_Msb);
-	_Msb = nullptr;
+	case 16:
+		_ResX = (i8Mask << 8) & _v;
+		break;
 
-	return _result;
+	case 32:
+		_ResX = (i16Mask << 16) & _v;
+		break;
+	}
+
+	return _ResX;
 }
 
 
-inline static const unsigned int MergeBits(const int _Hi, const int _Lo)
+inline static const int MergeBits(const int _Hi, const int _Lo)
 {
-	std::string _Msb = to_binary<int>::eval(_Hi).data();
-	std::string _Lsb = to_binary<int>::eval(_Lo).data();
+	int _Bits = 0b0;
 
-	_Msb = LRTrim(_Msb.data());
-	_Lsb = LRTrim(_Lsb.data());
+	_Bits = _Hi | _Lo;
 
-	const std::size_t _Mid = std::strlen(_Msb.data()),
-		_TotSz = 2 * _Mid;
-
-	char* _mbs = new char[ _TotSz ];
-	unsigned int _ResX = 0;
-	BitN _bC;
-
-	std::memset(_mbs, 0, _TotSz);
-
-	std::strncpy(_mbs, &_Msb[1], _Mid - 1);
-	std::strncpy(&_mbs[_Mid-1], &_Lsb[1],_Mid - 1);
-	
-	_ResX = _bC.value_from_bitstr(_mbs);
-	delete[] _mbs;
-
-	return _ResX;
+	return _Bits;
 }
 
 
@@ -449,7 +460,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-					  _Sz2 = std::strlen(_cStr);
+			_Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -491,7 +502,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-					  _lenX = std::strlen(_searchStr);
+				_lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -1128,6 +1139,7 @@ inline static const char* inttostr(const int nVal)
 		s1 = std::strlen(_sDecPart.data()); // the bits length of decimal part
 		s2 = std::strlen(_bitStr.data()); // the bits length of fraction part
 
+
 		// new spaces for storing the integrated fix-point bits
 		char* _ps = new char[2*(s1 + s2)]; 
 
@@ -1189,5 +1201,4 @@ inline static const char* inttostr(const int nVal)
 	{
 		std::cout << _bitStr.data() << "\n\n";
 	}
-
 
