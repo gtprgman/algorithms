@@ -25,7 +25,7 @@ be implemented in the any time of the future.
 using Bit = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
-using Byte = unsigned long;
+using Byte = unsigned char;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
