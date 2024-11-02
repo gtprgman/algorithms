@@ -22,7 +22,6 @@ be implemented in the any time of the future.
 			include any functional headers here..
 		*/
 
-using Bit = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
 using Byte = unsigned char;
