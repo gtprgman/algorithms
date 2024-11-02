@@ -29,10 +29,22 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 constexpr unsigned MULTIWORDS = 128;
 
-constexpr unsigned i4Mask = 0xF;
-constexpr unsigned i8Mask = 0xFF;
-constexpr unsigned i16Mask = 0xFFFF;
-constexpr unsigned i32Mask = 0xFFFFFFFF;
+constexpr int i4Mask = 0xF;
+constexpr int i8Mask = 0xFF;
+constexpr int i16Mask = 0xFFFF;
+constexpr int i32Mask = 0xFFFFFFFF;
+
+constexpr int BYTE_PTR_HI(const int _Bx)
+{
+	return (i8Mask << 8) & _Bx;
+}
+
+
+constexpr int BYTE_PTR_LO(const int Bx_)
+{
+	return i8Mask & Bx_;
+}
+
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned MAX_BIT = 0;
@@ -50,21 +62,32 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 	return MAX_BIT;
 }
 
+
+
 // 32-Bit Data Ordering structure
 struct _32Bit
 {
-	int AX = 0;
-	int8_t EAX[4];
-};
+	_32Bit() : AX(0) {};
+	_32Bit(const int _Ex) { this->setValue(_Ex); };
 
+	const int Byte() const;
 
-// A Byte Data Unit
-struct Byte
-{
-	int8_t _Data = 0;
+	const int32_t LoWord() const;
+	const int32_t HiWord() const;
 
+	const int16_t LoByte() const;
+	const int16_t HiByte() const;
+
+	const int Value() const;
+	const int BitLength() const;
+
+	void setValue(const int);
 	
+private:
+	int AX = 0;
+	int EAX[4] = { 0,0,0,0 };
 };
+
 
 
 struct BitN
@@ -216,7 +239,7 @@ inline static const int LoPart(const int);
 inline static const int HiPart(const int);
 
 // merge the MSB and LSB portions together to form a single unit of data
-inline static const int MergeBits(const int, const int);
+inline static const int32_t MergeBits(const int, const int);
 
 inline static const char* rtrim(const char*);
 
@@ -384,9 +407,9 @@ inline static const int HiPart(const int _v)
 }
 
 
-inline static const int MergeBits(const int _Hi, const int _Lo)
+inline static const int32_t MergeBits(const int _Hi, const int _Lo)
 {
-	int _Bits = 0b0;
+	int32_t _Bits = 0b0;
 
 	_Bits = _Hi | _Lo;
 
@@ -502,7 +525,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-				_lenX = std::strlen(_searchStr);
+					  _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -1202,3 +1225,100 @@ inline static const char* inttostr(const int nVal)
 		std::cout << _bitStr.data() << "\n\n";
 	}
 
+
+
+	// Implementations to _32Bit Data Structure...
+	const int _32Bit::Byte() const
+	{
+		return this->EAX[3];
+	}
+
+	const int32_t _32Bit::HiWord() const
+	{
+		MAX_BIT = proper_bits(this->AX);
+
+		if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		{
+			return MergeBits(this->EAX[0], this->EAX[1]);
+		}
+		else
+			return 0;
+	}
+
+	const int32_t _32Bit::LoWord() const
+	{
+		MAX_BIT = proper_bits(this->AX);
+
+		if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		{
+			return MergeBits(this->EAX[2], this->EAX[3]);
+		}
+		else
+			return 0;
+	}
+
+	const int16_t _32Bit::HiByte() const
+	{
+		MAX_BIT = proper_bits(this->AX);
+
+		if (MAX_BIT > BYTE && MAX_BIT <= WORD)
+		{
+			return this->EAX[2];
+		}
+		else
+			return 0;
+	}
+
+	const int16_t _32Bit::LoByte() const
+	{
+		MAX_BIT = proper_bits(this->AX);
+
+		if (MAX_BIT > BYTE && MAX_BIT <= WORD)
+		{
+			return this->EAX[3];
+		}
+		else
+			return 0;
+	}
+
+	const int _32Bit::Value() const
+	{
+		return this->AX;
+	}
+
+	const int _32Bit::BitLength() const
+	{
+		return proper_bits(this->AX);
+	}
+
+	void _32Bit::setValue(const int _Dx)
+	{
+		this->AX = _Dx;
+		MAX_BIT = proper_bits(this->AX);
+		int _hiWord = 0, _loWord = 0;
+		
+		switch (MAX_BIT)
+		{
+			case 8:
+				this->EAX[3] = this->AX;
+				break;
+
+			case 16:
+				this->EAX[2] = HiPart(this->AX);
+				this->EAX[3] = LoPart(this->AX);
+				break;
+
+			case 32:
+				_hiWord = HiPart(this->AX); // high-order 16 bit part of AX
+				_loWord = LoPart(this->AX); // low-order 16 bit part of AX
+
+				this->EAX[0] = HiPart(_hiWord); // high-order 8 bit of _hiWord
+				this->EAX[1] = LoPart(_hiWord);  // low-order 8 bit of _hiWord
+
+				this->EAX[2] = HiPart(_loWord); // high-order 8 bit of _loWord
+				this->EAX[3] = LoPart(_loWord); // low-order 8 bit of _loWord
+
+			default:
+				break;
+		}
+	}
