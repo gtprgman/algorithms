@@ -17,8 +17,8 @@ int main()
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
-	std::vector<bitInfo<UINT>> bfo;
-	std::vector<UINT> packed;
+	std::vector<bitInfo<int>> bfo;
+	std::vector<int> packed;
 	std::vector<BPAIR> vCodeMap;
 	BPAIR _bpt = {};
 
@@ -34,6 +34,7 @@ int main()
 		pq.pop();
 	}
 
+	
 	RET;
 
 	// sort the data based on frequencies
@@ -58,7 +59,8 @@ int main()
 
 	vCodeMap = _TREE::CodeMap();
 
-	bitInfo _bi = {};
+	bitInfo<int> _bi = {};
+	
 	// display the encoding table
 	for (const BPAIR& _bp : vCodeMap)
 	{
@@ -71,17 +73,16 @@ int main()
 		_bi.numBits = oneAdder(num_of_bits<UINT>::eval(_bp._val));
 
 		bfo.push_back(_bi);
-		  
-		RET;
+		 
 	}
 
-	
+
 	bitsPack(packed, bfo);
 
 	// display the packed encoding data
-	for (const UINT ui : packed)
+	for (const int& i : packed)
 	{
-		PRINT( ui );
+		RPRINT( i );
 	}
 
 	RET;
@@ -108,6 +109,5 @@ int main()
 
 	RET2();
 	return -1;
-
 }
 
