@@ -4,7 +4,6 @@
 #ifndef HUFF_TREE
 
 	#include <vector>
-	#include <deque>
 
 #endif
 
@@ -34,15 +33,25 @@ constexpr int i8Mask = 0xFF;
 constexpr int i16Mask = 0xFFFF;
 constexpr int i32Mask = 0xFFFFFFFF;
 
+
 constexpr int BYTE_PTR_HI(const int _Bx)
 {
 	return (i8Mask << 8) & _Bx;
 }
 
-
 constexpr int BYTE_PTR_LO(const int Bx_)
 {
 	return i8Mask & Bx_;
+}
+
+constexpr int WORD_PTR_HI(const int _EDX)
+{
+	return (i16Mask << 16) & _EDX;
+}
+
+constexpr int WORD_PTR_LO(const int EDX_)
+{
+	return i16Mask & EDX_;
 }
 
 
@@ -238,6 +247,9 @@ inline static const int LoPart(const int);
 // return the most significant portion of bits of a specified value '_v'
 inline static const int HiPart(const int);
 
+// extract every portion of data with [BYTE PTR] attribute and store it to the Vector
+inline static void parseByte(const int, std::vector<int>&);
+
 // merge the MSB and LSB portions together to form a single unit of data
 inline static const int32_t MergeBits(const int, const int);
 
@@ -407,6 +419,32 @@ inline static const int HiPart(const int _v)
 }
 
 
+inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
+{
+	int _Val = 0;
+
+	_Val = WORD_PTR_HI(_EDX);
+
+	if (_Val)
+	{
+		_Val >>= 16;
+		_Bytes.push_back(_Val);
+	}
+
+	_Val = HiPart(WORD_PTR_LO(_EDX) );
+
+	if (_Val)
+	{
+		_Val >>= 8;
+		_Bytes.push_back(_Val);
+	}
+
+	_Val = LoPart(WORD_PTR_LO(_EDX));
+
+	if (_Val) _Bytes.push_back(_Val);
+}
+
+
 inline static const int32_t MergeBits(const int _Hi, const int _Lo)
 {
 	int32_t _Bits = 0b0;
@@ -483,7 +521,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-			_Sz2 = std::strlen(_cStr);
+				_Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -525,7 +563,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-					  _lenX = std::strlen(_searchStr);
+				_lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -766,7 +804,7 @@ struct bitInfo
 
 // pack the entire bits of the vector into a UINT vector
 template < typename T >
-inline static void bitsPack(std::vector<UINT>& _packed, const std::vector<bitInfo<T>>& _vb)
+inline static void bitsPack(std::vector<T>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	uint32_t _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
