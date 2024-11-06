@@ -9,9 +9,10 @@
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				    const std::size_t _maxLen)
+									const std::size_t _maxLen)
 {
-	node _nod = _Nod; //fetch new node from priority queue every time this function is called
+	node _nod = _Nod; /* fetches new node from the priority queue each time
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -102,12 +103,12 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 }
 
 
-inline static const std::size_t writePack(const std::string& _fiName, const std::vector<UINT>& _pacData)
+inline static const std::size_t writePack(const std::string& _fiName, const std::vector<int>& _pacData)
 {
 	std::size_t _numWritten = 0;
 	const std::size_t _packSz = _pacData.size();
 	std::ofstream _out{ _fiName.data(), std::ios::out | std::ios::ate | std::ios::binary };
-
+	std::vector<int> _DB;
 
 	if (!_out) {
 		std::cerr << "Failed to open file !!" << "\n\n";
@@ -115,13 +116,28 @@ inline static const std::size_t writePack(const std::string& _fiName, const std:
 		return _numWritten;
 	}
 
-	for (const UINT& _ui : _pacData)
+	for (const int _i : _pacData)
 	{
-		_out.put(_ui);
+		MAX_BIT = proper_bits(_i);
+
+		if (MAX_BIT > BYTE)
+		{
+			parseByte(_i, _DB);
+
+			for (const int _e : _DB)
+				_out.put(_e);
+
+			++_numWritten;
+			_DB.clear();
+			continue;
+		}
+		
+		_out.put(_i);
 		++_numWritten;
 	}
 
 	_out.close();
+	_DB.clear();
 
 	return _numWritten;
 }
@@ -140,11 +156,11 @@ inline static const std::size_t readPack(const std::string& _inFile)
 		return _totReads;
 	}
 
-	while( (_C = _inf.get()) > -1 )
+	while( _C >= 0 )
 	{
+		_C = _inf.get();
 		_totReads++; 
 		RPRINT(_C);
-	
 	}
 
 	_inf.close();
