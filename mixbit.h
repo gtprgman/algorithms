@@ -2,9 +2,7 @@
 /* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
-
 	#include <vector>
-
 #endif
 
 
@@ -71,7 +69,12 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 	return MAX_BIT;
 }
 
+// simulate a 32-bit register storage in a microprocessor
+struct _register
+{
+	short _ff3, _ff2, _ff1, _ff0;
 
+};
 
 // 32-Bit Data Ordering structure
 struct _32Bit
@@ -521,7 +524,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-				_Sz2 = std::strlen(_cStr);
+			_Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -563,7 +566,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-				_lenX = std::strlen(_searchStr);
+			_lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -779,24 +782,21 @@ inline static const char* rtrim(const char* _string)
 
 
 // bit status information
-template <typename BitSZ = uint32_t>
+template <typename BitSZ = unsigned int>
 struct bitInfo
 {
 	bitInfo(): X(0), numBits(0) {};
 
-	bitInfo(const uint32_t _x, const BitSZ _bitSz)
+	bitInfo(const int _x, const BitSZ _bitSz)
 	{
 		X = _x;
 		numBits = _bitSz;
 	}
 
-	~bitInfo()
-	{
-		X = 0;
-		numBits = 0;
-	}
+	~bitInfo() = default;
+	
 
-	uint32_t X : 32;  
+	int X;  
 	BitSZ numBits;
 };
 
@@ -806,7 +806,7 @@ struct bitInfo
 template < typename T >
 inline static void bitsPack(std::vector<T>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
-	uint32_t _bx = 0b0, _Ax = 0b0;
+	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
 	std::size_t _loopn = 0;
 
@@ -1360,3 +1360,4 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
+
