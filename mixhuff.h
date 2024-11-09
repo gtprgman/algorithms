@@ -24,7 +24,7 @@ constexpr int ROOT = -1;
 struct BPAIR
 {
 	char _data;
-	unsigned int _val;
+	int _val;
 };
 
 
