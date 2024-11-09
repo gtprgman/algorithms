@@ -60,12 +60,11 @@ int main()
 	vCodeMap = _TREE::CodeMap();
 
 	bitInfo<int> _bi = {};
-	
 	// display the encoding table
 	for (const BPAIR& _bp : vCodeMap)
 	{
 	 /*
-		RPRINT(_bp._data); RPRINT("->"); RPRINT(to_binary<UINT>::eval(_bp._val).data());
+		RPRINT(_bp._data); RPRINT("->"); RPRINT(to_binary<int>::eval(_bp._val).data());
 		RET;
 	  */
 
@@ -85,6 +84,7 @@ int main()
 		RPRINT( i );
 	}
 
+
 	RET;
 
 	std::string _file = "D:\\DATA\\packed.sqz";
@@ -93,15 +93,23 @@ int main()
 	PRINT("Read and write-print saved data..");
 	RET;
 
+	std::vector<BPAIR> _ReadBits;
 	
 	if (writePack(_file.data(), packed) > 0)
-		readPack(_file.data());
+		readPack(_file.data(),_ReadBits);
 
 
+	ReSync(_ReadBits, packed);
+
+	for (const BPAIR& _ep : _ReadBits)
+	{
+		if (_ep._val > 0) RPRINT(_ep._val);
+	}
+	
 
 	fuNod.clear();
 	vCodeMap.clear();
-	
+	_ReadBits.clear();
 	bfo.clear();
 	packed.clear();
 	
@@ -109,5 +117,7 @@ int main()
 
 	RET2();
 	return -1;
+
 }
+
 
