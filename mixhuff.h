@@ -25,6 +25,18 @@ struct BPAIR
 {
 	char _data;
 	int _val;
+
+	BPAIR() :_data('0'), _val(0) {};
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) {}
+	BPAIR(const int _v) : _val(_v), _data('0') {};
+
+	operator int() const {
+		return _val;
+	}
+
+	const int operator()() const {
+		return _val;
+	}
 };
 
 
@@ -167,6 +179,16 @@ struct fqLess
 	const bool operator()(const T& _First, const T& _Second)
 	{
 		return _First.FrequencyData() < _Second.FrequencyData();
+	}
+};
+
+
+template <class T = BPAIR >
+struct bpLess
+{
+	const bool operator()(const T& _First, const T& _Second)
+	{
+		return _First._val < _Second._val;
 	}
 };
 
