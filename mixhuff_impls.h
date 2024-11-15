@@ -7,6 +7,7 @@
 #endif
 
 
+
 // ReSync the read bits versus the original packed one
 inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
 {
@@ -51,10 +52,10 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				  const std::size_t _maxLen)
+				   const std::size_t _maxLen)
 {
 	node _nod = _Nod; /*  fetches new node from the priority queue each time
-			      this function is called. */
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -91,8 +92,8 @@ inline void _TREE::create_encoding(const int _From,
 				   const std::vector<node>& _Vn)
 {
 	int _Dir = 0, _recurr = 0, _sameVal = 0;
-	node _e = 0;
-	double _fq = 100.00;
+	node _e = 0; BPAIR _bpr = { 0,0 };
+	static double _fq = 100.00;
 
 	// Processing the Encoding from vector data
 	for (int i = _From; i < _To; i++)
@@ -118,12 +119,21 @@ inline void _TREE::create_encoding(const int _From,
 			_sameVal = biXs.value_from_bitstr(_bt.data());
 			++_sameVal;
 			_bt.clear();
-			_bt.assign(to_binary<UINT>::eval(_sameVal).data());
-			_recurr = 0;
+			_bt.assign(to_binary<int>::eval(_sameVal).data());
+			_recurr = 0; _sameVal = 0;
 		}
-
+		
 		_bt = (char*)concat_str((char*)_bt.data(), inttostr(_Dir));
 
+		_bpr = biXs.value_from_bitstr(_bt.data());
+
+		if (std::binary_search(_vPair.begin(), _vPair.end(), _bpr,bpLess()))
+		{
+			++_sameVal; _bt.clear();
+			_bt.assign(to_binary<int>::eval(_sameVal).data());
+			_sameVal = 0;
+
+		}
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
 	}
 }
@@ -132,16 +142,34 @@ inline void _TREE::create_encoding(const int _From,
 
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 {
-	std::string _bts = "0";
 	const int _TreeSizes = (int)_fpNods.size();
-	const int _halfTreeSz = (int)halfSz(_TreeSizes) + 1;
+	const double _CompRate = ((0.3) * _TreeSizes);
+	int _DivSize = (_TreeSizes / (int)_CompRate);
+	int _msk = 0, _BT = 2, _Dir = L;
+	std::string _bts = inttostr(_msk);
+	
 
 	if (!_vPair.empty()) _vPair.clear();
-	create_encoding(0, _halfTreeSz, _bts, _fpNods);
 
-	_bts = "10";
-	create_encoding(_halfTreeSz, _TreeSizes, _bts, _fpNods);
+	for (int t = 0; t < _TreeSizes; t += _DivSize)
+	{
+		if ( (_TreeSizes - t) < _DivSize ) _DivSize = 1;
+		create_encoding(t, (t + _DivSize), _bts, _fpNods);
 
+		
+		_msk ^= _BT--;
+
+		if (_BT < 1) 
+			_BT = 2; 
+			
+
+		_Dir = !_Dir;
+		_bts.clear();
+
+		_bts.assign( to_binary<int>::eval(_msk).data() );
+		_bts = concat_str((char*)inttostr(_Dir), _bts.c_str());
+		
+	}
 }
 
 
