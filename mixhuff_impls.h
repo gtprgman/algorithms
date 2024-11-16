@@ -126,6 +126,7 @@ inline void _TREE::create_encoding(const int _From,
 		_bt = (char*)concat_str((char*)_bt.data(), inttostr(_Dir));
 
 		_bpr = biXs.value_from_bitstr(_bt.data());
+		_sameVal = _bpr;
 
 		if (std::binary_search(_vPair.begin(),_vPair.end(),_bpr,bpLess<BPAIR>() ) )
 		{
