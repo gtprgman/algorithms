@@ -127,14 +127,14 @@ inline void _TREE::create_encoding(const int _From,
 
 		_bpr = biXs.value_from_bitstr(_bt.data());
 
-		if (std::binary_search(_vPair.begin(), _vPair.end(), _bpr,bpLess()))
+		if (std::binary_search(_vPair.begin(),_vPair.end(),_bpr,bpLess<BPAIR>() ) )
 		{
 			++_sameVal; _bt.clear();
 			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_sameVal = 0;
-
+			_sameVal = 0; _bpr = {};
 		}
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
+		std::stable_sort(_vPair.begin(), _vPair.end());
 	}
 }
 
@@ -156,7 +156,6 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 		if ( (_TreeSizes - t) < _DivSize ) _DivSize = 1;
 		create_encoding(t, (t + _DivSize), _bts, _fpNods);
 
-		
 		_msk ^= _BT--;
 
 		if (_BT < 1) 
@@ -166,9 +165,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 		_Dir = !_Dir;
 		_bts.clear();
 
-		_bts.assign( to_binary<int>::eval(_msk).data() );
-		_bts = concat_str((char*)inttostr(_Dir), _bts.c_str());
-		
+		_bts.assign( concat_str((char*)inttostr(_Dir),to_binary<int>::eval(_msk).data() ) );
 	}
 }
 
