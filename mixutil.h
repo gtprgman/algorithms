@@ -14,6 +14,8 @@ be implemented in the any time of the future.
 #define REQUIRE_H
 		#include <iostream>
 		#include <array>
+		#include <vector>
+		#include <queue>
 		#include <cstdarg>
 		
 		#include <initializer_list>
@@ -22,9 +24,9 @@ be implemented in the any time of the future.
 			include any functional headers here..
 		*/
 
+using Bit = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
-using Byte = unsigned char;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
@@ -81,6 +83,62 @@ _NODISCARD constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>&& _fwArgs
 template < class Ty >
 _NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept {
 	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
+}
+
+/*
+ Perform binary search on the data elements in the vector, the user must specify
+ a comparer functor that operates on data in the vector and provides a comparison result to the
+ search function plus the data element itself should be convertible to an integer value.
+
+ Parameters: const T& _fNod is the item to be searched for..
+	     T& _vElem stored the found data element as a result of search.
+*/
+
+template < class T, class Pred >
+static inline constexpr bool vector_search(const std::vector<T>& _vecNod, const T& _fNod,
+	Pred _fCompare, T& _vElem)
+{
+	int vecSize = 0, M = 0, L = 0, R = 0;
+	int L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
+	T Uc = _fNod; // Uc: user's value
+	T Vc; // Vector's value
+
+	if (_vecNod.empty()) return 0;
+
+	vecSize = (int)_vecNod.size();
+	R = vecSize;
+	R1 = R;
+	M = (L + R) / 2;
+
+
+	do {
+		Vc = _vecNod[M];  // vector's value
+
+		if (_fCompare(Uc, Vc)) {
+			L = L1;
+			R = M;
+		}
+		else if (!_fCompare(Uc, Vc)) {
+			L = M;
+			R = R1;
+		}
+
+		else if (Uc() == Vc()) {
+			_vElem = _vecNod.at(M);
+			break;
+		}
+
+		L1 = L;
+		R1 = R;
+		M = (L + R) / 2;
+
+		++nSeek;
+		if ((M < 0) || (M > vecSize)) break;
+		if (nSeek > vecSize) break;
+
+	} while (Uc() != Vc());
+
+	return (Uc() == Vc());
 }
 
 
