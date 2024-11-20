@@ -6,14 +6,15 @@
 	#include <fstream>
 #endif
 
-
+constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double - duplicate bits.
+				   and we get a reasonable shorter-frequency least of bits. */
 
 // ReSync the read bits versus the original packed one
 inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
 {
 	const std::size_t _maxSz = _Packed.size();
 	std::size_t j = 0;
-	int _hi = 0, _mid = 0, _lo = 0, _Single = 0;
+	int _hi = 0, _mid = 0, _lo = 0, k = 0,  _Single = 0;
 
 
 	for (std::size_t g = 0; g < _maxSz; g++)
@@ -21,26 +22,25 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 		j = g;
 		while (_readVec[j]._val < 0) ++j;
 
-		if ( _Packed[g] != _readVec[g]._val )
+
+		if ( _Packed[g] != _readVec[j]._val )
 		{	
-			j = g;
-			MAX_BIT = proper_bits(_Packed[j] );
-			_hi = _readVec[j]._val; 
+			MAX_BIT = proper_bits(_Packed[g] );
+
+			_hi = _readVec[j]._val;
 			_lo = _readVec[j + 1]._val;
 
 				if (MAX_BIT == WORD) {
-					_hi <<= 8; // Shifts _hi to the WORD's MSB
-					_Single = _hi | _lo;
+					_Single = ((_hi << 8) | _lo );
 					_readVec[j]._val = _Single;
 					_readVec[j + 1]._val = -1;
 				}
 
 				else if (MAX_BIT == DWORD) {
-					_hi <<= 16;
-					_mid = _lo << 8;
+					_mid = ( (_readVec[j + 1]._val) << 8 );
 					_lo = _readVec[j + 2]._val;
-
 					_Single = (_hi | _mid | _lo);
+
 					_readVec[j]._val = _Single;
 					_readVec[j + 1]._val = -1;
 					_readVec[j + 2]._val = -1;
@@ -52,10 +52,10 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				   const std::size_t _maxLen)
+				  const std::size_t _maxLen)
 {
 	node _nod = _Nod; /*  fetches new node from the priority queue each time
-			     this function is called. */
+						  this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -129,13 +129,14 @@ inline void _TREE::create_encoding(const int _From,
 		_sameVal = _bpr;
 
 		if (std::binary_search(_vPair.begin(),_vPair.end(),_bpr,bpLess<BPAIR>() ) )
+		//if ( vector_search(_vPair,_bpr,bpLess<BPAIR>(),_bpr) )
 		{
 			++_sameVal; _bt.clear();
 			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_sameVal = 0; _bpr = {};
+			_sameVal = 0; _bpr = {0,0};
 		}
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
-		std::stable_sort(_vPair.begin(), _vPair.end());
+		std::stable_sort(_vPair.begin(), _vPair.end());  
 	}
 }
 
@@ -144,7 +145,7 @@ inline void _TREE::create_encoding(const int _From,
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 {
 	const int _TreeSizes = (int)_fpNods.size();
-	const double _CompRate = ((0.3) * _TreeSizes);
+	const double _CompRate = ((COMP_RATE) * _TreeSizes);
 	int _DivSize = (_TreeSizes / (int)_CompRate);
 	int _msk = 0, _BT = 2, _Dir = L;
 	std::string _bts = inttostr(_msk);
