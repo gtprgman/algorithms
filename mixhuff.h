@@ -83,9 +83,11 @@ private:
 
 #ifndef HUFF_TREE
 #define HUFF_TREE
+
+#ifndef REQUIRE_H
 	#include <vector>
 	#include <queue>
-
+#endif
 	
 #endif
 
@@ -191,7 +193,6 @@ struct bpLess
 		return _First._val < _Second._val;
 	}
 };
-
 
 
 #ifndef MX_HUFF_IMPLS
@@ -329,7 +330,6 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 		RPRINT(this->_data); RPRINT("->"); RPRINT(this->_fdata);
 		RET;
 	}
-
 
 
 inline void _TREE::plot_tree(const std::vector<node>& _fpNods)
