@@ -20,7 +20,7 @@ int main()
 	std::vector<bitInfo<int>> bfo;
 	std::vector<int> packed;
 	std::vector<BPAIR> vCodeMap;
-	BPAIR _bpt = {};
+	BPAIR _bpt = {0,0};
 
 
 	// Collect raw data from input sources
@@ -63,19 +63,16 @@ int main()
 	// display the encoding table
 	for (const BPAIR& _bp : vCodeMap)
 	{
-	
+	  /*
 		RPRINT(_bp._data); RPRINT("->"); RPRINT(to_binary<int>::eval(_bp._val).data());
 		RET;
-	  
-	/*
+	  */
 		_bi.X = _bp._val;
-		_bi.numBits = oneAdder(num_of_bits<UINT>::eval(_bp._val));
+		_bi.numBits = oneAdder(num_of_bits<int>::eval(_bp._val));
 
 		bfo.push_back(_bi);
-	*/
 	}
 
-	/*
 
 	bitsPack(packed, bfo);
 
@@ -88,7 +85,6 @@ int main()
 
 	RET;
 
-  
 	std::string _file = "D:\\DATA\\packed.sqz";
 
 	PRINT("Saving packed data.."); RET;
@@ -107,12 +103,13 @@ int main()
 	{
 		if (_ep._val > 0) RPRINT(_ep._val);
 	}
-	
-	*/
+
+
+	_ReadBits.clear();
 
 	fuNod.clear();
 	vCodeMap.clear();
-	//_ReadBits.clear();
+	
 	bfo.clear();
 	packed.clear();
 	
