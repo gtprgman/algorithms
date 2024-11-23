@@ -2,7 +2,9 @@
 /* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
-	#include <vector>
+	#ifndef REQUIRE_H
+		#include <vector>
+	#endif
 #endif
 
 
