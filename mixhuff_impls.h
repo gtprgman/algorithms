@@ -6,22 +6,19 @@
 	#include <fstream>
 #endif
 
-constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double - duplicate bits.
+constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double-duplicate bits.
 				   and we get a reasonable shorter-frequency least of bits. */
 
 // ReSync the read bits versus the original packed one
 inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
 {
 	const std::size_t _maxSz = _Packed.size();
-	std::size_t j = 0;
-	int _hi = 0, _mid = 0, _lo = 0, k = 0,  _Single = 0;
+	int _hi = 0, _mid = 0, _lo = 0, j = 0, k = 0, _Single = 0;
+	const int gMax = (int)_maxSz;
 
-
-	for (std::size_t g = 0; g < _maxSz; g++)
+	for (int g = 0; g < gMax; g++)
 	{
-		j = g;
-		while (_readVec[j]._val < 0) ++j;
-
+		j = (!k)? g : k;
 
 		if ( _Packed[g] != _readVec[j]._val )
 		{	
@@ -34,6 +31,7 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 					_Single = ((_hi << 8) | _lo );
 					_readVec[j]._val = _Single;
 					_readVec[j + 1]._val = -1;
+					k = j + 2;
 				}
 
 				else if (MAX_BIT == DWORD) {
@@ -44,6 +42,7 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 					_readVec[j]._val = _Single;
 					_readVec[j + 1]._val = -1;
 					_readVec[j + 2]._val = -1;
+					k = j + 3;
 				}
 		}
 		continue;
@@ -51,11 +50,12 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 }
 
 
+
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
 				  const std::size_t _maxLen)
 {
 	node _nod = _Nod; /*  fetches new node from the priority queue each time
-						  this function is called. */
+			      this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -84,6 +84,7 @@ inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
 		_q++; // increases the index in target vector
 	}
 }
+
 
 
 inline void _TREE::create_encoding(const int _From, 
@@ -139,6 +140,7 @@ inline void _TREE::create_encoding(const int _From,
 		std::stable_sort(_vPair.begin(), _vPair.end());  
 	}
 }
+
 
 
 
@@ -214,6 +216,8 @@ inline static const std::size_t writePack(const std::string& _fiName, const std:
 }
 
 
+
+
 inline static const std::size_t readPack(const std::string& _inFile,
 					std::vector<BPAIR>& _ReadVector)
 {
@@ -243,4 +247,6 @@ inline static const std::size_t readPack(const std::string& _inFile,
 
 	return _totReads;
 }
+
+
 
