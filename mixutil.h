@@ -85,13 +85,61 @@ _NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept 
 	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
 }
 
+// comparer functor for int
+struct numLess
+{
+	const bool operator()(const int _1st, const int _2nd)
+	{
+		return (_1st < _2nd);
+	}
+};
+
+
+
+// fast sort algorithm performs on data elements in the Vector
+template <class T, class _Prd>
+static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp)
+{
+	T _vTmp;
+	std::size_t _maxSz = _Vc.size();
+	const double _rdv = 0.3;
+	const int _DvSz = (int)_maxSz / (int)(_rdv * _maxSz);
+
+	for (int i = 1; i < _maxSz; i++)
+	{
+		for (std::size_t j = 0, k = 1; j < _maxSz; )
+		{
+			while (((j + 1) < _maxSz) && (_fCmp(_Vc[j], _Vc[j + 1])))
+			{
+				++j;
+			}
+
+			++k;
+			while (j < (_DvSz * k))
+			{
+				if (((j + 1) < _maxSz) && (_Vc[j] > _Vc[j + 1]))
+				{
+					_vTmp = _Vc[j + 1];
+					_Vc[j + 1] = _Vc[j];
+					_Vc[j] = _vTmp;
+				}
+				++j;
+			}
+			j = _DvSz * k;
+
+			if (j >= (_maxSz - 1)) break;
+		}
+	}
+}
+
+
 /*
  Perform binary search on the data elements in the vector, the user must specify
  a comparer functor that operates on data in the vector and provides a comparison result to the
  search function plus the data element itself should be convertible to an integer value.
 
  Parameters: const T& _fNod is the item to be searched for..
-	     T& _vElem stored the found data element as a result of search.
+			 T& _vElem stored the found data element as a result of search.
 */
 
 template < class T, class Pred >
