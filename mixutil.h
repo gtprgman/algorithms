@@ -101,7 +101,7 @@ template <class T, class _Prd>
 static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp)
 {
 	T _vTmp;
-	std::size_t _maxSz = _Vc.size();
+	const std::size_t _maxSz = _Vc.size();
 	const double _rdv = 0.3;
 	const int _DvSz = (int)_maxSz / (int)(_rdv * _maxSz);
 
@@ -139,12 +139,12 @@ static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp)
  search function plus the data element itself should be convertible to an integer value.
 
  Parameters: const T& _fNod is the item to be searched for..
-			 T& _vElem stored the found data element as a result of search.
+	     T& _vElem stored the found data element as a result of search.
 */
 
 template < class T, class Pred >
 static inline constexpr bool vector_search(const std::vector<T>& _vecNod, const T& _fNod,
-	Pred _fCompare, T& _vElem)
+					   Pred _fCompare, T& _vElem)
 {
 	int vecSize = 0, M = 0, L = 0, R = 0;
 	int L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
