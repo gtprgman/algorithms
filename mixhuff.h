@@ -27,15 +27,61 @@ struct BPAIR
 	int _val;
 
 	BPAIR() :_data('0'), _val(0) {};
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) {}
+	BPAIR(const char _a) : _data(_a), _val(0) {};
 	BPAIR(const int _v) : _val(_v), _data('0') {};
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) {};
 
-	operator int() const {
-		return _val;
+	~BPAIR() = default;
+
+	BPAIR(BPAIR&& _mvBpa)
+	{
+		if (this == &_mvBpa) return;
+		*this = _mvBpa;
 	}
 
+
+	BPAIR(const BPAIR& _rBpa)
+	{
+		if (this == &_rBpa) return;
+		*this = _rBpa;
+	}
+
+	const BPAIR& operator= (const BPAIR& _bpa)
+	{
+		if (this == &_bpa) return *this;
+		this->_data = _bpa._data;
+		this->_val = _bpa._val;
+
+		return *this;
+	}
+
+	BPAIR&& operator= (BPAIR&& _rvBpa)
+	{
+		if (this == &_rvBpa) return std::move(*this);
+		this->_data = _rvBpa._data;
+		this->_val = _rvBpa._val;
+
+		_rvBpa.~BPAIR();
+
+		return std::move(*this);
+	}
+
+	operator char() const {
+		return this->_data;
+	}
+
+
+	operator int() const {
+		return this->_val;
+	}
+
+	
 	const int operator()() const {
-		return _val;
+		return this->_val;
+	}
+
+	const char operator()(char) const {
+		return this->_data;
 	}
 };
 
@@ -175,24 +221,15 @@ inline static void NPRINT(const std::vector<node>& _vn)
 #endif
 
 
-template < class T = node>
+
 struct fqLess
 {
-	const bool operator()(const T& _First, const T& _Second)
+	const bool operator()(const node& _First, const node& _Second)
 	{
-		return _First.FrequencyData() < _Second.FrequencyData();
+		return (_First.FrequencyData() < _Second.FrequencyData() );
 	}
 };
 
-
-template <class T = BPAIR >
-struct bpLess
-{
-	const bool operator()(const T& _First, const T& _Second)
-	{
-		return _First._val < _Second._val;
-	}
-};
 
 
 #ifndef MX_HUFF_IMPLS
