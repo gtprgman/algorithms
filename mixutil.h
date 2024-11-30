@@ -85,109 +85,113 @@ _NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept 
 	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
 }
 
-// comparer functor for int
-struct numLess
+namespace generic
 {
-	const bool operator()(const int _1st, const int _2nd)
+	// comparer functor for int
+	struct numLess
 	{
-		return (_1st < _2nd);
-	}
-};
-
-
-
-// fast sort algorithm performs on data elements in the Vector
-template <class T, class _Prd>
-static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp)
-{
-	T _vTmp;
-	const std::size_t _maxSz = _Vc.size();
-	const double _rdv = 0.3;
-	const int _DvSz = (int)_maxSz / (int)(_rdv * _maxSz);
-
-	for (int i = 1; i < _maxSz; i++)
-	{
-		for (std::size_t j = 0, k = 1; j < _maxSz; )
+		const bool operator()(const int _1st, const int _2nd)
 		{
-			while (((j + 1) < _maxSz) && (_fCmp(_Vc[j], _Vc[j + 1])))
-			{
-				++j;
-			}
+			return (_1st < _2nd);
+		}
+	};
 
-			++k;
-			while (j < (_DvSz * k))
+
+
+	// fast sort algorithm performs on data elements in the Vector
+	template <class T, class _Prd>
+	static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp, const std::size_t _nElemsFilled = 0)
+	{
+		T _vTmp;
+		std::size_t _maxSz = _Vc.size();
+		const double _rdv = 0.3;
+		const int _DvSz = (int)(_maxSz / (_rdv * _maxSz));
+		const std::size_t _fillRate = (_nElemsFilled)? _nElemsFilled : _maxSz;
+
+		for (int i = 1; i < _fillRate; i++)
+		{
+			for (std::size_t j = 0, k = 1; j < _maxSz; )
 			{
-				if (((j + 1) < _maxSz) && (_Vc[j] > _Vc[j + 1]))
+				while (((j + 1) < _maxSz) && (_fCmp(_Vc[j], _Vc[j + 1])))
 				{
-					_vTmp = _Vc[j + 1];
-					_Vc[j + 1] = _Vc[j];
-					_Vc[j] = _vTmp;
+					++j;
 				}
-				++j;
-			}
-			j = _DvSz * k;
 
-			if (j >= (_maxSz - 1)) break;
+				++k;
+				while (j < (_DvSz * k))
+				{
+					if (((j + 1) < _maxSz) && (_Vc[j] > _Vc[j + 1]))
+					{
+						_vTmp = _Vc[j + 1];
+						_Vc[j + 1] = _Vc[j];
+						_Vc[j] = _vTmp;
+					}
+					++j;
+				}
+				j = _DvSz * k;
+
+				if (j >= (_maxSz - 1)) break;
+			}
 		}
 	}
-}
 
 
-/*
- Perform binary search on the data elements in the vector, the user must specify
- a comparer functor that operates on data in the vector and provides a comparison result to the
- search function plus the data element itself should be convertible to an integer value.
+	/*
+	 Perform binary search on the data elements in the vector, the user must specify
+	 a comparer functor that operates on data in the vector and provides a comparison result to the
+	 search function plus the data element itself should be convertible to an integer value.
 
- Parameters: const T& _fNod is the item to be searched for..
-	     T& _vElem stored the found data element as a result of search.
-*/
+	 Parameters: const T& _fNod is the item to be searched for..
+		     T& _vElem stored the found data element as a result of search.
+	*/
 
-template < class T, class Pred >
-static inline constexpr bool vector_search(const std::vector<T>& _vecNod, const T& _fNod,
-					   Pred _fCompare, T& _vElem)
-{
-	int vecSize = 0, M = 0, L = 0, R = 0;
-	int L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
-	T Uc = _fNod; // Uc: user's value
-	T Vc; // Vector's value
+	template < class T, class Pred >
+	static inline constexpr bool vector_search(const std::vector<T>& _vecNod, const T& _fNod,
+						   const Pred _fCompare, T& _vElem )
+	{
+		int vecSize = 0, M = 0, L = 0, R = 0;
+		int L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
+		T Uc = _fNod; // Uc: user's value
+		T Vc; // Vector's value
 
-	if (_vecNod.empty()) return 0;
+		if (_vecNod.empty()) return 0;
 
-	vecSize = (int)_vecNod.size();
-	R = vecSize;
-	R1 = R;
-	M = (L + R) / 2;
-
-
-	do {
-		Vc = _vecNod[M];  // vector's value
-
-		if (_fCompare(Uc, Vc)) {
-			L = L1;
-			R = M;
-		}
-		else if (!_fCompare(Uc, Vc)) {
-			L = M;
-			R = R1;
-		}
-
-		else if (Uc() == Vc()) {
-			_vElem = _vecNod.at(M);
-			break;
-		}
-
-		L1 = L;
+		vecSize = (int)_vecNod.size();
+		R = vecSize;
 		R1 = R;
 		M = (L + R) / 2;
 
-		++nSeek;
-		if ((M < 0) || (M > vecSize)) break;
-		if (nSeek > vecSize) break;
+		do {
+			Vc = _vecNod[M];  // vector's value
 
-	} while (Uc() != Vc());
+			if (_fCompare(Uc, Vc)) {
+				L = L1;
+				R = M;
+			}
+			else if (!_fCompare(Uc, Vc)) {
+				L = M;
+				R = R1;
+			}
 
-	return (Uc() == Vc());
-}
+			else if (Uc() == Vc()) {
+				_vElem = _vecNod.at(M);
+				break;
+			}
+
+			L1 = L;
+			R1 = R;
+			M = (L + R) / 2;
+
+			++nSeek;
+			if ((M < 0) || (M > vecSize)) break;
+			if (nSeek > vecSize) break;
+
+		} while (Uc() != Vc() );
+
+		return (Uc() == Vc());
+	}
+
+} // end of generic namespace
 
 
 
@@ -744,7 +748,6 @@ namespace mix {
 
 
 		
-
 		// a single unique pointer type
 		template < class Ty, class Del1X = std::default_delete<Ty> >
 		using uniqueP = std::unique_ptr<Ty, Del1X>;
@@ -779,7 +782,6 @@ namespace mix {
 			return std::make_shared<_Ty>(aArgs...);
 		}
 
-		
 		
 	} // end of ptr_type namespace
 
@@ -927,4 +929,3 @@ namespace mix {
 	}
 	
 };
-
