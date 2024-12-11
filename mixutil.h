@@ -85,6 +85,8 @@ _NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept 
 	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
 }
 
+
+
 namespace generic
 {
 	// comparer functor for int
@@ -96,101 +98,88 @@ namespace generic
 		}
 	};
 
-
-
 	// fast sort algorithm performs on data elements in the Vector
-	template <class T, class _Prd>
-	static inline void fast_sort(std::vector<T>& _Vc, _Prd _fCmp, const std::size_t _nElemsFilled = 0)
+	template < class _Iter ,class _Pred >
+	static inline void fast_sort(const _Iter& _First, const _Iter& _End,
+				    _Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
 	{
-		T _vTmp;
-		std::size_t _maxSz = _Vc.size();
-		const double _rdv = 0.3;
-		const int _DvSz = (int)(_maxSz / (_rdv * _maxSz));
-		const std::size_t _fillRate = (_nElemsFilled)? _nElemsFilled : _maxSz;
-
-		for (int i = 1; i < _fillRate; i++)
+		typename _Iter::value_type _vTemp;
+		const std::ptrdiff_t _MaxSz = (_maxElems > 0)? _maxElems : (_End - _First) - 1;
+	
+		for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
 		{
-			for (std::size_t j = 0, k = 1; j < _maxSz; )
+			for (_Iter j = _First; j < _End; j++)
 			{
-				while (((j + 1) < _maxSz) && (_fCmp(_Vc[j], _Vc[j + 1])))
+				while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
 				{
 					++j;
 				}
 
-				++k;
-				while (j < (_DvSz * k))
+				while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
 				{
-					if (((j + 1) < _maxSz) && (_Vc[j] > _Vc[j + 1]))
-					{
-						_vTmp = _Vc[j + 1];
-						_Vc[j + 1] = _Vc[j];
-						_Vc[j] = _vTmp;
-					}
+					_vTemp = *(j + 1);
+					*(j + 1) = *j;
+					*j = _vTemp;
 					++j;
 				}
-				j = _DvSz * k;
-
-				if (j >= (_maxSz - 1)) break;
 			}
 		}
 	}
 
-
+	
 	/*
 	 Perform binary search on the data elements in the vector, the user must specify
 	 a comparer functor that operates on data in the vector and provides a comparison result to the
 	 search function plus the data element itself should be convertible to an integer value.
-
-	 Parameters: const T& _fNod is the item to be searched for..
-		     T& _vElem stored the found data element as a result of search.
 	*/
-
-	template < class T, class Pred >
-	static inline constexpr bool vector_search(const std::vector<T>& _vecNod, const T& _fNod,
-						   const Pred _fCompare, T& _vElem )
+	template <class _Iter, class _Pred >
+	static inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
+					       const typename _Iter::value_type& _LookUp_Value,
+					       _Pred _fCompare, 
+					      typename _Iter::value_type& _FoundItem)
 	{
-		int vecSize = 0, M = 0, L = 0, R = 0;
-		int L1 = 0, R1 = 0, M1 = 0, nSeek = 0;
-		T Uc = _fNod; // Uc: user's value
-		T Vc; // Vector's value
 
-		if (_vecNod.empty()) return 0;
+		const std::ptrdiff_t  _MaxSz = (_Last -_Begin) - 1;
+		_Iter L = _Begin, R = _Last, L1 = L, R1 = R;
+		std::ptrdiff_t  M = 0, nSeek = 0;
+		typename _Iter::value_type  vector_value;
+		const typename _Iter::value_type  lookup_value = _LookUp_Value;
 
-		vecSize = (int)_vecNod.size();
-		R = vecSize;
-		R1 = R;
-		M = (L + R) / 2;
-
+		M = _MaxSz / 2;
+		vector_value = *(L + M);
+	
 		do {
-			Vc = _vecNod[M];  // vector's value
-
-			if (_fCompare(Uc, Vc)) {
+			if (_fCompare(lookup_value, vector_value))
+			{
 				L = L1;
-				R = M;
+				R = L + M;
 			}
-			else if (!_fCompare(Uc, Vc)) {
-				L = M;
+			else if (!_fCompare(lookup_value, vector_value)) {
+				L = L1 + M;
 				R = R1;
 			}
-
-			else if (Uc() == Vc()) {
-				_vElem = _vecNod.at(M);
+			else if (lookup_value == vector_value)
+			{
+				_FoundItem = vector_value;
 				break;
 			}
 
 			L1 = L;
 			R1 = R;
-			M = (L + R) / 2;
+			M = (R - L) / 2;
+
+			vector_value = *(L + M); // new value
 
 			++nSeek;
-			if ((M < 0) || (M > vecSize)) break;
-			if (nSeek > vecSize) break;
 
-		} while (Uc() != Vc() );
+			if (L < _Begin || R  > _Last) break;
+			if (nSeek > _MaxSz) break;
 
-		return (Uc() == Vc());
+		} while (vector_value != lookup_value);
+
+		return (lookup_value == vector_value);
 	}
-
+	
 } // end of generic namespace
 
 
