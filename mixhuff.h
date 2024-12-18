@@ -74,15 +74,6 @@ struct BPAIR
 	operator int() const {
 		return this->_val;
 	}
-
-	
-	const int operator()() const {
-		return this->_val;
-	}
-
-	const char operator()(char) const {
-		return this->_data;
-	}
 };
 
 
@@ -227,6 +218,24 @@ struct fqLess
 	const bool operator()(const node& _First, const node& _Second)
 	{
 		return (_First.FrequencyData() < _Second.FrequencyData() );
+	}
+};
+
+
+struct bitLess
+{
+	const bool operator()(const int& _bp1st, const int& _bp2nd)
+	{
+		return (_bp1st < _bp2nd );
+	}
+};
+
+
+struct chrLess
+{
+	const bool operator()(const char _c1, const char _c2)
+	{
+		return ( _c1 < _c2 );
 	}
 };
 
