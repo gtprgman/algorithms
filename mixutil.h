@@ -92,10 +92,51 @@ namespace generic
 	// comparer functor for int
 	struct numLess
 	{
-		const bool operator()(const int _1st, const int _2nd)
+		const bool operator()(const int& _1st, const int& _2nd)
 		{
 			return (_1st < _2nd);
 		}
+
+	// comparer functor for any type T
+	template < class T >
+	struct NLess
+	{
+		const bool operator()(const T& _1st, const T& _2nd)
+		{
+			return (_1st < _2nd);
+		}
+	};
+
+
+	template < class T >
+	struct NGreat
+	{
+		const bool operator()(const T& _1st, const T& _2nd)
+		{
+			return (_1st > _2nd);
+		}
+	};
+
+
+	template <>
+	struct NLess<char>
+	{
+		const bool operator()(const char _1st, const char _2nd)
+		{
+			return (_1st < _2nd);
+		}
+	};
+
+
+	template <>
+	struct NGreat<char>
+	{
+		const bool operator()(const char _1st, const char _2nd)
+		{
+			return ( _1st > _2nd );
+		}
+	};
+
 	};
 
 	// fast sort algorithm performs on data elements in the Vector
@@ -126,41 +167,53 @@ namespace generic
 		}
 	}
 
+
+	// display the content of any STL-like container
+	template < class _Iter >
+	static inline void STL_Print(const _Iter& _Begin, const _Iter& _End)
+	{
+		int _cnt = 0;
+		for (_Iter _p = _Begin; _p != _End; _p++,++_cnt)
+		{
+			RPRINT(*_p);
+			if (_cnt > 79) RET;
+		}
+	}
+
 	
 	/*
 	 Perform binary search on the data elements in the vector, the user must specify
 	 a comparer functor that operates on data in the vector and provides a comparison result to the
 	 search function plus the data element itself should be convertible to an integer value.
 	*/
-	template <class _Iter, class _Pred >
+
+	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
 	static inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
 					       const typename _Iter::value_type& _LookUp_Value,
-					       _Pred _fCompare, 
-					      typename _Iter::value_type& _FoundItem)
+					       _Pred _fCompare,
+					      _Iter& _foundElem )
 	{
-
-		const std::ptrdiff_t  _MaxSz = (_Last -_Begin) - 1;
+		const std::ptrdiff_t _MaxSz = (_Last -_Begin) - 1;
 		_Iter L = _Begin, R = _Last, L1 = L, R1 = R;
-		std::ptrdiff_t  M = 0, nSeek = 0;
-		typename _Iter::value_type  vector_value;
-		const typename _Iter::value_type  lookup_value = _LookUp_Value;
+		std::ptrdiff_t M = 0, nSeek = 0;
+		typename _Iter::value_type vector_value;
+		const typename _Iter::value_type& lookup_value = _LookUp_Value;
 
 		M = _MaxSz / 2;
 		vector_value = *(L + M);
 	
 		do {
-			if (_fCompare(lookup_value, vector_value))
+			if (_fCompare((_Other)lookup_value, (_Other)vector_value))
 			{
 				L = L1;
 				R = L + M;
 			}
-			else if (!_fCompare(lookup_value, vector_value)) {
+			else if (!_fCompare((_Other)lookup_value, (_Other)vector_value)) {
 				L = L1 + M;
 				R = R1;
 			}
-			else if (lookup_value == vector_value)
+			else if ((_Other)lookup_value == (_Other)vector_value)
 			{
-				_FoundItem = vector_value;
 				break;
 			}
 
@@ -169,15 +222,16 @@ namespace generic
 			M = (R - L) / 2;
 
 			vector_value = *(L + M); // new value
+			_foundElem = L + M;
 
 			++nSeek;
 
 			if (L < _Begin || R  > _Last) break;
 			if (nSeek > _MaxSz) break;
 
-		} while (vector_value != lookup_value);
+		} while ((_Other)vector_value != (_Other)lookup_value);
 
-		return (lookup_value == vector_value);
+		return ((_Other)lookup_value == (_Other)vector_value);
 	}
 	
 } // end of generic namespace
