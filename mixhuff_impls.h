@@ -4,6 +4,7 @@
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
 	#include <fstream>
+
 #endif
 
 constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double-duplicate bits.
@@ -95,6 +96,7 @@ inline void _TREE::create_encoding(const int _From,
 	int _Dir = 0, _recurr = 0, _sameVal = 0;
 	node _e = 0; BPAIR _bpr = { 0,0 };
 	static double _fq = 100.00;
+	std::vector<BPAIR>::iterator _iGet;
 
 	// Processing the Encoding from vector data
 	for (int i = _From; i < _To; i++)
@@ -129,14 +131,14 @@ inline void _TREE::create_encoding(const int _From,
 		_bpr = biXs.value_from_bitstr(_bt.data());
 		_sameVal = _bpr;
 
-		if ( vector_search(_vPair,_bpr,std::less<BPAIR>(), _bpr))
+		if ( generic::vector_search(_vPair.begin(),_vPair.end(),_bpr,bitLess(),_iGet) )
 		{
 			++_sameVal; _bt.clear();
 			_bt.assign(to_binary<int>::eval(_sameVal).data());
 			_sameVal = 0; _bpr = {0,0};
 		}
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
-		fast_sort(_vPair, std::less<BPAIR>(), _vPair.size());
+		generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess(), _vPair.size());
 	}
 }
 
@@ -239,13 +241,10 @@ inline static const std::size_t readPack(const std::string& _inFile,
 		_ReadVector.push_back(_Rec);
 		_totReads++; 
 		_Rec = {0,0};
-
 	}
 
 	_inf.close();
 
 	return _totReads;
 }
-
-
 
