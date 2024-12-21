@@ -30,13 +30,14 @@ struct BPAIR
 	BPAIR(const char _a) : _data(_a), _val(0) {};
 	BPAIR(const int _v) : _val(_v), _data('0') {};
 	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) {};
+	BPAIR(const int _v, const char _a) :_data(_a), _val(_v) {};
 
 	~BPAIR() = default;
 
 	BPAIR(BPAIR&& _mvBpa)
 	{
 		if (this == &_mvBpa) return;
-		*this = _mvBpa;
+		*this = std::move(_mvBpa);
 	}
 
 
@@ -46,6 +47,7 @@ struct BPAIR
 		*this = _rBpa;
 	}
 
+
 	const BPAIR& operator= (const BPAIR& _bpa)
 	{
 		if (this == &_bpa) return *this;
@@ -54,6 +56,7 @@ struct BPAIR
 
 		return *this;
 	}
+
 
 	BPAIR&& operator= (BPAIR&& _rvBpa)
 	{
@@ -65,6 +68,7 @@ struct BPAIR
 
 		return std::move(*this);
 	}
+
 
 	operator char() const {
 		return this->_data;
