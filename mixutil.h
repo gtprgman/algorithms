@@ -189,15 +189,15 @@ namespace generic
 
 	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
 	static inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
-					       const typename _Iter::value_type& _LookUp_Value,
+					       const _Other& _LookUp_Value,
 					       _Pred _fCompare,
 					      _Iter& _foundElem )
 	{
 		const std::ptrdiff_t _MaxSz = (_Last -_Begin) - 1;
 		_Iter L = _Begin, R = _Last, L1 = L, R1 = R;
 		std::ptrdiff_t M = 0, nSeek = 0;
-		typename _Iter::value_type vector_value;
-		const typename _Iter::value_type& lookup_value = _LookUp_Value;
+		_Other vector_value;
+		const _Other& lookup_value = _LookUp_Value;
 
 		M = _MaxSz / 2;
 		vector_value = *(L + M);
