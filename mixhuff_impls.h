@@ -131,12 +131,16 @@ inline void _TREE::create_encoding(const int _From,
 		_bpr = biXs.value_from_bitstr(_bt.data());
 		_sameVal = _bpr;
 
-		if ( generic::vector_search(_vPair.begin(),_vPair.end(),_bpr,bitLess(),_iGet) )
+		if (!_vPair.empty())
 		{
-			++_sameVal; _bt.clear();
-			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_sameVal = 0; _bpr = {0,0};
+			if (generic::vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
+			{
+				++_sameVal; _bt.clear();
+				_bt.assign(to_binary<int>::eval(_sameVal).data());
+				_sameVal = 0; _bpr = {};
+			}
 		}
+		
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
 		generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess(), _vPair.size());
 	}
