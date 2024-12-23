@@ -17,7 +17,7 @@ be implemented in the any time of the future.
 		#include <vector>
 		#include <queue>
 		#include <cstdarg>
-		
+		#include <thread>
 		#include <initializer_list>
 		#include <forward_list>
 		/*
@@ -87,157 +87,6 @@ _NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept 
 
 
 
-namespace generic
-{
-	// comparer functor for int
-	struct numLess
-	{
-		const bool operator()(const int& _1st, const int& _2nd)
-		{
-			return (_1st < _2nd);
-		}
-
-	// comparer functor for any type T
-	template < class T >
-	struct NLess
-	{
-		const bool operator()(const T& _1st, const T& _2nd)
-		{
-			return (_1st < _2nd);
-		}
-	};
-
-
-	template < class T >
-	struct NGreat
-	{
-		const bool operator()(const T& _1st, const T& _2nd)
-		{
-			return (_1st > _2nd);
-		}
-	};
-
-
-	template <>
-	struct NLess<char>
-	{
-		const bool operator()(const char _1st, const char _2nd)
-		{
-			return (_1st < _2nd);
-		}
-	};
-
-
-	template <>
-	struct NGreat<char>
-	{
-		const bool operator()(const char _1st, const char _2nd)
-		{
-			return ( _1st > _2nd );
-		}
-	};
-
-	};
-
-	// fast sort algorithm performs on data elements in the Vector
-	template < class _Iter ,class _Pred >
-	static inline void fast_sort(const _Iter& _First, const _Iter& _End,
-				    _Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
-	{
-		typename _Iter::value_type _vTemp;
-		const std::ptrdiff_t _MaxSz = (_maxElems > 0)? _maxElems : (_End - _First) - 1;
-	
-		for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
-		{
-			for (_Iter j = _First; j < _End; j++)
-			{
-				while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
-				{
-					++j;
-				}
-
-				while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
-				{
-					_vTemp = *(j + 1);
-					*(j + 1) = *j;
-					*j = _vTemp;
-					++j;
-				}
-			}
-		}
-	}
-
-
-	// display the content of any STL-like container
-	template < class _Iter >
-	static inline void STL_Print(const _Iter& _Begin, const _Iter& _End)
-	{
-		int _cnt = 0;
-		for (_Iter _p = _Begin; _p != _End; _p++,++_cnt)
-		{
-			RPRINT(*_p);
-			if (_cnt > 79) RET;
-		}
-	}
-
-	
-	/*
-	 Perform binary search on the data elements in the vector, the user must specify
-	 a comparer functor that operates on data in the vector and provides a comparison result to the
-	 search function plus the data element itself should be convertible to an integer value.
-	*/
-
-	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
-	static inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
-					       const _Other& _LookUp_Value,
-					       _Pred _fCompare,
-					      _Iter& _foundElem )
-	{
-		const std::ptrdiff_t _MaxSz = (_Last -_Begin) - 1;
-		_Iter L = _Begin, R = _Last, L1 = L, R1 = R;
-		std::ptrdiff_t M = 0, nSeek = 0;
-		_Other vector_value;
-		const _Other& lookup_value = _LookUp_Value;
-
-		M = _MaxSz / 2;
-		vector_value = *(L + M);
-	
-		do {
-			if (_fCompare((_Other)lookup_value, (_Other)vector_value))
-			{
-				L = L1;
-				R = L + M;
-			}
-			else if (!_fCompare((_Other)lookup_value, (_Other)vector_value)) {
-				L = L1 + M;
-				R = R1;
-			}
-			else if ((_Other)lookup_value == (_Other)vector_value)
-			{
-				break;
-			}
-
-			L1 = L;
-			R1 = R;
-			M = (R - L) / 2;
-
-			vector_value = *(L + M); // new value
-			_foundElem = L + M;
-
-			++nSeek;
-
-			if (L < _Begin || R  > _Last) break;
-			if (nSeek > _MaxSz) break;
-
-		} while ((_Other)vector_value != (_Other)lookup_value);
-
-		return ((_Other)lookup_value == (_Other)vector_value);
-	}
-	
-} // end of generic namespace
-
-
-
 template < class _Ty >
 struct _Instantiator;
 
@@ -257,13 +106,13 @@ struct _Instantiator {
 
 
 template < class Ty >
-std::unique_ptr<Ty[]> MK_U_ARRAY(unsigned int Nx) {
+std::unique_ptr<Ty[]> MK_U_ARRAY(const std::ptrdiff_t Nx) {
 	return std::make_unique<Ty[]>(Nx);
 }
 
 
 template < class Ty >
-std::shared_ptr<Ty[]> MK_S_ARRAY(unsigned int Nx) {
+std::shared_ptr<Ty[]> MK_S_ARRAY(const std::ptrdiff_t Nx) {
 	return std::shared_ptr<Ty[]>(new Ty[Nx]());
 }
 
@@ -791,6 +640,7 @@ namespace mix {
 
 
 		
+
 		// a single unique pointer type
 		template < class Ty, class Del1X = std::default_delete<Ty> >
 		using uniqueP = std::unique_ptr<Ty, Del1X>;
@@ -825,6 +675,7 @@ namespace mix {
 			return std::make_shared<_Ty>(aArgs...);
 		}
 
+		
 		
 	} // end of ptr_type namespace
 
@@ -941,7 +792,7 @@ namespace mix {
 
 	// an iterator for the print function of any primitive types.
 	template < class P >
-	void FOR_EACH_PRINT(P begin, P end) {
+	void FOR_EACH_PRINT(P& begin, P& end) {
 	   for (; begin != end; begin++)
 		std::cout << *begin << ", ";
 		
@@ -949,7 +800,7 @@ namespace mix {
 
 	// an iterator for the print function of any Buckets' types.
 	template <>
-	void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket* begin, mix::data::Bucket* end) {
+	void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket*& begin, mix::data::Bucket*& end) {
 		for (; begin != end; begin++)
 			std::cout << begin->data() << ", ";
 	}
@@ -966,9 +817,207 @@ namespace mix {
 	 
 	// an overloaded printer function for any Buckets' types
 	template <mix::data::Bucket*>
-	constexpr void smart_print(mix::data::Bucket* const begin, mix::data::Bucket* const end)
+	constexpr void smart_print(const mix::data::Bucket*& begin,
+								const mix::data::Bucket*& end)
 	{
 		FOR_EACH_PRINT(begin, end);
 	}
-	
+
+
+
+	namespace generic
+	{
+		// comparer functor for int
+		struct numLess
+		{
+			const bool operator()(const int& _1st, const int& _2nd)
+			{
+				return (_1st < _2nd);
+			}
+		};
+
+
+		// comparer functor for any type T
+		template < class T >
+		struct NLess
+		{
+			const bool operator()(const T& _1st, const T& _2nd)
+			{
+				return (_1st < _2nd);
+			}
+		};
+
+
+		template < class T >
+		struct NGreat
+		{
+			const bool operator()(const T& _1st, const T& _2nd)
+			{
+				return (_1st > _2nd);
+			}
+		};
+
+
+		template <>
+		struct NLess<char>
+		{
+			const bool operator()(const char _1st, const char _2nd)
+			{
+				return (_1st < _2nd);
+			}
+		};
+
+
+		template <>
+		struct NGreat<char>
+		{
+			const bool operator()(const char _1st, const char _2nd)
+			{
+				return (_1st > _2nd);
+			}
+		};
+
+
+		// display the content of any STL-like container
+		template < class _Iter >
+		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End)
+		{
+			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
+			
+			int _cnt = 0;
+			for (_Iter _p = _Begin; _p != _End; _p++, ++_cnt)
+			{
+				RPRINT(*_p);
+				if (_cnt > 79) RET;
+			}
+		}
+
+
+		// fast sort algorithm performs on data elements in the Vector
+		template < class _Iter, class _Pred >
+		inline void fast_sort(const _Iter& _First, const _Iter& _End,
+				      _Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
+		{
+			if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
+			
+			typename _Iter::value_type _vTemp;
+			const std::ptrdiff_t _MaxSz = (_maxElems > 0)? _maxElems : (_End - _First) - 1;
+
+			for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
+			{
+				for (_Iter j = _First; j < _End; j++)
+				{
+					while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
+					{
+						++j;
+					}
+
+					while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
+					{
+						_vTemp = *(j + 1);
+						*(j + 1) = *j;
+						*j = _vTemp;
+						++j;
+					}
+				}
+			}
+		}
+
+
+		// Use threading processes to sort each subdivided section of a data set.
+		template <class _Iter, class _Pred >
+		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double _dvRatio, 
+				   _Pred _fCmp, const ptrdiff_t _maxElem = 0)
+		{
+			
+			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
+
+			const std::ptrdiff_t _maxSz = (_maxElem > 0)? (_maxElem - 1) : (_End - _Begin) - 1;
+
+			if (_maxSz < 10) {
+				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				return;
+			}
+			
+			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
+			const std::ptrdiff_t _nDivs = _maxSz / _dvSz;
+
+			_Iter _L = _Begin, _R = _L + _dvSz;
+
+			mix::ptr_type::U_ARRAY<std::thread> _uT = MK_U_ARRAY<std::thread>(_nDivs);
+
+			for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
+			{
+				_uT[_t] = std::thread{ [&_L, &_R, &_dvSz, &_fCmp]() {
+					fast_sort(_L,_R,_fCmp,_dvSz);
+				  } };
+
+				_uT[_t].join();
+				_L = _R;
+				_R = _L + _dvSz;
+				if (_R > _End) goto cleanUp;
+			}
+  
+		cleanUp:
+			fast_sort(_Begin, _End, _fCmp, _maxSz);
+			_uT.release();
+		}
+
+
+	/*
+	 Perform binary search on the data elements in the vector, the user must specify
+	 a comparer functor that operates on data in the vector and provides a comparison result to the
+	 search function plus the data element itself should be convertible to an integer value.
+	*/
+	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
+	inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
+					const _Other& _LookUp_Value,
+					_Pred _fCompare,
+					_Iter& _foundElem)
+	{
+		if (_Begin._Ptr == nullptr || _Last._Ptr == nullptr) return false;
+		
+		const std::ptrdiff_t _MaxSz = (_Last - _Begin) - 1;
+		_Iter L = _Begin, R = _Last, L1 = L, R1 = R;
+		std::ptrdiff_t M = 0, nSeek = 0;
+		_Other vector_value;
+		const _Other& lookup_value = _LookUp_Value;
+
+		M = _MaxSz / 2;
+		vector_value = *(L + M);
+
+		do {
+			if (_fCompare((_Other)lookup_value, (_Other)vector_value))
+			{
+				L = L1;
+				R = L + M;
+			}
+			else if (!_fCompare((_Other)lookup_value, (_Other)vector_value)) {
+				L = L1 + M;
+				R = R1;
+			}
+			else if ((_Other)lookup_value == (_Other)vector_value)
+			{
+				break;
+			}
+
+			L1 = L;
+			R1 = R;
+			M = (R - L) / 2;
+
+			vector_value = *(L + M); // new value
+			_foundElem = L + M;
+
+			++nSeek;
+
+			if (L < _Begin || R  > _Last) break;
+			if (nSeek > _MaxSz) break;
+
+		} while ((_Other)vector_value != (_Other)lookup_value);
+
+		return ((_Other)lookup_value == (_Other)vector_value);
+	}
+  } // End of generic namespace
 };
+
+
