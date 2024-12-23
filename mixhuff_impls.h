@@ -7,8 +7,9 @@
 
 #endif
 
+
 constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double-duplicate bits.
-				   and we get a reasonable shorter-frequency least of bits. */
+				     and we get a reasonable shorter-frequency least of bits. */
 
 // ReSync the read bits versus the original packed one
 inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
@@ -53,10 +54,10 @@ inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& 
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				  const std::size_t _maxLen)
+				   const std::size_t _maxLen)
 {
-	node _nod = _Nod; /*  fetches new node from the priority queue each time
-			      this function is called. */
+	node _nod = _Nod; /* fetches new node from the priority queue each time
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -94,7 +95,7 @@ inline void _TREE::create_encoding(const int _From,
 				   const std::vector<node>& _Vn)
 {
 	int _Dir = 0, _recurr = 0, _sameVal = 0;
-	node _e = 0; BPAIR _bpr = { 0,0 };
+	node _e = 0; BPAIR _bpr = {};
 	static double _fq = 100.00;
 	std::vector<BPAIR>::iterator _iGet;
 
@@ -131,18 +132,18 @@ inline void _TREE::create_encoding(const int _From,
 		_bpr = biXs.value_from_bitstr(_bt.data());
 		_sameVal = _bpr;
 
-		if (!_vPair.empty())
+		if (mix::generic::
+				vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
+		//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
-			if (generic::vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
-			{
-				++_sameVal; _bt.clear();
-				_bt.assign(to_binary<int>::eval(_sameVal).data());
-				_sameVal = 0; _bpr = {};
-			}
+			++_sameVal; _bt.clear();
+			_bt.assign(to_binary<int>::eval(_sameVal).data());
+			_sameVal = 0; _bpr = {};
 		}
-		
+
 		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
-		generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess(), _vPair.size());
+		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
+		//std::stable_sort(_vPair.begin(), _vPair.end());
 	}
 }
 
@@ -224,12 +225,12 @@ inline static const std::size_t writePack(const std::string& _fiName, const std:
 
 
 inline static const std::size_t readPack(const std::string& _inFile,
-					std::vector<BPAIR>& _ReadVector)
+					 std::vector<BPAIR>& _ReadVector)
 {
 	std::size_t _totReads = 0;
 	std::ifstream _inf{ _inFile.data(),std::ios::in | std::ios::binary };
 	int _C = 0;
-	BPAIR _Rec = { 0,0 };
+	BPAIR _Rec = {};
 
 	if (!_inf)
 	{
@@ -244,11 +245,11 @@ inline static const std::size_t readPack(const std::string& _inFile,
 		_Rec._val = _C;
 		_ReadVector.push_back(_Rec);
 		_totReads++; 
-		_Rec = {0,0};
+		_Rec = {};
+
 	}
 
 	_inf.close();
-
 	return _totReads;
 }
 
