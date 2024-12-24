@@ -8,8 +8,10 @@
 #endif
 
 
-constexpr double COMP_RATE = 0.36; /* 0.36 is the ideal one without subject to double-duplicate bits.
-				     and we get a reasonable shorter-frequency least of bits. */
+
+constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calculation used to 
+				      produce the best match has converged to this ideal value. */
+
 
 // ReSync the read bits versus the original packed one
 inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
@@ -153,8 +155,9 @@ inline void _TREE::create_encoding(const int _From,
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 {
 	const int _TreeSizes = (int)_fpNods.size();
-	const double _CompRate = ((COMP_RATE) * _TreeSizes);
-	int _DivSize = (_TreeSizes / (int)_CompRate);
+	const double _CompRate = std::floor((COMP_RATE) * _TreeSizes);
+	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
+	int _DivSize = (int)_fCompRate;
 	int _msk = 0, _BT = 2, _Dir = L;
 	std::string _bts = inttostr(_msk);
 	
