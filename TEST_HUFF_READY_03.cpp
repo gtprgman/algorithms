@@ -1,8 +1,9 @@
 #ifndef REQUIRE_H
 	#include "mixutil.h"
+	#include "mixhuff.h"
 #endif
 
-#include "mixhuff.h"
+
 
 /*
 	The current stable version is Pointers-Free !!
@@ -13,15 +14,14 @@
 
 int main()
 {
-	std::string s = "Ada Ate Apple.";
+	std::string s = "She Sells Shells in the Sea Shore.";
 	const std::size_t SZ = s.size();
 	std::priority_queue<node> pq;
 	std::vector<node> fuNod;
 	std::vector<bitInfo<int>> bfo;
 	std::vector<int> packed;
 	std::vector<BPAIR> vCodeMap;
-	BPAIR _bpt = {0,0};
-
+	BPAIR _bpt = {};
 
 	// Collect raw data from input sources
 	for (const auto& e : s)
@@ -34,12 +34,12 @@ int main()
 		pq.pop();
 	}
 
-	
+
 	RET;
 
 	// sort the data based on frequencies
 	std::priority_queue<node, std::vector<node>,
-		fqLess<node>> fpq{ fuNod.begin(), fuNod.end() };
+		fqLess> fpq{ fuNod.begin(), fuNod.end() };
 
 	RET;
 
@@ -53,69 +53,54 @@ int main()
 		fpq.pop();
 	}
 
-	//NPRINT(fuNod); RET; 
+	//NPRINT(fuNod); RET; RET;
 
 	_TREE::plot_tree(fuNod);
 
 	vCodeMap = _TREE::CodeMap();
 
 	bitInfo<int> _bi = {};
+
 	// display the encoding table
 	for (const BPAIR& _bp : vCodeMap)
 	{
-	  /*
 		RPRINT(_bp._data); RPRINT("->"); RPRINT(to_binary<int>::eval(_bp._val).data());
 		RET;
-	  */
-		_bi.X = _bp._val;
-		_bi.numBits = oneAdder(num_of_bits<int>::eval(_bp._val));
 
-		bfo.push_back(_bi);
+		/*
+			_bi.X = _bp._val;
+			_bi.numBits = oneAdder(num_of_bits<int>::eval(_bp._val));
+
+			bfo.push_back(_bi);
+		*/
 	}
 
-
+/*
 	bitsPack(packed, bfo);
 
 	// display the packed encoding data
-	for (const int& i : packed)
-	{
-		RPRINT( i );
-	}
-
 
 	RET;
 
 	std::string _file = "D:\\DATA\\packed.sqz";
 
 	PRINT("Saving packed data.."); RET;
-	PRINT("Read and write-print saved data..");
-	RET;
 
-	std::vector<BPAIR> _ReadBits;
-	
-	if (writePack(_file.data(), packed) > 0)
-		readPack(_file.data(),_ReadBits);
+	if (writePack(_file.data(), s, vCodeMap))
+		PRINT("Packed Data Saved !!");
 
-
-	ReSync(_ReadBits, packed);
-
-	for (const BPAIR& _ep : _ReadBits)
-	{
-		if (_ep._val > 0) RPRINT(_ep._val);
-	}
-
-
-	_ReadBits.clear();
+*/
 
 	fuNod.clear();
 	vCodeMap.clear();
-	
+
 	bfo.clear();
 	packed.clear();
-	
+
 	_TREE::Clean();
 
 	RET2();
 	return -1;
 }
+
 
