@@ -2,9 +2,9 @@
 /* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
-	#ifndef REQUIRE_H
-		#include <vector>
-	#endif
+#ifndef REQUIRE_H
+	#include <vector>
+#endif
 #endif
 
 
@@ -252,7 +252,7 @@ inline static const int LoPart(const int);
 // return the most significant portion of bits of a specified value '_v'
 inline static const int HiPart(const int);
 
-// extract every portion of data with [BYTE PTR] attribute and store it to the Vector
+// extract specific portion of each data with [BYTE PTR] attribute and store it to the Vector
 inline static void parseByte(const int, std::vector<int>&);
 
 // merge the MSB and LSB portions together to form a single unit of data
@@ -261,6 +261,12 @@ inline static const int32_t MergeBits(const int, const int);
 inline static const char* rtrim(const char*);
 
 inline static const char* reverse_str(const char*);
+
+// replicate the given char 'aChar' a number of '_repSize' times
+inline static const std::string repl_char(const char, const std::size_t);
+
+// decompose a given packed int into its original bit form
+inline static const int unPack(const int&, std::size_t const, std::size_t const);
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
@@ -491,6 +497,31 @@ private:
 	const int toFixInt(const int);
 	const int fixtoInt(const int);
 };
+
+
+
+inline static const char to_char(int const _c)
+{
+	char _ch = 0;
+	const int _nc = _c;
+
+	if (_c >= 65 && _c <= 90)
+		_ch = 90 - (90 - _nc);
+	else if (_c >= 97 && _c <= 122)
+		_ch = 122 - (122 - _nc);
+	else
+		_ch = _nc;
+
+
+	return _ch;
+}
+
+
+
+inline static const int to_int(char const _ch)
+{
+	return _ch;
+}
 
 
 
@@ -783,6 +814,19 @@ inline static const char* rtrim(const char* _string)
 }
 
 
+inline static const std::string repl_char(char const aChar, std::size_t const _repSize)
+{
+	char* _reps = new char[_repSize];
+	for (int i = 0; i < _repSize; i++)
+		_reps[i] = aChar;
+
+
+	_reps[_repSize] = 0;
+	return _reps;
+}
+
+
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -797,6 +841,13 @@ struct bitInfo
 
 	~bitInfo() = default;
 	
+	operator char() const {
+		return to_char(this->X);
+	}
+
+	operator int() const {
+		return this->numBits;
+	}
 
 	int X;  
 	BitSZ numBits;
@@ -835,9 +886,16 @@ inline static void bitsPack(std::vector<T>& _packed, const std::vector<bitInfo<T
 }
 
 
-inline static const unsigned int unpack_bit(const unsigned _nonPacked, const unsigned _packed)
+inline static const int unPack(const int& _Packed, std::size_t const _leftBits,
+				std::size_t const _rightBits)
 {
-	return _packed & _nonPacked;
+	const std::string s0 = repl_char('1', _leftBits).data();
+
+	const int iDec = bin_to_dec<int>::eval(s0.data()),
+		bin1 = iDec << _rightBits, _pac = _Packed,
+		bin2 = (bin1 & _pac) >> _rightBits;
+
+	return bin2;
 }
 
 
@@ -1362,4 +1420,5 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
+
 
