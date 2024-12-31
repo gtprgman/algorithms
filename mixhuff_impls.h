@@ -3,53 +3,47 @@
 
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
-	#include <fstream>
 
 #endif
 
 
 
 constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calculation used to 
-				      produce the best match has converged to this ideal value. */
+				   produce the best match has converged to this ideal value. */
+
 
 
 // ReSync the read bits versus the original packed one
-inline static void ReSync(std::vector<BPAIR>& _readVec, const std::vector<int>& _Packed)
+inline static void ReSync(std::vector<packed_info>& _readVec, const std::vector<packed_info>& _Packed)
 {
 	const std::size_t _maxSz = _Packed.size();
-	int _hi = 0, _mid = 0, _lo = 0, j = 0, k = 0, _Single = 0;
+	int _hi = 0, _lo = 0, _Single = 0;
+	_Int_Bits _read_bits;
 	const int gMax = (int)_maxSz;
 
 	for (int g = 0; g < gMax; g++)
 	{
-		j = (!k)? g : k;
-
-		if ( _Packed[g] != _readVec[j]._val )
+		if ( _Packed[g]._PACKED != _readVec[g]._PACKED)
 		{	
-			MAX_BIT = proper_bits(_Packed[g] );
-
-			_hi = _readVec[j]._val;
-			_lo = _readVec[j + 1]._val;
-
-				if (MAX_BIT == WORD) {
-					_Single = ((_hi << 8) | _lo );
-					_readVec[j]._val = _Single;
-					_readVec[j + 1]._val = -1;
-					k = j + 2;
-				}
-
-				else if (MAX_BIT == DWORD) {
-					_mid = ( (_readVec[j + 1]._val) << 8 );
-					_lo = _readVec[j + 2]._val;
-					_Single = (_hi | _mid | _lo);
-
-					_readVec[j]._val = _Single;
-					_readVec[j + 1]._val = -1;
-					_readVec[j + 2]._val = -1;
-					k = j + 3;
-				}
+			MAX_BIT = proper_bits(_Packed[g]._PACKED );
+			_read_bits = _readVec[g].packed_bits;
+				
+			if (MAX_BIT > BYTE && MAX_BIT <= WORD)
+			{
+				_hi = _read_bits._eax[1];
+				_lo = _read_bits._eax[0];
+				_Single = _hi | _lo;
+				_readVec[g]._PACKED = _Single;
+			}
+			else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+			{
+				_hi = _read_bits._eax[3] | _read_bits._eax[2];
+				_lo = _read_bits._eax[1] | _read_bits._eax[0];
+				_Single = _hi | _lo;
+				_readVec[g]._PACKED = _Single;
+			}
+			_read_bits = { 0,0,0,0 };	
 		}
-		continue;
 	}
 }
 
@@ -59,7 +53,7 @@ inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
 				   const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
-			     this function is called. */
+						this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -185,74 +179,115 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 
 
 
-inline static const std::size_t writePack(const std::string& _fiName, const std::vector<int>& _pacData)
+inline static const std::size_t writePack(const std::string& _fiName, const std::vector<packed_info>& _pacData)
 {
-	std::size_t _numWritten = 0;
-	const std::size_t _packSz = _pacData.size();
-	std::ofstream _out{ _fiName.data(), std::ios::out | std::ios::ate | std::ios::binary };
-	std::vector<int> _DB;
+	std::size_t _blocksWritten = 0;
+	std::FILE* _fp = std::fopen(_fiName.data(), "wb+");
+	packed_info _PiF = {};
+	_32Bit _Datum;
+	_Int_Bits _saved_bits;
+	int n_PiF_blocks = (int)_pacData.size();
 
-	if (!_out) {
-		std::cerr << "Failed to open file !!" << "\n\n";
-		_out.close();
-		return _numWritten;
-	}
 
-	for (const int _i : _pacData)
+	if (!_fp)
 	{
-		MAX_BIT = proper_bits(_i);
-
-		if (MAX_BIT > BYTE)
-		{
-			parseByte(_i, _DB);
-
-			for (const int _e : _DB)
-				_out.put(_e);
-
-			++_numWritten;
-			_DB.clear();
-			continue;
-		}
-		
-		_out.put(_i);
-		++_numWritten;
+		std::cerr << "Failed to Open File !! " << "\\n\n";
+		goto finishedDone;
 	}
 
-	_out.close();
-	_DB.clear();
+	// save information about the number of packed_info blocks at the beginning of file.
+	std::fputc(n_PiF_blocks, _fp);
+	
+	// saving table of encoded information ..
+	for (packed_info const& _pi : _pacData)
+	{
+		_PiF = _pi;
+		_Datum = _PiF._PACKED;
+		MAX_BIT = _Datum.BitLength();
 
-	return _numWritten;
+		if ( MAX_BIT > BYTE && MAX_BIT <= WORD )
+		{
+			_PiF._PACKED = 0;
+			_PiF.packed_bits._eax[1] = _Datum.HiByte();
+			_PiF.packed_bits._eax[0] = _Datum.LoByte();
+		}
+		else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		{
+			_PiF._PACKED = 0;
+			_PiF.packed_bits._eax[3] = HiPart(_Datum.HiWord() );
+			_PiF.packed_bits._eax[2] = LoPart(_Datum.HiWord() );
+
+			_PiF.packed_bits._eax[1] = HiPart(_Datum.LoWord() );
+			_PiF.packed_bits._eax[0] = LoPart(_Datum.LoWord() );
+		}
+
+		std::fwrite(&_PiF, sizeof(_PiF), 1, _fp);
+		++_blocksWritten;
+
+		_Datum = 0;
+		MAX_BIT = 0;
+	}
+
+	// saving real encoded bits of the raw input data source ..
+	for (packed_info const& _pf : _pacData)
+	{
+		if (_pf._PACKED > 0)
+		{
+			std::fputc(_pf._PACKED, _fp);
+			++_blocksWritten;
+		}
+		else
+		{
+			_saved_bits = _pf.packed_bits;
+			std::fwrite(&_saved_bits, sizeof(_saved_bits), 1, _fp);
+			_blocksWritten += sizeof(_saved_bits);
+		}
+	}
+
+	finishedDone:
+		std::fclose(_fp);
+
+	return _blocksWritten;
 }
 
 
 
 
 inline static const std::size_t readPack(const std::string& _inFile,
-					 std::vector<BPAIR>& _ReadVector)
+					std::vector<packed_info>& _ReadVector, 
+					std::vector<int>& _readBits)
 {
-	std::size_t _totReads = 0;
-	std::ifstream _inf{ _inFile.data(),std::ios::in | std::ios::binary };
-	int _C = 0;
-	BPAIR _Rec = {};
-
-	if (!_inf)
+	std::size_t _blocksRead = 0;
+	std::FILE* _fi = std::fopen(_inFile.data(), "rb+");
+	packed_info _PIF = {};
+	int pif_blocks = 0;
+	
+	if (!_fi)
 	{
-		std::cerr << "Can't open file to read !!" << "\n\n";
-		_inf.close();
-		return _totReads;
+		std::cerr << "Failed to Open File !!" << "\n\n";
+		goto finishedRead;
 	}
 
-	while( _C >= 0 )
-	{
-		_C = _inf.get();
-		_Rec._val = _C;
-		_ReadVector.push_back(_Rec);
-		_totReads++; 
-		_Rec = {};
+	// get the first integer value of file
+	 pif_blocks = std::fgetc(_fi);
 
+	// reads up number of packed_info blocks to the buffer _PIF.
+	for(int j = 0; j < pif_blocks; j++)
+	{
+		std::fread(&_PIF, sizeof(packed_info), 1, _fi);
+		++_blocksRead;
+		_ReadVector.push_back(_PIF);
+		_PIF = {};
 	}
 
-	_inf.close();
-	return _totReads;
+	// reads up number of encoded integers to the end of file.
+	while ((pif_blocks = std::fgetc(_fi)) > 0)
+		_readBits.push_back(pif_blocks);
+
+
+	finishedRead:
+		std::fclose(_fi);
+		return _blocksRead;
 }
+
 
