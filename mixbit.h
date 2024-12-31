@@ -71,12 +71,15 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
 	return MAX_BIT;
 }
 
-// simulate a 32-bit register storage in a microprocessor
-struct _register
-{
-	short _ff3, _ff2, _ff1, _ff0;
 
+/* a data structure for storing every byte portion of an integer value.
+   A little-endian order is being assumed, so the first two elements of _eax
+   represent the MSB of a 32-bit integer. */
+struct _Int_Bits
+{
+	int _eax[4] = { 0,0,0,0 };
 };
+
 
 // 32-Bit Data Ordering structure
 struct _32Bit
@@ -265,7 +268,7 @@ inline static const char* reverse_str(const char*);
 // replicate the given char 'aChar' a number of '_repSize' times
 inline static const std::string repl_char(const char, const std::size_t);
 
-// decompose a given packed int into its original bit form
+// decomposes a given packed int into its original bit form
 inline static const int unPack(const int&, std::size_t const, std::size_t const);
 
 
@@ -309,7 +312,7 @@ struct to_binary
 
 		for (unsigned int i = 0; i < _bsz; i++)
 		{
-			_bs[i] = (_value % 2) ? 49 : 48;
+			_bs[i] = (_value % 2)? 49 : 48;
 			_value >>= 1;
 		}
 
@@ -368,6 +371,7 @@ T bin_to_dec<T>::_Dec = 0;
 
 
 
+
 inline static const unsigned int proper_bits(const int _n)
 {
 	const unsigned int _nBits = num_of_bits<int>::eval(_n);
@@ -375,6 +379,7 @@ inline static const unsigned int proper_bits(const int _n)
 
 	return _maxBits;
 }
+
 
 
 inline static const int LoPart(const int _v)
@@ -405,6 +410,7 @@ inline static const int LoPart(const int _v)
 }
 
 
+
 inline static const int HiPart(const int _v)
 {
 	int _ResX = 0b0;
@@ -428,6 +434,7 @@ inline static const int HiPart(const int _v)
 
 	return _ResX;
 }
+
 
 
 inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
@@ -454,6 +461,7 @@ inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
 
 	if (_Val) _Bytes.push_back(_Val);
 }
+
 
 
 inline static const int32_t MergeBits(const int _Hi, const int _Lo)
@@ -831,18 +839,19 @@ inline static const std::string repl_char(char const aChar, std::size_t const _r
 template <typename BitSZ = unsigned int>
 struct bitInfo
 {
-	bitInfo(): X(0), numBits(0) {};
+	bitInfo(): X(0), _Alpha(0),numBits(0) {};
 
-	bitInfo(const int _x, const BitSZ _bitSz)
+	bitInfo(char const _C, const int _x, const BitSZ _bitSz)
 	{
-		X = _x;
-		numBits = _bitSz;
+		this->X = _x;
+		this->_Alpha = _C;
+		this->numBits = _bitSz;
 	}
 
 	~bitInfo() = default;
 	
 	operator char() const {
-		return to_char(this->X);
+		return this->_Alpha;
 	}
 
 	operator int() const {
@@ -850,18 +859,75 @@ struct bitInfo
 	}
 
 	int X;  
+	char _Alpha;
 	BitSZ numBits;
 };
 
 
+// a data structure of a packed data information
+struct packed_info
+{
+	packed_info() : L_ALPHA(0), R_ALPHA(0),
+		_PACKED(0), L_BIT(0), R_BIT(0), packed_bits{ 0,0,0,0 }
+	{ };
 
-// pack the entire bits of the vector into a UINT vector
+	packed_info(packed_info const& _rPif)
+	{
+		if (this == &_rPif) return;
+		*this = _rPif;
+	}
+
+	packed_info const& operator= (packed_info const& _rPif)
+	{
+		if (this == &_rPif) return *this;
+		
+		this->L_ALPHA = _rPif.L_ALPHA;
+		this->R_ALPHA = _rPif.R_ALPHA;
+
+		this->L_BIT = _rPif.L_BIT;
+		this->R_BIT = _rPif.R_BIT;
+
+		this->_PACKED = _rPif._PACKED;
+		this->packed_bits = _rPif.packed_bits;
+
+		return *this;
+	}
+
+
+	~packed_info()
+	{
+
+	}
+
+	// the first char encoded on the MSB part of the packed bits.
+	char L_ALPHA;
+
+	// the second char encoded on the LSB part of the packed bits.
+	char R_ALPHA;
+
+	// the encoded bits of the first & second char packed into one integer value.
+	int _PACKED;
+
+	// the number of encoded bits on the MSB part of the _PACKED.
+	int	L_BIT;  
+	
+	// the number of encoded bits on the LSB part of the _PACKED.
+	int R_BIT;
+
+	/* data storage for the packed bits to represent their complete bits arrangement.
+	   ( little-endian ) */
+	_Int_Bits packed_bits;
+};
+
+
+// pack the entire bits of the vector into a 'packed_info' vector
 template < typename T >
-inline static void bitsPack(std::vector<T>& _packed, const std::vector<bitInfo<T>>& _vb)
+inline static void bitsPack(std::vector<packed_info>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
 	std::size_t _loopn = 0;
+	packed_info _pif = {};
 
 	T _n = 0;
 
@@ -877,10 +943,19 @@ inline static void bitsPack(std::vector<T>& _packed, const std::vector<bitInfo<T
 
 		if ((_loopn > _nIter) || ((i + 1) == _vcSz))
 		{
-			_packed.push_back(_Ax);
+			_pif._PACKED = _Ax;
+
+			_pif.L_BIT = _vb[i - 1].numBits;
+			_pif.R_BIT = _vb[i].numBits;
+
+			_pif.L_ALPHA = _vb[i - 1]._Alpha;
+			_pif.R_ALPHA = _vb[i]._Alpha;
+
+			_packed.push_back(_pif);
 
 			_Ax = 0b0;
 			_loopn = 0;
+			_pif = {};
 		}
 	}
 }
@@ -1420,5 +1495,4 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
-
 
