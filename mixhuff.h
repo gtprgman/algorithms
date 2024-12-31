@@ -7,6 +7,11 @@
 #endif
 
 
+#ifndef MX_BIT
+#include "mixbit.h"
+	BitN biXs;
+#endif
+
 
 static LONGFLOAT CSIZE = 0.00;
 
@@ -23,14 +28,22 @@ constexpr int ROOT = -1;
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	char _data;
-	int _val;
+	BPAIR() :_data('0'), _val(0), bit_len(0) {};
+	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR() :_data('0'), _val(0) {};
-	BPAIR(const char _a) : _data(_a), _val(0) {};
-	BPAIR(const int _v) : _val(_v), _data('0') {};
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) {};
-	BPAIR(const int _v, const char _a) :_data(_a), _val(_v) {};
+	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0) 
+	{
+	};
+
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) ,bit_len(0) 
+	{
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_v) );
+	};
+
+	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0) 
+	{
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_v));
+	};
 
 	~BPAIR() = default;
 
@@ -40,6 +53,12 @@ struct BPAIR
 		*this = std::move(_mvBpa);
 	}
 
+	BPAIR(BPAIR& _Rpa)
+	{
+		if (this == &_Rpa) return;
+		*this = _Rpa;
+	}
+
 
 	BPAIR(const BPAIR& _rBpa)
 	{
@@ -47,28 +66,27 @@ struct BPAIR
 		*this = _rBpa;
 	}
 
-
 	const BPAIR& operator= (const BPAIR& _bpa)
 	{
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_bpa._val) );
 
 		return *this;
 	}
-
 
 	BPAIR&& operator= (BPAIR&& _rvBpa)
 	{
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_rvBpa._val) );
 
 		_rvBpa.~BPAIR();
 
 		return std::move(*this);
 	}
-
 
 	operator char() const {
 		return this->_data;
@@ -78,6 +96,9 @@ struct BPAIR
 	operator int() const {
 		return this->_val;
 	}
+
+	char _data;
+	int _val, bit_len;
 };
 
 
@@ -134,20 +155,12 @@ private:
 
 
 
-#ifndef MX_BIT
-	#include "mixbit.h"
-	BitN biXs;
-#endif
-
-
-
-
 #ifndef _TYPE_INFO_H
 #define _TYPE_INFO_H
 	#include <typeinfo>
 
 struct _TREE {
-	
+
 	// get the encoded bits of data from A Vector 
 	static inline std::vector<BPAIR>&& CodeMap() {
 		return std::forward<std::vector<BPAIR>&&>(_vPair);
@@ -242,7 +255,6 @@ struct chrLess
 		return ( _c1 < _c2 );
 	}
 };
-
 
 
 #ifndef MX_HUFF_IMPLS
@@ -382,8 +394,10 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 	}
 
 
+
 inline void _TREE::plot_tree(const std::vector<node>& _fpNods)
 {
 	schema_Iter(_fpNods);
 }
+
 
