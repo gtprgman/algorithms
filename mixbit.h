@@ -474,6 +474,66 @@ inline static const int32_t MergeBits(const int _Hi, const int _Lo)
 }
 
 
+/* extract byte by byte portion of an integer '_v'.
+   If '_v' is more than a 16 bit wide integer, then
+   extract_byte will successively extract each 16 bit
+   portion of its high & low order part, otherwise 
+   '_v' is extracted per byte by byte basis.
+*/
+int const extract_byte(const int& _v)
+{
+	static int _v1 = 0;
+	static int _count = 0;
+
+	MAX_BIT = proper_bits(_v);
+
+	if (MAX_BIT <= BYTE)
+	{
+		_v1 = (_count)? 0 : 255 & _v;
+		++_count;
+
+		return _v1;
+	}
+	else if (MAX_BIT > WORD)
+	{
+		if (_count > 1)
+		{
+			_count = 0;
+			_v1 = 0;
+			goto endResult;
+		}
+		
+		_v1 = (_count > 0)? (65535 & _v) : WORD_PTR_HI(_v);
+		++_count;
+
+		endResult:
+			return _v1;
+	}
+
+	switch (_count)
+	{
+	case 0:
+		_v1 = (255 << 8) & _v;
+		++_count;
+		break;
+
+	case 1:
+		_v1 = _v - _v1;
+		++_count;
+		break;
+
+	case 2:
+		_v1 = 0;
+		_count = 0;
+	default:
+		break;
+	}
+
+	return _v1;
+}
+
+
+
 // fixed point numeric type
 template <const unsigned BITS>
 struct fixN
@@ -909,7 +969,7 @@ struct packed_info
 	int _PACKED;
 
 	// the number of encoded bits on the MSB part of the _PACKED.
-	int	L_BIT;  
+	int L_BIT;  
 	
 	// the number of encoded bits on the LSB part of the _PACKED.
 	int R_BIT;
