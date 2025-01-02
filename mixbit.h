@@ -29,30 +29,31 @@ constexpr unsigned QWORD = 64;
 constexpr unsigned MULTIWORDS = 128;
 
 constexpr int i4Mask = 0xF;
-constexpr int i8Mask = 0xFF;
-constexpr int i16Mask = 0xFFFF;
+constexpr int i8Mask = 255;
+constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
 
 
 constexpr int BYTE_PTR_HI(const int _Bx)
 {
-	return (i8Mask << 8) & _Bx;
+	return (i8Mask << 7) & _Bx;
 }
 
 constexpr int BYTE_PTR_LO(const int Bx_)
 {
-	return i8Mask & Bx_;
+	return 0xFF & Bx_;
 }
 
 constexpr int WORD_PTR_HI(const int _EDX)
 {
-	return (i16Mask << 16) & _EDX;
+	return (i16Mask << 15) & _EDX;
 }
 
 constexpr int WORD_PTR_LO(const int EDX_)
 {
 	return i16Mask & EDX_;
 }
+
 
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
@@ -371,7 +372,6 @@ T bin_to_dec<T>::_Dec = 0;
 
 
 
-
 inline static const unsigned int proper_bits(const int _n)
 {
 	const unsigned int _nBits = num_of_bits<int>::eval(_n);
@@ -379,7 +379,6 @@ inline static const unsigned int proper_bits(const int _n)
 
 	return _maxBits;
 }
-
 
 
 inline static const int LoPart(const int _v)
@@ -410,7 +409,6 @@ inline static const int LoPart(const int _v)
 }
 
 
-
 inline static const int HiPart(const int _v)
 {
 	int _ResX = 0b0;
@@ -424,17 +422,16 @@ inline static const int HiPart(const int _v)
 		break;
 
 	case 16:
-		_ResX = (i8Mask << 8) & _v;
+		_ResX = (i8Mask << 7) & _v;
 		break;
 
 	case 32:
-		_ResX = (i16Mask << 16) & _v;
+		_ResX = (i16Mask << 15) & _v;
 		break;
 	}
 
 	return _ResX;
 }
-
 
 
 inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
@@ -463,7 +460,6 @@ inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
 }
 
 
-
 inline static const int32_t MergeBits(const int _Hi, const int _Lo)
 {
 	int32_t _Bits = 0b0;
@@ -472,6 +468,7 @@ inline static const int32_t MergeBits(const int _Hi, const int _Lo)
 
 	return _Bits;
 }
+
 
 
 /* extract byte by byte portion of an integer '_v'.
@@ -531,7 +528,6 @@ int const extract_byte(const int& _v)
 
 	return _v1;
 }
-
 
 
 // fixed point numeric type
@@ -625,7 +621,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-			_Sz2 = std::strlen(_cStr);
+		_Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -667,7 +663,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-			_lenX = std::strlen(_searchStr);
+	        _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
