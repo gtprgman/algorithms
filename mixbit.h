@@ -36,7 +36,7 @@ constexpr int i32Mask = 0xFFFFFFFF;
 
 constexpr int BYTE_PTR_HI(const int _Bx)
 {
-	return (i8Mask << 7) & _Bx;
+	return (i8Mask << 8) & _Bx;
 }
 
 constexpr int BYTE_PTR_LO(const int Bx_)
@@ -46,7 +46,7 @@ constexpr int BYTE_PTR_LO(const int Bx_)
 
 constexpr int WORD_PTR_HI(const int _EDX)
 {
-	return (i16Mask << 15) & _EDX;
+	return (i16Mask << 16) & _EDX;
 }
 
 constexpr int WORD_PTR_LO(const int EDX_)
@@ -150,7 +150,7 @@ inline static void invert_bits(bool _pb[], const unsigned nBits)
 // get a bit character from a position in the bit array as specified by '_pb'.
 inline static const char* char_from_bit(const bool _pb[], const int _index)
 {
-	return (_pb[_index]) ? (char*)"1" : (char*)"0";
+	return (_pb[_index])? (char*)"1" : (char*)"0";
 }
 
 
@@ -167,7 +167,7 @@ inline static const std::string str_from_bits(const bool _pb[], const unsigned n
 	char* _ss = new char[nBits];
 
 	for (unsigned i = 0; i < nBits; i++)
-		_ss[i] = (_pb[i]) ? '1' : '0';
+		_ss[i] = (_pb[i])? '1' : '0';
 
 	_ss[nBits] = '\0';
 	return _ss;
@@ -422,11 +422,11 @@ inline static const int HiPart(const int _v)
 		break;
 
 	case 16:
-		_ResX = (i8Mask << 7) & _v;
+		_ResX = (i8Mask << 8) & _v;
 		break;
 
 	case 32:
-		_ResX = (i16Mask << 15) & _v;
+		_ResX = (i16Mask << 16) & _v;
 		break;
 	}
 
@@ -621,7 +621,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-		_Sz2 = std::strlen(_cStr);
+			  _Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -663,7 +663,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-	        _lenX = std::strlen(_searchStr);
+			 _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -1466,7 +1466,7 @@ inline static const char* inttostr(const int nVal)
 	{
 		MAX_BIT = proper_bits(this->AX);
 
-		if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		if (MAX_BIT > WORD )
 		{
 			return MergeBits(this->EAX[0], this->EAX[1]);
 		}
@@ -1478,7 +1478,7 @@ inline static const char* inttostr(const int nVal)
 	{
 		MAX_BIT = proper_bits(this->AX);
 
-		if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		if (MAX_BIT > WORD )
 		{
 			return MergeBits(this->EAX[2], this->EAX[3]);
 		}
@@ -1551,4 +1551,6 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
+
+
 
