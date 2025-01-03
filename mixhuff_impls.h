@@ -9,7 +9,81 @@
 
 
 constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calculation used to 
-				   produce the best match has converged to this ideal value. */
+				    produce the best match has converged to this ideal value. */
+
+
+
+/* Using the information in _srcPackInfo to decompose each bit in _destPack.
+   (still in experimentation .. ) */
+static inline void UnPack_Bits(std::vector<int>& _destPack,
+				 const std::vector<packed_info>& _srcPackInfo)
+{
+	int elem1 = 0, elem2 = 0;
+	std::size_t j = 0;
+
+	for (packed_info const& _Pfi : _srcPackInfo)
+	{
+		elem2 = _destPack[j++];
+		elem1 = unPack(elem2, _Pfi.L_BIT, _Pfi.R_BIT);
+		
+		// we got the encoded bits of the second char stored in elem2.
+		elem2 = elem2 ^ (elem1 << _Pfi.R_BIT);
+		
+		// we then replaces the corresponding values in _destPack.
+		_destPack[j - 1] = elem1;
+		_destPack[j] = elem2;
+	}
+}
+
+
+
+// ReSync the read packed data source versus the read packed table of information
+static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int>& _srcPack)
+{
+	int hi = 0, lo = 0;
+	_Int_Bits _iReg = { 0,0,0,0 };
+	const std::size_t packed_size = _srcPack.size();
+
+	for (std::size_t j = 0; j < packed_size; j++)
+	{
+		MAX_BIT = proper_bits(_srcPack[j]);
+
+		if (_srcPack[j] != _destPack[j])
+		{
+			if (_destPack[j] < 0)
+			{
+				_destPack[j] = _srcPack[j];
+				continue;
+			}
+			
+			
+			if (MAX_BIT > BYTE && MAX_BIT <= WORD)
+			{
+				hi = _destPack[j] << 8;
+				lo = _destPack[j + 1];
+
+				_destPack[j] = hi | lo;
+				_destPack[j + 1] = -1;
+			}
+			else if (MAX_BIT > WORD)
+			{
+				_iReg._eax[3] = _destPack[j];
+				_iReg._eax[2] = _destPack[j + 1];
+				_iReg._eax[1] = _destPack[j + 2];
+				_iReg._eax[0] = _destPack[j + 3];
+
+				hi = (_iReg._eax[3] | _iReg._eax[2]) << 16;
+				lo = _iReg._eax[1] | _iReg._eax[0];
+
+				_destPack[j] = hi | lo;
+
+				for (std::size_t i = j + 1; i < (j + 4); i++)
+					_destPack[i] = -1;
+				
+			}	
+		}
+	}
+}
 
 
 
@@ -19,9 +93,9 @@ inline static void ReSync(std::vector<packed_info>& _readVec, const std::vector<
 	const std::size_t _maxSz = _Packed.size();
 	int _hi = 0, _lo = 0, _Single = 0;
 	_Int_Bits _read_bits;
-	const int gMax = (int)_maxSz;
+	const std::size_t gMax = _maxSz;
 
-	for (int g = 0; g < gMax; g++)
+	for (std::size_t g = 0; g < gMax; g++)
 	{
 		if ( _Packed[g]._PACKED != _readVec[g]._PACKED)
 		{	
@@ -53,7 +127,7 @@ inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
 				   const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
-						this function is called. */
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -178,25 +252,27 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 
 
 
-
-inline static const std::size_t writePack(const std::string& _fiName, const std::vector<packed_info>& _pacData)
+// Save the encoded table information into a file.
+inline static const std::size_t writePackInfo(const std::string& _fiName, 
+					      const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
-	std::FILE* _fp = std::fopen(_fiName.data(), "wb+");
+	std::FILE* _fpT = std::fopen("D:\\DATA\\pckinfo.tbi", "wb+");
+
 	packed_info _PiF = {};
 	_32Bit _Datum;
 	_Int_Bits _saved_bits;
 	int n_PiF_blocks = (int)_pacData.size();
 
 
-	if (!_fp)
+	if (!_fpT)
 	{
 		std::cerr << "Failed to Open File !! " << "\\n\n";
 		goto finishedDone;
 	}
 
 	// save information about the number of packed_info blocks at the beginning of file.
-	std::fputc(n_PiF_blocks, _fp);
+	std::fputc(n_PiF_blocks, _fpT);
 	
 	// saving table of encoded information ..
 	for (packed_info const& _pi : _pacData)
@@ -211,7 +287,7 @@ inline static const std::size_t writePack(const std::string& _fiName, const std:
 			_PiF.packed_bits._eax[1] = _Datum.HiByte();
 			_PiF.packed_bits._eax[0] = _Datum.LoByte();
 		}
-		else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
+		else if (MAX_BIT > WORD )
 		{
 			_PiF._PACKED = 0;
 			_PiF.packed_bits._eax[3] = HiPart(_Datum.HiWord() );
@@ -221,73 +297,149 @@ inline static const std::size_t writePack(const std::string& _fiName, const std:
 			_PiF.packed_bits._eax[0] = LoPart(_Datum.LoWord() );
 		}
 
-		std::fwrite(&_PiF, sizeof(_PiF), 1, _fp);
+		std::fwrite(&_PiF, sizeof(_PiF), 1, _fpT);
 		++_blocksWritten;
-
+		
 		_Datum = 0;
 		MAX_BIT = 0;
 	}
 
-	// saving real encoded bits of the raw input data source ..
-	for (packed_info const& _pf : _pacData)
-	{
-		if (_pf._PACKED > 0)
-		{
-			std::fputc(_pf._PACKED, _fp);
-			++_blocksWritten;
-		}
-		else
-		{
-			_saved_bits = _pf.packed_bits;
-			std::fwrite(&_saved_bits, sizeof(_saved_bits), 1, _fp);
-			_blocksWritten += sizeof(_saved_bits);
-		}
-	}
-
+	
 	finishedDone:
-		std::fclose(_fp);
+		std::fclose(_fpT);
 
 	return _blocksWritten;
 }
 
 
 
-
-inline static const std::size_t readPack(const std::string& _inFile,
-					std::vector<packed_info>& _ReadVector, 
-					std::vector<int>& _readBits)
+// Read the encoded table information from a file.
+inline static const std::size_t readPackInfo(const std::string& _inFile,
+					std::vector<packed_info>& _ReadVector)
 {
 	std::size_t _blocksRead = 0;
-	std::FILE* _fi = std::fopen(_inFile.data(), "rb+");
+	std::FILE* _fiT = std::fopen("D:\\DATA\\pckinfo.tbi", "rb+");
+
 	packed_info _PIF = {};
 	int pif_blocks = 0;
 	
-	if (!_fi)
+
+	if (!_fiT)
 	{
 		std::cerr << "Failed to Open File !!" << "\n\n";
 		goto finishedRead;
 	}
 
 	// get the first integer value of file
-	 pif_blocks = std::fgetc(_fi);
+	 pif_blocks = std::fgetc(_fiT);
+
 
 	// reads up number of packed_info blocks to the buffer _PIF.
 	for(int j = 0; j < pif_blocks; j++)
 	{
-		std::fread(&_PIF, sizeof(packed_info), 1, _fi);
+		std::fread(&_PIF, sizeof(packed_info), 1, _fiT);
 		++_blocksRead;
 		_ReadVector.push_back(_PIF);
 		_PIF = {};
 	}
 
-	// reads up number of encoded integers to the end of file.
-	while ((pif_blocks = std::fgetc(_fi)) > 0)
-		_readBits.push_back(pif_blocks);
+	
+	finishedRead:
+		std::fclose(_fiT);
+		return _blocksRead;
+}
+
+
+// Save the packed raw data source to a file.
+static inline const std::size_t writePack(const std::string _File,
+					  const std::vector<packed_info>& _packedSrc)
+{
+	std::size_t _chunkWritten = 0;
+	std::FILE* _fp = std::fopen(_File.data(), "wb+");
+	int _cBit = 0,_bitC = 0,_bitF = 0, _cnt = 0;
+
+	if (!_fp)
+	{
+		std::cerr << "Failed to open file !" << "\n\n";
+		goto finishedWrite;
+	}
+
+	for (packed_info const& _pck : _packedSrc)
+	{
+		_cnt = 0;
+		_bitC = _pck._PACKED; // Get packed bits
+		MAX_BIT = proper_bits(_bitC);
+
+		if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 BIT
+		{
+			while ((_cBit = extract_byte(_bitC)) > 0) // extract by 8 bit basis
+			{
+				_cBit = (_cnt)? _cBit : _cBit >> 8; // is it a high 8 bit?
+				std::fputc(_cBit, _fp);
+				++_cnt; ++_chunkWritten;
+			}
+			continue;
+		}
+		else if (MAX_BIT > WORD) // 32 BIT
+		{
+			while ((_cBit = extract_byte(_bitC)) > 0) // extract by 16 bit basis
+			{
+				_cBit = (_cnt)? _cBit : _cBit >> 16; // is it a 16 bit high?
+
+				_bitF = _cBit;
+
+				_cnt = 0; // reset option-setter counter 
+
+				while ((_cBit = extract_byte(_bitF)) > 0) // extract by 8 bit basis
+				{
+					_cBit = (_cnt)? _cBit : _cBit >> 8; // is it an 8 bit high?
+					std::fputc(_cBit, _fp);
+					++_cnt; ++_chunkWritten;
+				}
+				_cnt = 1;
+			}
+			continue;
+		}
+		
+
+		if (_bitC > 0)
+		{
+			std::fputc(_bitC, _fp);
+			++_chunkWritten;
+		}
+	}
+
+	finishedWrite:
+		std::fclose(_fp);
+		return _chunkWritten;
+}
+
+
+
+// Read the packed data source to a int Vector.
+static inline const std::size_t readPack(const std::string& _inFile,
+					 std::vector<int>& _inVec)
+{
+	std::size_t _readChunk = 0;
+	std::FILE* _fi = std::fopen(_inFile.data(), "rb+");
+	int _C = 0;
+
+	if (!_fi)
+	{
+		std::cerr << "File Read Error.. !! " << "\n\n";
+		goto finishedRead;
+	}
+
+	while ((_C = std::fgetc(_fi)) > 0)
+	{
+		_inVec.push_back(_C);
+		++_readChunk;
+	}
 
 
 	finishedRead:
 		std::fclose(_fi);
-		return _blocksRead;
+		return _readChunk;
 }
 
 
