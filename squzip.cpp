@@ -11,8 +11,8 @@
 		  or just squzip -q <file1.[ext]>
 
 		  For uncompressing a *.sqz into its original format
-		  squzip -d <file2.qzp> [ <fileX.[ext]> ]
-		  or just squzip -d <file2.qzp>
+		  squzip -d <file2.sqz> [ <fileX.[ext]> ]
+		  or just squzip -d <file2.sqz>
 */
 
 constexpr int MAX = 4;
@@ -29,8 +29,6 @@ int main(const int argc, const char* args[MAX])
 	std::vector<packed_info> vpck, vpkRead;
 
 	std::vector<bitInfo<int>> bIf;
-
-	std::vector<int> encBits;
 	
 	std::vector<BPAIR>::iterator _bIter;
 
@@ -59,6 +57,19 @@ int main(const int argc, const char* args[MAX])
 	// Save the encoded information to 'pckinfo.tbi'.
 
 	writePackInfo("D:\\DATA\\pckinfo.tbi", vpck);
+
+	readPackInfo("D:\\DATA\\pckInfo.tbi", vpkRead);
+	
+	ReSync(vpkRead);
+
+	/*
+	for (auto const& pk : vpkRead)
+	{
+		PRINT(to_binary<int>::eval(pk._PACKED).data());
+		RPRINT(pk.L_BIT); RPRINT(pk.R_BIT);
+		RET;
+	}
+	*/
 
 	
 	// Working on the raw data source.
@@ -90,16 +101,14 @@ int main(const int argc, const char* args[MAX])
 
 	bitsPack(vpck1, BiC);
 
-	
+	/*
 	for (auto const& pk : vpck1)
 	{
 		PRINT(to_binary<int>::eval(pk._PACKED).data());
 		RPRINT(pk.L_BIT); RPRINT(pk.R_BIT);
 		RET;
 	}
-	
-	
-	/*
+	*/
 
 	writePack("D:\\DATA\\packed.sqz", vpck1);
 	readPack("D:\\DATA\\packed.sqz", _readInt);
@@ -123,20 +132,19 @@ int main(const int argc, const char* args[MAX])
 		PRINT(to_binary<int>::eval(_i).data() );
  
 
- */
-
 	//finishedDone:
 	vp.clear();
-	encBits.clear();
 	bIf.clear();
 
 	vpkRead.clear();
 	vpck.clear();
+
 	vpck1.clear();
 	BiC.clear();
 	BpC.clear();
 	_readInt.clear();
 	_srcInt.clear();
+	
 
 	RET2();
 
