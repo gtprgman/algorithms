@@ -9,29 +9,58 @@
 
 
 constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calculation used to 
-				    produce the best match has converged to this ideal value. */
+				     produce the best match has converged to this ideal value. */
 
 
 
 /* Using the information in _srcPackInfo to decompose each bit in _destPack.
    (still in experimentation .. ) */
 static inline void UnPack_Bits(std::vector<int>& _destPack,
-				 const std::vector<packed_info>& _srcPackInfo)
+				const std::vector<packed_info>& _srcPackInfo)
 {
-	int elem1 = 0, elem2 = 0;
+	std::string _str_value;
 	std::size_t j = 0;
-
+	const std::size_t jMax = _destPack.size();
+	int elem1 = 0, elem2 = 0, unpack_value = 0, n_bit = 0;
+	
 	for (packed_info const& _Pfi : _srcPackInfo)
 	{
-		elem2 = _destPack[j++];
+		elem2 = _srcPackInfo[j++]._PACKED; // packed value
 		elem1 = unPack(elem2, _Pfi.L_BIT, _Pfi.R_BIT);
 		
-		// we got the encoded bits of the second char stored in elem2.
-		elem2 = elem2 ^ (elem1 << _Pfi.R_BIT);
+		unpack_value = elem1;
+
+		// to accomodate previous called to 'oneAdder' macro
+		elem1 <<= 1;
+
+		n_bit = num_of_bits<int>::eval(elem1);
+
+		_str_value = repl_char('1', n_bit);
 		
-		// we then replaces the corresponding values in _destPack.
-		_destPack[j - 1] = elem1;
-		_destPack[j] = elem2;
+		elem1 = bin_to_dec<int>::eval(_str_value.data());
+		
+		elem1 = (elem1 << _Pfi.R_BIT) & elem2;
+
+		// we got the encoded bits of the second char stored in elem2.
+		elem2 = elem2 - elem1;
+		
+
+		/*	we then replaces the corresponding values in _destPack.
+			NB : Beware of shortness elems count in std::vector, because 
+			    the unpacked vector expands its elements out of counts in real time.
+		*/
+		if (j < jMax)
+		{
+			_destPack[j - 1] = unpack_value;
+			_destPack[j] = elem2;
+		}
+		else
+		{
+			_destPack.push_back(unpack_value);
+			_destPack.push_back(elem2);
+		}
+		
+		_str_value.clear();
 	}
 }
 
@@ -87,36 +116,26 @@ static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int
 
 
 
-// ReSync the read bits versus the original packed one
-inline static void ReSync(std::vector<packed_info>& _readVec, const std::vector<packed_info>& _Packed)
+// ReSync the read Vector bits with the packed integers ('_Int_Bits')
+inline static void ReSync(std::vector<packed_info>& _readVec)
 {
-	const std::size_t _maxSz = _Packed.size();
+	const std::size_t _maxSz = _readVec.size();
 	int _hi = 0, _lo = 0, _Single = 0;
 	_Int_Bits _read_bits;
 	const std::size_t gMax = _maxSz;
 
 	for (std::size_t g = 0; g < gMax; g++)
 	{
-		if ( _Packed[g]._PACKED != _readVec[g]._PACKED)
-		{	
-			MAX_BIT = proper_bits(_Packed[g]._PACKED );
-			_read_bits = _readVec[g].packed_bits;
-				
-			if (MAX_BIT > BYTE && MAX_BIT <= WORD)
-			{
-				_hi = _read_bits._eax[1];
-				_lo = _read_bits._eax[0];
-				_Single = _hi | _lo;
-				_readVec[g]._PACKED = _Single;
-			}
-			else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
-			{
-				_hi = _read_bits._eax[3] | _read_bits._eax[2];
-				_lo = _read_bits._eax[1] | _read_bits._eax[0];
-				_Single = _hi | _lo;
-				_readVec[g]._PACKED = _Single;
-			}
-			_read_bits = { 0,0,0,0 };	
+		if (!_readVec[g]._PACKED)
+		{
+			_hi = _readVec[g].packed_bits._eax[3] |
+				_readVec[g].packed_bits._eax[2];
+
+			_lo = _readVec[g].packed_bits._eax[1] |
+				_readVec[g].packed_bits._eax[0];
+
+			_Single = _hi | _lo;
+			_readVec[g]._PACKED = _Single;
 		}
 	}
 }
@@ -124,7 +143,7 @@ inline static void ReSync(std::vector<packed_info>& _readVec, const std::vector<
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				   const std::size_t _maxLen)
+				  const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
 			     this function is called. */
@@ -203,7 +222,7 @@ inline void _TREE::create_encoding(const int _From,
 		_sameVal = _bpr;
 
 		if (mix::generic::
-				vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
+			vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
 		//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
 			++_sameVal; _bt.clear();
@@ -254,7 +273,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 
 // Save the encoded table information into a file.
 inline static const std::size_t writePackInfo(const std::string& _fiName, 
-					      const std::vector<packed_info>& _pacData)
+						const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
 	std::FILE* _fpT = std::fopen("D:\\DATA\\pckinfo.tbi", "wb+");
@@ -350,9 +369,10 @@ inline static const std::size_t readPackInfo(const std::string& _inFile,
 }
 
 
+
 // Save the packed raw data source to a file.
 static inline const std::size_t writePack(const std::string _File,
-					  const std::vector<packed_info>& _packedSrc)
+					const std::vector<packed_info>& _packedSrc)
 {
 	std::size_t _chunkWritten = 0;
 	std::FILE* _fp = std::fopen(_File.data(), "wb+");
@@ -418,7 +438,7 @@ static inline const std::size_t writePack(const std::string _File,
 
 // Read the packed data source to a int Vector.
 static inline const std::size_t readPack(const std::string& _inFile,
-					 std::vector<int>& _inVec)
+					std::vector<int>& _inVec)
 {
 	std::size_t _readChunk = 0;
 	std::FILE* _fi = std::fopen(_inFile.data(), "rb+");
@@ -441,5 +461,6 @@ static inline const std::size_t readPack(const std::string& _inFile,
 		std::fclose(_fi);
 		return _readChunk;
 }
+
 
 
