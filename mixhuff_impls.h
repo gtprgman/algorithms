@@ -13,16 +13,16 @@ constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calcula
 
 
 
-/* Using the information in _srcPackInfo to decompose each bit in _destPack.
-   (still in experimentation .. ) */
+// Using the information in _srcPackInfo to decompose each bit in _destPack.
 static inline void UnPack_Bits(std::vector<int>& _destPack,
 				const std::vector<packed_info>& _srcPackInfo)
 {
-	std::string _str_value;
 	std::size_t j = 0;
-	const std::size_t jMax = _destPack.size();
-	int elem1 = 0, elem2 = 0, unpack_value = 0, n_bit = 0;
+	std::string _str_mask;
+	int elem1 = 0, elem2 = 0, unpack_value = 0;
 	
+	_destPack.clear();
+
 	for (packed_info const& _Pfi : _srcPackInfo)
 	{
 		elem2 = _srcPackInfo[j++]._PACKED; // packed value
@@ -30,38 +30,20 @@ static inline void UnPack_Bits(std::vector<int>& _destPack,
 		
 		unpack_value = elem1;
 
-		// to accomodate previous called to 'oneAdder' macro
-		elem1 <<= 1;
+		_str_mask = repl_char('1', _Pfi.R_BIT);
 
-		n_bit = num_of_bits<int>::eval(elem1);
-
-		_str_value = repl_char('1', n_bit);
+		elem1 = bin_to_dec<int>::eval(_str_mask.data());
 		
-		elem1 = bin_to_dec<int>::eval(_str_value.data());
+		elem2 = elem1 & elem2;
 		
-		elem1 = (elem1 << _Pfi.R_BIT) & elem2;
+		unpack_value = biXs.value_from_bitstr(to_binary<int>::eval(unpack_value) );
+		elem2 = biXs.value_from_bitstr(to_binary<int>::eval(elem2) );
 
-		// we got the encoded bits of the second char stored in elem2.
-		elem2 = elem2 - elem1;
-		
-
-		/*	we then replaces the corresponding values in _destPack.
-			NB : Beware of shortness elems count in std::vector, because 
-			    the unpacked vector expands its elements out of counts in real time.
-		*/
-		if (j < jMax)
-		{
-			_destPack[j - 1] = unpack_value;
-			_destPack[j] = elem2;
-		}
-		else
-		{
 			_destPack.push_back(unpack_value);
 			_destPack.push_back(elem2);
-		}
-		
-		_str_value.clear();
-	}
+
+		_str_mask.clear();
+	}	
 }
 
 
