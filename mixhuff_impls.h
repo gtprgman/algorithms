@@ -8,8 +8,8 @@
 
 
 
-constexpr double COMP_RATE = 0.49; /* Amazing.. !!, further tweaking the calculation used to 
-				     produce the best match has converged to this ideal value. */
+constexpr double COMP_RATE = 0.52; /* Amazing.. !!, further tweaking the calculation used to 
+				      produce the best match has converged to this ideal value. */
 
 
 
@@ -43,7 +43,7 @@ static inline void UnPack_Bits(std::vector<int>& _destPack,
 			_destPack.push_back(elem2);
 
 		_str_mask.clear();
-	}	
+	}
 }
 
 
@@ -125,7 +125,7 @@ inline static void ReSync(std::vector<packed_info>& _readVec)
 
 
 inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
-				  const std::size_t _maxLen)
+					const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
 			     this function is called. */
@@ -165,8 +165,8 @@ inline void _TREE::create_encoding(const int _From,
 				   std::string& _bt,
 				   const std::vector<node>& _Vn)
 {
-	int _Dir = 0, _recurr = 0, _sameVal = 0;
-	node _e = 0; BPAIR _bpr = {};
+	node _e = 0;
+	int _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
 	static double _fq = 100.00;
 	std::vector<BPAIR>::iterator _iGet;
 
@@ -191,28 +191,31 @@ inline void _TREE::create_encoding(const int _From,
 
 		if (_recurr > 1)
 		{
-			_sameVal = biXs.value_from_bitstr(_bt.data());
-			++_sameVal;
+			_sameVal = ++_prevX;
 			_bt.clear();
 			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_recurr = 0; _sameVal = 0;
+			_recurr = 0;
+			goto filterPhase;
 		}
 		
 		_bt = (char*)concat_str((char*)_bt.data(), inttostr(_Dir));
 
-		_bpr = biXs.value_from_bitstr(_bt.data());
-		_sameVal = _bpr;
+	filterPhase:
+		_sameVal = biXs.value_from_bitstr(LRTrim(_bt.data()));
+		_prevX = _sameVal;
 
 		if (mix::generic::
-			vector_search(_vPair.begin(), _vPair.end(), _bpr, bitLess(), _iGet))
+			vector_search(_vPair.begin(), _vPair.end(), _sameVal, bitLess(), _iGet))
 		//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
-			++_sameVal; _bt.clear();
+			_sameVal = _iGet->_val;
+			++_sameVal;
+			_bt.clear();
 			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_sameVal = 0; _bpr = {};
+			_prevX = biXs.value_from_bitstr(LRTrim(_bt.data()));
 		}
 
-		_vPair.push_back({ _e.dataValue(),biXs.value_from_bitstr(LRTrim(_bt.data())) });
+		_vPair.push_back({ _e.dataValue(), _prevX });
 		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 	}
@@ -244,10 +247,25 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 			_BT = 2; 
 			
 
-		_Dir = !_Dir;
+		_Dir = _Dir ^ 1;
 		_bts.clear();
 
 		_bts.assign( concat_str((char*)inttostr(_Dir),to_binary<int>::eval(_msk).data() ) );
+	}
+
+	_TREE::enforce_unique(_vPair);
+}
+
+
+
+inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
+{
+	const std::size_t _nMax = _bPairs.size() - 1;
+
+	for (std::size_t i = 0; i < _nMax; i++)
+	{
+		if (_bPairs[i]._val == _bPairs[i + 1]._val)
+			++_bPairs[i + 1]._val;
 	}
 }
 
@@ -316,7 +334,7 @@ inline static const std::size_t writePackInfo(const std::string& _fiName,
 
 // Read the encoded table information from a file.
 inline static const std::size_t readPackInfo(const std::string& _inFile,
-					std::vector<packed_info>& _ReadVector)
+						std::vector<packed_info>& _ReadVector)
 {
 	std::size_t _blocksRead = 0;
 	std::FILE* _fiT = std::fopen("D:\\DATA\\pckinfo.tbi", "rb+");
@@ -351,10 +369,9 @@ inline static const std::size_t readPackInfo(const std::string& _inFile,
 }
 
 
-
 // Save the packed raw data source to a file.
 static inline const std::size_t writePack(const std::string _File,
-					const std::vector<packed_info>& _packedSrc)
+					   const std::vector<packed_info>& _packedSrc)
 {
 	std::size_t _chunkWritten = 0;
 	std::FILE* _fp = std::fopen(_File.data(), "wb+");
@@ -420,7 +437,7 @@ static inline const std::size_t writePack(const std::string _File,
 
 // Read the packed data source to a int Vector.
 static inline const std::size_t readPack(const std::string& _inFile,
-					std::vector<int>& _inVec)
+					  std::vector<int>& _inVec)
 {
 	std::size_t _readChunk = 0;
 	std::FILE* _fi = std::fopen(_inFile.data(), "rb+");
@@ -443,6 +460,5 @@ static inline const std::size_t readPack(const std::string& _inFile,
 		std::fclose(_fi);
 		return _readChunk;
 }
-
 
 
