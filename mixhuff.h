@@ -33,6 +33,7 @@ struct BPAIR
 
 	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0) 
 	{
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_v) );
 	};
 
 	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) ,bit_len(0) 
