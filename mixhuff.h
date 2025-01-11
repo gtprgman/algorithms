@@ -71,7 +71,7 @@ struct BPAIR
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_bpa._val) );
+		this->bit_len = _bpa.bit_len;
 
 		return *this;
 	}
@@ -81,7 +81,7 @@ struct BPAIR
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_rvBpa._val) );
+		this->bit_len = _rvBpa.bit_len;
 
 		_rvBpa.~BPAIR();
 
@@ -169,13 +169,16 @@ struct _TREE {
 	// create a huffman tree-view like scheme from the vector nodes data
 	static inline void plot_tree(const std::vector<node>&);
 
-
 	// reclaim allocated resources from _TREE
 	inline static  void Clean() {
 		_vPair.clear();
 	}
 	
 private:
+
+	// Enforce the uniqueness of each bit in the vector
+	static inline void enforce_unique(std::vector<BPAIR>&);
+
 	// iterate through the dataset elements in the vector to project a certain section of tree-view
 	static inline void schema_Iter(const std::vector<node>&);
 
@@ -252,7 +255,9 @@ struct chrLess
 {
 	const bool operator()(const char _c1, const char _c2)
 	{
+	
 		return ( _c1 < _c2 );
+
 	}
 };
 
