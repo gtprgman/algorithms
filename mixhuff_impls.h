@@ -462,3 +462,66 @@ static inline const std::size_t readPack(const std::string& _inFile,
 }
 
 
+// write the original uncompressed form of the data into a file.
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, 
+					      const std::vector<BPAIR>& _codeInfo)
+{
+	
+	std::size_t _wordsWritten = 0;
+	const std::size_t _codeSize = _codeInfo.size();
+	std::FILE* _fOrig = std::fopen(_OriginFile.data(), "wb+");
+	std::vector<BPAIR>::iterator _bIt;
+	std::vector<BPAIR> _codTab = _codeInfo;
+
+	if (!_fOrig)
+	{
+		std::cerr << "Error writing file.. !! " << "\n\n";
+		goto EndWrite;
+	}
+	
+	mix::generic::t_sort(_codTab.begin(), _codTab.end(), 0.25, bitLess());
+
+	for (auto const& _i : _intSrc)
+	{
+		if (mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, bitLess(), _bIt))
+		{
+			std::fputc(_bIt->_data, _fOrig);
+			++_wordsWritten;
+		}
+
+	}
+
+EndWrite:
+	std::fclose(_fOrig);
+	return _wordsWritten;
+}
+
+
+
+// read the saved original uncompressed data from a file
+static inline const std::size_t readOriginal(const std::string& _OrigFile, std::vector<char>& _readDat)
+{
+	std::size_t _wordsRead = 0;
+	std::FILE* _fOri = std::fopen(_OrigFile.data(), "rb+");
+	int _rC = 0;
+
+	if (!_fOri)
+	{
+		std::cerr << "Error reading file.. !! " << "\n\n";
+		goto EndRead;
+	}
+
+	while ((_rC = std::fgetc(_fOri)) > 0)
+	{
+		_readDat.push_back(_rC);
+		++_wordsRead;
+	}
+
+EndRead:
+	std::fclose(_fOri);
+	return _wordsRead;
+}
+
+
+
+
