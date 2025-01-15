@@ -929,7 +929,6 @@ namespace mix {
 		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double _dvRatio, 
 				   _Pred _fCmp, const ptrdiff_t _maxElem = 0)
 		{
-			
 			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
 
 			const std::ptrdiff_t _maxSz = (_maxElem > 0)? (_maxElem - 1) : (_End - _Begin) - 1;
@@ -939,28 +938,29 @@ namespace mix {
 				return;
 			}
 			
-			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
-			const std::ptrdiff_t _nDivs = _maxSz / _dvSz;
+			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)std::floor((_dvRatio * _maxSz) );
+			const std::ptrdiff_t _nDivs = (std::ptrdiff_t)std::floor(_maxSz / _dvSz);
 
-			_Iter _L = _Begin, _R = _L + _dvSz;
+			_Iter _L = _Begin, _R = (_L + _dvSz) - 1;
 
 			mix::ptr_type::U_ARRAY<std::thread> _uT = MK_U_ARRAY<std::thread>(_nDivs);
 
 			for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
 			{
 				_uT[_t] = std::thread{ [&_L, &_R, &_dvSz, &_fCmp]() {
-					fast_sort(_L,_R,_fCmp,_dvSz);
+							fast_sort(_L, _R, _fCmp, _dvSz);
 				  } };
 
 				_uT[_t].join();
 				_L = _R;
-				_R = _L + _dvSz;
+				_R = (_L + _dvSz) - 1;
 				if (_R > _End) goto cleanUp;
 			}
   
-		cleanUp:
-			fast_sort(_Begin, _End, _fCmp, _maxSz);
-			_uT.release();
+			cleanUp:
+				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				_uT.release();
+
 		}
 
 
