@@ -6,7 +6,7 @@
 
 
 /*
-; Usages: For compressing one file into a *.sqz file.
+; Usages: 	  For compressing one file into a *.sqz file.
 		  squzip -q <file1.[ext]> [<file2.sqz>]
 		  or just squzip -q <file1.[ext]>
 
@@ -49,7 +49,7 @@ int main(const int argc, const char* args[MAX])
 
 			bIf.push_back(bi);
 			bi = {};
-		}
+		} 
 	}
 
 	bitsPack(vpck, bIf); // packed the encoded information
@@ -115,12 +115,14 @@ int main(const int argc, const char* args[MAX])
 	
 
 	RET;
-	
+
+	/*
 	for (packed_info const& _pck : vpck1)
 	{
 		_srcInt.push_back(_pck._PACKED);
 		PRINT(_pck._PACKED);
 	}
+	*/
 
 	ReSync_Int(_readInt, _srcInt);
 
@@ -128,9 +130,25 @@ int main(const int argc, const char* args[MAX])
 
 	UnPack_Bits(_readInt, vpck1);
 
+	/*
 	for (auto const& _i : _readInt)
-		PRINT(to_binary<int>::eval(_i).data() );
- 
+		PRINT(to_binary<int>::eval(_i).data() ); 
+	*/
+
+
+	std::vector<char> _readVec;
+
+
+	writeOriginal("D:\\DATA\\unpacked.dat", _readInt, BpC);
+	
+	readOriginal("D:\\DATA\\unpacked.dat", _readVec);
+
+	for (auto const& _a : _readVec)
+		RPRINT(_a);
+
+
+	RET;
+
 
 	//finishedDone:
 	vp.clear();
@@ -144,7 +162,8 @@ int main(const int argc, const char* args[MAX])
 	BpC.clear();
 	_readInt.clear();
 	_srcInt.clear();
-	
+	_readVec.clear();
+
 
 	RET2();
 
