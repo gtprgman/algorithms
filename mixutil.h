@@ -818,7 +818,7 @@ namespace mix {
 	// an overloaded printer function for any Buckets' types
 	template <mix::data::Bucket*>
 	constexpr void smart_print(const mix::data::Bucket*& begin,
-								const mix::data::Bucket*& end)
+				    const mix::data::Bucket*& end)
 	{
 		FOR_EACH_PRINT(begin, end);
 	}
@@ -933,13 +933,13 @@ namespace mix {
 
 			const std::ptrdiff_t _maxSz = (_maxElem > 0)? _maxElem : (_End - _Begin) - 1;
 
-			if (_maxSz < 10) {
-				fast_sort(_Begin, _End, _fCmp, _maxSz);
-				return;
-			}
+				if (_maxSz < 10) {
+					fast_sort(_Begin, _End, _fCmp, _maxSz);
+					return;
+				}
 			
 			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
-			const std::ptrdiff_t _nDivs = (std::ptrdiff_t)(_maxSz / _dvSz);
+			const std::ptrdiff_t _nDivs = (std::ptrdiff_t)(_maxSz / _dvSz) - 1;
 
 			_Iter _L = _Begin, _R = _L + (_dvSz - 1);
 
@@ -948,18 +948,18 @@ namespace mix {
 			for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
 			{
 				_uT[_t] = std::thread{ [_L, _R, _dvSz, &_fCmp]() {
-						fast_sort(_L, _R, _fCmp, _dvSz);
+					fast_sort(_L, _R, _fCmp, _dvSz);
 				  } };
 
 				_uT[_t].join();
 				_L = _R;
 				_R = _R + (_dvSz - 1);
-				if (_R > _End) goto cleanUp;
+				if ( (_End - _R) <= 1 ) goto cleanUp;
 			}
   
-		   cleanUp:
-			fast_sort(_Begin, _End, _fCmp, _maxSz);
-			_uT.release();
+			cleanUp:
+				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				_uT.release();	
 		}
 
 
