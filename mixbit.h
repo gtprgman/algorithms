@@ -228,6 +228,10 @@ inline static const char* snapStr(const char*, const int, const int);
 */
 inline static const char* tapStr(const char*, const char, const int, const int);
 
+/* supersede part of a string with a specified substring at a specified position in the target string.
+   Zero-based index array accesses is assumed */
+inline static const char* tapStrBy(const char*, const char*, const int);
+
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
 inline static const char* rtrimx(const char*, const int, const char);
@@ -663,7 +667,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-			 _lenX = std::strlen(_searchStr);
+			  _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -778,6 +782,29 @@ inline static const char* tapStr(const char* _pStr, const char _tpChr, const int
 	return _tpStr;
 }
 
+
+static inline const char* tapStrBy(const char* _aStr, const char* _aSubstitute, const int _startPos)
+{
+	const std::size_t _maxSz = std::strlen(_aStr), 
+			  _Len = std::strlen(_aSubstitute);
+
+	char* _begin = (char*)_aStr, *_end = (char*)((_aStr + _maxSz) - 1);
+	
+	char* _bckup = _begin;
+
+	_bckup += (_startPos + 1);
+
+	if (_bckup > _end)
+		_bckup = _begin;
+
+	std::strncpy(_bckup, _aSubstitute, _Len);
+	*(_end + 1) = 0;
+
+	NULL2P(_begin, _end);
+	NULLP(_bckup);
+
+	return _aStr;
+}
 
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
@@ -978,7 +1005,7 @@ struct packed_info
 
 // pack the entire bits of the vector into a 'packed_info' vector
 template < typename T >
-inline static void bitsPack(std::vector<packed_info>& _packed, const std::vector<bitInfo<T>>& _vb)
+static inline void bitsPack(std::vector<packed_info>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
@@ -1018,7 +1045,7 @@ inline static void bitsPack(std::vector<packed_info>& _packed, const std::vector
 
 
 inline static const int unPack(const int& _Packed, std::size_t const _leftBits,
-				std::size_t const _rightBits)
+				 std::size_t const _rightBits)
 {
 	const std::string s0 = repl_char('1', _leftBits).data();
 
@@ -1026,7 +1053,7 @@ inline static const int unPack(const int& _Packed, std::size_t const _leftBits,
 		bin1 = iDec << _rightBits, _pac = _Packed,
 		bin2 = (bin1 & _pac) >> _rightBits;
 
-	return bin2;
+	return bin2; 
 }
 
 
@@ -1551,6 +1578,5 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
-
 
 
