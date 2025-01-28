@@ -14,8 +14,7 @@ constexpr double COMP_RATE = 0.52; /* Amazing.. !!, further tweaking the calcula
 
 
 // Using the information in _srcPackInfo to decompose each bit in _destPack.
-static inline void UnPack_Bits(std::vector<int>& _destPack,
-			       const std::vector<packed_info>& _srcPackInfo)
+static inline void UnPack_Bits(std::vector<int>& _destPack, const std::vector<packed_info>& _srcPackInfo)
 {
 	std::size_t j = 0;
 	std::string _str_mask;
@@ -99,7 +98,7 @@ static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int
 
 
 // ReSync the read Vector bits with the packed integers ('_Int_Bits')
-inline static void ReSync(std::vector<packed_info>& _readVec)
+static inline void ReSync(std::vector<packed_info>& _readVec)
 {
 	const std::size_t _maxSz = _readVec.size();
 	int _hi = 0, _lo = 0, _Single = 0;
@@ -124,11 +123,11 @@ inline static void ReSync(std::vector<packed_info>& _readVec)
 
 
 
-inline static void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
+static inline void filter_pq_nodes(std::vector<node>& _target, node&& _Nod,
 				   const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
-						this function is called. */
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -273,8 +272,8 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 
 // Save the encoded table information into a file.
-inline static const std::size_t writePackInfo(const std::string& _fiName, 
-					      const std::vector<packed_info>& _pacData)
+static inline const std::size_t writePackInfo(const std::string& _fiName, 
+						const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
 	std::FILE* _fpT = std::fopen(_fiName.data(), "wb+");
@@ -291,7 +290,7 @@ inline static const std::size_t writePackInfo(const std::string& _fiName,
 		goto finishedDone;
 	}
 
-	// save information about the number of packed_info blocks at the beginning of file.
+	// save information about the number of 'packed_info' blocks at the beginning of file.
 	std::fputc(n_PiF_blocks, _fpT);
 	
 	// saving table of encoded information ..
@@ -334,8 +333,7 @@ inline static const std::size_t writePackInfo(const std::string& _fiName,
 
 
 // Read the encoded table information from a file.
-inline static const std::size_t readPackInfo(const std::string& _inFile,
-					      std::vector<packed_info>& _ReadVector)
+static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<packed_info>& _ReadVector)
 {
 	std::size_t _blocksRead = 0;
 	std::FILE* _fiT = std::fopen(_inFile.data(), "rb+");
@@ -354,7 +352,7 @@ inline static const std::size_t readPackInfo(const std::string& _inFile,
 	 pif_blocks = std::fgetc(_fiT);
 
 
-	// reads up number of packed_info blocks to the buffer _PIF.
+	// reads up number of 'packed_info' blocks to the buffer _PIF.
 	for(int j = 0; j < pif_blocks; j++)
 	{
 		std::fread(&_PIF, sizeof(packed_info), 1, _fiT);
@@ -373,7 +371,7 @@ inline static const std::size_t readPackInfo(const std::string& _inFile,
 
 // Save the packed raw data source to a file.
 static inline const std::size_t writePack(const std::string& _File,
-					  const std::vector<packed_info>& _packedSrc)
+					   const std::vector<packed_info>& _packedSrc)
 {
 	std::size_t _chunkWritten = 0;
 	std::FILE* _fp = std::fopen(_File.data(), "wb+");
@@ -481,7 +479,7 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 		goto EndWrite;
 	}
 	
-	mix::generic::fast_sort(_codTab.begin(), _codTab.end(), bitLess());
+	mix::generic::t_sort(_codTab.begin(), _codTab.end(), 0.25, bitLess());
 
 	for (auto const& _i : _intSrc)
 	{
@@ -525,27 +523,43 @@ EndRead:
 }
 
 
-
-// Reconstruct a BPAIR Table from the read encoded information data table
+// Recreate a BPAIR Table from the read encoded information data table
 static inline void Construct_BPAIR_Table(std::vector<BPAIR>& _BPAIR, const std::vector<packed_info>& _PackInfo)
 {
 	BPAIR _bp = {};
+	int _v1 = 0, _v2 = 0, _Orig = 0;
+	std::string _cMask = "\0";
+	const std::size_t _Max = _PackInfo.size();
 
-	for (packed_info const& _pfo : _PackInfo)
+	for (std::size_t i = 0; i < _Max; i++)
 	{
-		_bp._data = _pfo.L_ALPHA;
-		_bp._val = _pfo.L_BIT;
+		_v2 = _PackInfo[i]._PACKED;
+		_v1 = unPack(_v2, _PackInfo[i].L_BIT, _PackInfo[i].R_BIT);
+		_Orig = _v1;
+		_cMask = repl_char('1', _PackInfo[i].R_BIT);
+		_v1 = bin_to_dec<int>::eval(_cMask.data());
+		_v2 = _v1 & _v2;
+
+		_Orig = biXs.value_from_bitstr(to_binary<int>::eval(_Orig));
+		_v2 = biXs.value_from_bitstr(to_binary<int>::eval(_v2));
+
+		_bp._data = _PackInfo[i].L_ALPHA;
+		_bp._val = _Orig;
 
 		_BPAIR.push_back(_bp);
+
 		_bp = {};
 
-		_bp._data = _pfo.R_ALPHA;
-		_bp._val = _pfo.R_BIT;
+		_bp._data = _PackInfo[i].R_ALPHA;
+		_bp._val = _v2;
 
 		_BPAIR.push_back(_bp);
+
 		_bp = {};
+		_cMask.clear();
 	}
 }
+
 
 
 
@@ -669,6 +683,7 @@ static inline const bool Compress(const std::string& _srcF,
 	bitsPack(vpck0, _vbI);
 
 
+	// save the encoding information data table into a file
 	if (writePackInfo(_SystemFile.data(), vpck0) < 0)
 	{
 		std::cerr << "Error writing encoded's information table !" << "\n\n";
@@ -676,14 +691,15 @@ static inline const bool Compress(const std::string& _srcF,
 	}
 
 	
-	// Working on the bare raw data source ..
-	mix::generic::fast_sort(_CodeMap.begin(), _CodeMap.end(), chrLess());
+	/* Working on the bare raw data source ..
+	   '_CodeMap '  is the previous generated encoding information data table. */
+	mix::generic::t_sort(_CodeMap.begin(), _CodeMap.end(), 0.25,chrLess());
 
 	_bIF = {};
 	_vbI.clear();
 	vpck0.clear();
 
-
+	// Find the encoding match to every character in '_vecSrc' and bind the data from '_CodeMap'.
 	for (auto const& _ci : _vecSrc)
 	{
 		if (mix::generic::vector_search(_CodeMap.begin(), _CodeMap.end(), _ci, chrLess(), _BiT))
@@ -693,11 +709,18 @@ static inline const bool Compress(const std::string& _srcF,
 			_bIF.numBits = oneAdder(num_of_bits<int>::eval(_bIF.X));
 
 			_vbI.push_back(_bIF);
+			_bIF = {};
 		}
 	}
 
 
 	bitsPack(vpck0, _vbI);
+
+	if (writePackInfo(_SystemFile.data(), vpck0) < 0)
+	{
+		std::cerr << "Error writing encoded information of the input data. " << "\n\n";
+		goto finishedDone;
+	}
 
 	if (!_destF.empty()) _copyOne = (char*)_destF.data();
 
@@ -706,6 +729,7 @@ static inline const bool Compress(const std::string& _srcF,
 		std::cerr << "Error writing packed data source !" << "\n\n";
 		goto finishedDone;
 	}
+
 
 
 finishedDone:
@@ -727,6 +751,70 @@ finishedDone:
 
 static inline void UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
+	std::vector<int> _ReadIntBckup, _ReadInt;
+	std::vector<packed_info> _ReadPck;
+	std::vector<BPAIR> _ReadCodeMap;
+	char* _OriginCopy = nullptr;
+	int _Cnt = 0;
+
+	// to obtain a *.tbi file
+	_OriginCopy = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
+	_OriginCopy = (char*)concat_str(_OriginCopy, "tbi");
+
+	_SystemFile.assign(_OriginCopy);
+	_OriginCopy = (char*)"\0";
+
+
+	if ( readPackInfo(_SystemFile.data(), _ReadPck) < 0) // *.tbi
+	{
+		std::cerr << "Error reading encoded's information data table ! " << "\n\n";
+		goto EndStage;
+	}
+
 	
+	ReSync(_ReadPck);
+
+	for (const packed_info& _pik : _ReadPck)
+	{
+		_ReadIntBckup.push_back(_pik._PACKED);
+	}
+
+
+	// read a *.sqz file
+	if (readPack(_packedFile.data(), _ReadInt) < 0) // *.sqz
+	{
+		std::cerr << "Error reading compressed file. " << "\n\n";
+		goto EndStage;
+	}
+
+	
+	ReSync_Int(_ReadInt, _ReadIntBckup);
+
+	UnPack_Bits(_ReadInt, _ReadPck);
+
+	Construct_BPAIR_Table(_ReadCodeMap, _ReadPck);
+
+	if (_unPackedFile.empty())
+	{
+		_OriginCopy = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
+		_OriginCopy = (char*)concat_str(_OriginCopy, "txt");
+	}
+	else _OriginCopy = (char*)_unPackedFile.data();
+
+	
+	if (writeOriginal(_OriginCopy, _ReadInt, _ReadCodeMap) < 0)
+	{
+		std::cerr << "Error writing decoded format of a file. " << "\n\n";
+		goto EndStage;
+	}
+	
+
+EndStage:
+	NULLP(_OriginCopy);
+	_ReadInt.clear();
+	_ReadIntBckup.clear();
+	_ReadCodeMap.clear();
+	_ReadPck.clear();
+
 }
 
