@@ -40,10 +40,9 @@ int main(const int argc, const char* args[MAX])
 			break;
 
 		default:
-			PRINT("Unknown Command or bad filename.");
+			PRINT("unknown command or bad filename.");
 			break;
 	}
-
 
 	return -1;
 }
