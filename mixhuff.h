@@ -163,8 +163,8 @@ private:
 struct _TREE {
 
 	// get the encoded bits of data from A Vector 
-	static inline std::vector<BPAIR>&& CodeMap() {
-		return std::forward<std::vector<BPAIR>&&>(_vPair);
+	static inline std::vector<BPAIR>&  CodeMap() {
+		return _TREE::_vPair;
 	}
 
 	// create a huffman tree-view like scheme from the vector nodes data
