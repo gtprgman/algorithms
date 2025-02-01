@@ -36,8 +36,15 @@ typedef LONGFLOAT LFLOAT;
 
 #define RET std::cout << "\n";
 
-#define PRINT(_t) std::cout << (_t) << "\n";
-#define RPRINT(_t) std::cout << (_t) << ", ";
+template <typename T>
+constexpr void PRINT(const T& _t) { std::cout << (_t) << "\n"; }
+
+template <typename T>
+constexpr void RPRINT(T const& _t) { std::cout << (_t); }
+
+template < typename T >
+constexpr void RPRINTC(T const& _t) { std::cout << (_t) << ","; }
+
 
 inline void RET2() {
 	RET;
@@ -520,7 +527,7 @@ namespace mix {
 		using list_iterator = typename iList<value_type>::iterator;
 		using LIST = iList<value_type>;
 
-		inline static void initialize(P _p, LIST const& _ls) {
+		static inline void initialize(P _p, LIST const& _ls) {
 			for (list_iterator _it = _ls.begin(); _it != _ls.end(); _it++)
 				*_p++ = *_it;
 		}
@@ -589,6 +596,7 @@ namespace mix {
 
 	}; // end of data namespace
 
+
 	
 	constexpr const bool isRange(int const _C, std::initializer_list<int const> const& _vals) {
 		bool isElem = false;
@@ -606,7 +614,6 @@ namespace mix {
 	
 	
 	namespace ptr_type {
-
 
 		// Deleter Object for UNIQUE_ARRAY<Ty>
 		template < class Ty >
@@ -817,8 +824,7 @@ namespace mix {
 	 
 	// an overloaded printer function for any Buckets' types
 	template <mix::data::Bucket*>
-	constexpr void smart_print(const mix::data::Bucket*& begin,
-				    const mix::data::Bucket*& end)
+	constexpr void smart_print(const mix::data::Bucket*& begin, const mix::data::Bucket*& end)
 	{
 		FOR_EACH_PRINT(begin, end);
 	}
@@ -879,29 +885,40 @@ namespace mix {
 
 
 		// display the content of any STL-like container
-		template < class _Iter >
-		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End)
+		template < class _Iter, class _FnPrint >
+		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End, const _FnPrint& _printFn)
 		{
 			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
 			
 			int _cnt = 0;
 			for (_Iter _p = _Begin; _p != _End; _p++, ++_cnt)
 			{
-				RPRINT(*_p);
+				_printFn(*_p);
 				if (_cnt > 79) RET;
 			}
+		}
+
+
+		// prints out the content of any buffer
+		template <typename _T, class _FnPrint>
+		static inline void BUFF_Print(_T* _xBuffer, const std::size_t _maxBuf, const _FnPrint& _printFn)
+		{
+		
+			for (std::size_t _zi = 0; _zi < _maxBuf; _zi++)
+				_printFn(((_T*)_xBuffer)[_zi]);
 		}
 
 
 		// fast sort algorithm performs on data elements in the Vector
 		template < class _Iter, class _Pred >
 		inline void fast_sort(const _Iter& _First, const _Iter& _End,
-				      _Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
+					_Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
 		{
 			if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
 			
-			typename _Iter::value_type _vTemp;
 			const std::ptrdiff_t _MaxSz = (_maxElems > 0)? _maxElems : (_End - _First) - 1;
+
+			typename _Iter::value_type _vTemp;
 
 			for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
 			{
@@ -929,14 +946,15 @@ namespace mix {
 		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double _dvRatio, 
 				   _Pred _fCmp, const ptrdiff_t _maxElem = 0)
 		{
+			
 			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
 
 			const std::ptrdiff_t _maxSz = (_maxElem > 0)? _maxElem : (_End - _Begin) - 1;
 
-				if (_maxSz < 10) {
-					fast_sort(_Begin, _End, _fCmp, _maxSz);
-					return;
-				}
+			if (_maxSz < 10) {
+				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				return;
+			}
 			
 			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
 			const std::ptrdiff_t _nDivs = (std::ptrdiff_t)(_maxSz / _dvSz) - 1;
@@ -957,9 +975,9 @@ namespace mix {
 				if ( (_End - _R) <= 1 ) goto cleanUp;
 			}
   
-			cleanUp:
-				fast_sort(_Begin, _End, _fCmp, _maxSz);
-				_uT.release();	
+		cleanUp:
+			fast_sort(_Begin, _End, _fCmp, _maxSz);
+			_uT.release();
 		}
 
 
@@ -970,9 +988,7 @@ namespace mix {
 	*/
 	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
 	inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
-					const _Other& _LookUp_Value,
-					_Pred _fCompare,
-					_Iter& _foundElem)
+					const _Other& _LookUp_Value, _Pred _fCompare, _Iter& _foundElem)
 	{
 		if (_Begin._Ptr == nullptr || _Last._Ptr == nullptr) return false;
 		
@@ -1017,6 +1033,8 @@ namespace mix {
 		return ((_Other)lookup_value == (_Other)vector_value);
 	}
   } // End of generic namespace
+
 };
+
 
 
