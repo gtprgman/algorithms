@@ -33,7 +33,7 @@ struct BPAIR
 
 	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0) 
 	{
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_v) );
+		this->bit_len = oneAdder(num_of_bits<int>::eval(_v));
 	};
 
 	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) ,bit_len(0) 
@@ -163,27 +163,27 @@ private:
 struct _TREE {
 
 	// get the encoded bits of data from A Vector 
-	static inline std::vector<BPAIR>&  CodeMap() {
+	static inline const std::vector<BPAIR>& CodeMap() {
 		return _TREE::_vPair;
 	}
 
-	// create a huffman tree-view like scheme from the vector nodes data
-	static inline void plot_tree(const std::vector<node>&);
+	// creates a huffman tree-view like scheme from the vector nodes data
+	static inline void plot_tree(const std::vector<node>&, const double&);
 
-	// reclaim allocated resources from _TREE
+	// reclaims allocated resources from _TREE
 	inline static  void Clean() {
 		_vPair.clear();
 	}
 	
 private:
 
-	// Enforce the uniqueness of each bit in the vector
+	// Enforces the uniqueness of each bit in the vector
 	static inline void enforce_unique(std::vector<BPAIR>&);
 
-	// iterate through the dataset elements in the vector to project a certain section of tree-view
-	static inline void schema_Iter(const std::vector<node>&);
+	// iterates through the dataset elements in the vector to project a certain section of tree-view
+	static inline void schema_Iter(const std::vector<node>&, const double);
 
-	// directly create huffman encoding table from std::vector<node> without prebuilt the tree
+	// directly create a huffman encoding table from the std::vector<node> without prebuilt the tree
 	static inline void create_encoding(const int, const int, std::string&, const std::vector<node>&);
 
 	static std::vector<BPAIR> _vPair;
@@ -217,7 +217,7 @@ constexpr inline const N VALX(const node* const _p) {
 }
 
 
-// Extract nodes information from the vector
+// Extracts nodes information from the vector
 inline static void NPRINT(const std::vector<node>& _vn)
 {
 	for (const node& _e : _vn)
@@ -256,16 +256,14 @@ struct chrLess
 {
 	const bool operator()(const char _c1, const char _c2)
 	{
-	
 		return ( _c1 < _c2 );
-
 	}
 };
 
 
 #ifndef MX_HUFF_IMPLS
 
-/* Filter priority queue nodes and compute the frequency of each node */
+/* Filters priority queue nodes and compute the frequency of each node */
 inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t);
 
 #include "mixhuff_impls.h"
@@ -401,9 +399,9 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 
 
 
-inline void _TREE::plot_tree(const std::vector<node>& _fpNods)
+inline void _TREE::plot_tree(const std::vector<node>& _fpNods, const double& _compRate)
 {
-	schema_Iter(_fpNods);
+	schema_Iter(_fpNods, _compRate);
 }
 
 
