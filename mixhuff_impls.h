@@ -1,5 +1,5 @@
 #pragma once
-
+/* Using License GPL v 3.0. */
 
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
@@ -11,9 +11,8 @@
 static std::uintmax_t F_SIZE = 0;
 static std::string _SystemFile = "\0";
 
-
-constexpr double COMP_RATE = 0.52; /* Amazing.. !!, further tweaking the calculation used to 
-				     produce the best match has converged to this ideal value. */
+constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it 
+				      in the command line */
 
 
 
@@ -130,7 +129,7 @@ static inline void ReSync(std::vector<packed_info>& _readVec)
 static inline void filter_pq_nodes(std::vector<node>& _target, node&& _Nod, const std::size_t _maxLen)
 {
 	node _nod = _Nod; /* fetches new node from the priority queue each time
-						this function is called. */
+			     this function is called. */
 	double _fqr = 0;
 	static int _q = 0;
 	int _p = _q;
@@ -227,10 +226,13 @@ inline void _TREE::create_encoding(const int _From,
 
 
 
-inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
+inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _cmpRate = 0)
 {
 	const int _TreeSizes = (int)_fpNods.size();
-	const double _CompRate = std::floor((COMP_RATE) * _TreeSizes);
+
+	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
+					     std::floor(COMP_RATE*_TreeSizes);
+
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
 	int _DivSize = (int)_fCompRate;
 	int _msk = 0, _BT = 2, _Dir = L;
@@ -256,6 +258,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 		_bts.assign( concat_str((char*)inttostr(_Dir),to_binary<int>::eval(_msk).data() ) );
 	}
 
+	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
 	_TREE::enforce_unique(_vPair);
 }
 
@@ -263,19 +266,21 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods)
 
 inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 {
-	const std::size_t _nMax = _bPairs.size() - 1;
+	int _Addend = 0;
+	int _MaxSz = (int)_bPairs.size();
 
-	for (std::size_t i = 0; i < _nMax; i++)
+	for (int n = 0, m = 0; m < _MaxSz; m++)
 	{
-		if (_bPairs[i]._val == _bPairs[i + 1]._val)
-			++_bPairs[i + 1]._val;
+		_Addend = m - n;
+		_bPairs[m]._val += _Addend;
+		_Addend = 0;
 	}
 }
 
 
 
 // Save the encoded's information data table into a file.
-static inline const std::size_t writePackInfo(const std::string& _fiName,  const std::vector<packed_info>& _pacData)
+static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
 	std::FILE* _fpT = std::fopen(_fiName.data(), "wb");
@@ -354,7 +359,6 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	// get the first integer value of file
 	 pif_blocks = std::fgetc(_fiT);
 
-
 	// reads up number of 'packed_info' blocks to the buffer _PIF.
 	for(int j = 0; j < pif_blocks; j++)
 	{
@@ -375,64 +379,79 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 // Save the packed raw data source to a file.
 static inline const std::size_t writePack(const std::string& _File, const std::vector<packed_info>& _packedSrc)
 {
+	int _bitseg = 0, _Part = 0;
 	std::size_t _chunkWritten = 0;
 	std::FILE* _fp = std::fopen(_File.data(), "wb");
-	int _cBit = 0,_bitC = 0,_bitF = 0, _cnt = 0;
+	std::vector<int> _nPack;
 
 	if (!_fp)
 	{
-		std::cerr << "Failed to open file !" << "\n\n";
+		std::cerr << "Error writing compressed data to file. " << "\n\n";
 		goto finishedWrite;
 	}
+	
+	for (packed_info const& _packInfo : _packedSrc)
+		_nPack.push_back(_packInfo._PACKED);
 
-	for (packed_info const& _pck : _packedSrc)
+
+	for (const int& _i : _nPack)
 	{
-		_cnt = 0;
-		_bitC = _pck._PACKED; // Get packed bits
-		MAX_BIT = proper_bits(_bitC);
+		_bitseg = 0;
+		MAX_BIT = proper_bits(_i);
 
-		if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 BIT
+		if (MAX_BIT <= BYTE)
 		{
-			while ((_cBit = extract_byte(_bitC)) > 0) // extract by 8 bit basis
+			if (_i > 0)
 			{
-				_cBit = (_cnt)? _cBit : _cBit >> 8; // is it a high 8 bit?
-				std::fputc(_cBit, _fp);
-				++_cnt; ++_chunkWritten;
+				std::fputc(_i, _fp);
+				++_chunkWritten;
 			}
 			continue;
 		}
-		else if (MAX_BIT > WORD) // 32 BIT
+		else if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 Bit
 		{
-			while ((_cBit = extract_byte(_bitC)) > 0) // extract by 16 bit basis
+			while ((_Part = extract_byte(_i)) > 0)
 			{
-				_cBit = (_cnt)? _cBit : _cBit >> 16; // is it a 16 bit high?
+				_Part = (_bitseg)? _Part : _Part >> 8;
+				++_bitseg;
 
-				_bitF = _cBit;
-
-				_cnt = 0; // reset option-setter counter 
-
-				while ((_cBit = extract_byte(_bitF)) > 0) // extract by 8 bit basis
+				if (_Part > 0)
 				{
-					_cBit = (_cnt)? _cBit : _cBit >> 8; // is it an 8 bit high?
-					std::fputc(_cBit, _fp);
-					++_cnt; ++_chunkWritten;
+					std::fputc(_Part, _fp);
+					++_chunkWritten;
 				}
-				_cnt = 1;
 			}
 			continue;
 		}
-		
-
-		if (_bitC > 0)
+		else if (MAX_BIT > WORD) // 32 Bit
 		{
-			std::fputc(_bitC, _fp);
-			++_chunkWritten;
+			while ((_Part = extract_byte(_i)) > 0) // 16 Bit High & Low
+			{
+				_Part = (_bitseg)? _Part : _Part >> 16;
+				++_bitseg;
+				
+				if (BYTE_PTR_HI(_Part) > 0)
+				{
+					std::fputc(BYTE_PTR_HI(_Part) >> 8, _fp);
+					++_chunkWritten;
+				}
+
+				if (BYTE_PTR_LO(_Part) > 0)
+				{
+					std::fputc(BYTE_PTR_LO(_Part), _fp);
+					++_chunkWritten;
+				}
+			}
 		}
 	}
+
+
+	goto finishedWrite;
 
 finishedWrite:
 		std::fflush(_fp);
 		if (_fp) std::fclose(_fp);
+		_nPack.clear();
 		return _chunkWritten;
 }
 
@@ -466,8 +485,7 @@ finishedRead:
 
 
 // write the original uncompressed form of the data into a file.
-static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, 
-					      const std::vector<BPAIR>& _codeInfo)
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, const std::vector<BPAIR>& _codeInfo)
 {
 	
 	std::size_t _wordsWritten = 0;
@@ -488,7 +506,7 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 	{
 		if (mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, bitLess(), _bIt))
 		{
-			std::fputc(_bIt->_data, _fOrig);
+			std::fputc((int)_bIt->_data, _fOrig);
 			++_wordsWritten;
 		}
 	}
@@ -570,7 +588,7 @@ static inline void Construct_BPAIR_Table(std::vector<BPAIR>& _BPAIR, const std::
 
 
 
-static inline const bool Compress(const std::string& _srcF, const std::string& _destF, char*& _iBuffer)
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, char*& _iBuffer)
 {
 	bool _bDone = 0;
 	int _cF = 0, _CountStr = 0;
@@ -639,7 +657,6 @@ static inline const bool Compress(const std::string& _srcF, const std::string& _
 
 
 	CoreProcesses:
-
 	F_SIZE = FS::file_size(_srcF.data());
 	_iBuffer = new char[F_SIZE];
 	std::memset(_iBuffer, 0, F_SIZE);
@@ -683,10 +700,11 @@ static inline const bool Compress(const std::string& _srcF, const std::string& _
 	}
 
 	
-	_TREE::plot_tree(nodes);
+	_TREE::plot_tree(nodes, compRate);
 
 	_CodeMap = _TREE::CodeMap();
 
+	
 	/* Working on the bare raw data source ..
 	   '_CodeMap '  is the previous generated encoding information data table. */
 	mix::generic::t_sort(_CodeMap.begin(), _CodeMap.end(),0.25,chrLess());
@@ -695,6 +713,7 @@ static inline const bool Compress(const std::string& _srcF, const std::string& _
 	_vbI.clear();
 	vpck0.clear();
 
+	
 	// Find the encoding match to every character in '_vecSrc' and bind the data from '_CodeMap'.
 	for (std::uintmax_t _ix = 0; _ix < F_SIZE; _ix++)
 	{
@@ -728,7 +747,7 @@ static inline const bool Compress(const std::string& _srcF, const std::string& _
 
 	ReSync(vpck0);
 
-
+	
 	if (!_destF.empty()) _copyOne = (char*)_destF.data();
 
 	if (writePack(_copyOne, vpck0) < 0)
@@ -798,10 +817,9 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 	ReSync_Int(_ReadInt, _ReadIntBckup);
 
 	UnPack_Bits(_ReadInt, _ReadPck);
-	
-	Construct_BPAIR_Table(_ReadCodeMap, _ReadPck);
 
-	
+	Construct_BPAIR_Table(_ReadCodeMap, _ReadPck); 
+
 	if (_unPackedFile.empty())
 	{
 		_OriginCopy = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
@@ -825,58 +843,5 @@ EndStage:
 	_ReadPck.clear();
 
 }
-
-
-static inline const std::size_t readFile(const std::string& _File, std::vector<int>& _cBuff)
-{
-	int _ic = 0;
-	std::size_t _nReads = 0;
-	std::FILE* _Fx = std::fopen(_File.data(), "rb+");
-
-	if (!_Fx)
-	{
-		std::cerr << "Error initiated file. " << "\n\n";
-		goto Terminate;
-	}
-
-	
-	while ((_ic = std::fgetc(_Fx)) > 0)
-	{
-		_cBuff.push_back(_ic);
-		++_nReads;
-	}
-
-
-	Terminate:
-		if (_Fx) std::fclose(_Fx);
-		return _nReads;
-}
-
-
-
-static inline const std::size_t writeText(const std::string& _FText, char*& _textBuffer)
-{
-	std::size_t _bytesWritten = 0;
-	std::FILE* _Ft = std::fopen(_FText.data(), "wb");
-	std::size_t _bufSize = std::strlen(_textBuffer);
-
-	if (!_Ft)
-	{
-		std::cerr << "Error opened file !" << "\n\n";
-		goto StopWrite;
-	}
-
-	_bytesWritten = std::fwrite(_textBuffer, sizeof(char), _bufSize, _Ft);
-
-	goto StopWrite;
-
-StopWrite:
-	std::fflush(_Ft);
-	if (_Ft) std::fclose(_Ft);
-
-	RET2();
-	return _bytesWritten;
-}
-
 
 
