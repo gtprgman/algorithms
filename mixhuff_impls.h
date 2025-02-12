@@ -193,8 +193,7 @@ inline void _TREE::create_encoding(const int _From,
 		if (_recurr > 1)
 		{
 			_sameVal = ++_prevX;
-			_bt.clear();
-			_bt.assign(to_binary<int>::eval(_sameVal).data());
+			_bt = _sameVal;
 			_recurr = 0;
 			goto filterPhase;
 		}
