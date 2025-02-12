@@ -163,7 +163,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, node&& _Nod, cons
 
 inline void _TREE::create_encoding(const int _From, 
 				   const int _To,
-				   std::string& _bt,
+				   int _bt,
 				   const std::vector<node>& _Vn)
 {
 	node _e = 0;
@@ -199,11 +199,10 @@ inline void _TREE::create_encoding(const int _From,
 			goto filterPhase;
 		}
 		
-		_bt = (char*)concat_str((char*)_bt.data(), inttostr(_Dir));
+		_bt |=_Dir;
 
-	filterPhase:
-
-		_sameVal = biXs.value_from_bitstr(LRTrim(_bt.data()));
+	 filterPhase:
+		_sameVal = _bt;
 		_prevX = _sameVal;
 
 		if (mix::generic::
@@ -212,15 +211,15 @@ inline void _TREE::create_encoding(const int _From,
 		{
 			_sameVal = _iGet->_val;
 			++_sameVal;
-			_bt.clear();
-			_bt.assign(to_binary<int>::eval(_sameVal).data());
-			_prevX = biXs.value_from_bitstr(LRTrim(_bt.data()));
+			_bt = _sameVal;
+			_prevX = _sameVal;
 		}
 
 		_vPair.push_back({ _e.dataValue(), _prevX });
 		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 	}
+	_fq = 0;
 }
 
 
@@ -236,26 +235,23 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
 	int _DivSize = (int)_fCompRate;
 	int _msk = 0, _BT = 2, _Dir = L;
-	std::string _bts = inttostr(_msk);
 	
-
 	if (!_vPair.empty()) _vPair.clear();
 
 	for (int t = 0; t < _TreeSizes; t += _DivSize)
 	{
 		if ( (_TreeSizes - t) < _DivSize ) _DivSize = 1;
-		create_encoding(t, (t + _DivSize), _bts, _fpNods);
+		create_encoding(t, (t + _DivSize), _msk, _fpNods);
 
 		_msk ^= _BT--;
 
 		if (_BT < 1) 
-			_BT = 2; 
+		    _BT = 2; 
 			
 
 		_Dir = _Dir ^ 1;
-		_bts.clear();
-
-		_bts.assign( concat_str((char*)inttostr(_Dir),to_binary<int>::eval(_msk).data() ) );
+		_msk = 0;
+		_msk |= _Dir;
 	}
 
 	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
