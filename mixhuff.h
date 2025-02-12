@@ -184,7 +184,7 @@ private:
 	static inline void schema_Iter(const std::vector<node>&, const double);
 
 	// directly create a huffman encoding table from the std::vector<node> without prebuilt the tree
-	static inline void create_encoding(const int, const int, std::string&, const std::vector<node>&);
+	static inline void create_encoding(const int, const int, int, const std::vector<node>&);
 
 	static std::vector<BPAIR> _vPair;
 };
