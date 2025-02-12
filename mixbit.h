@@ -693,6 +693,8 @@ inline static const char* concat_str(char* _target, const char* _str)
 		lenS = std::strlen(_str);
 
 	char* _pStr = new char[lenz + lenS];
+	if (_pStr) std::memset(_pStr, 0, lenz + lenS);
+	
 	std::strncpy(_pStr, _target, lenz);
 	std::strncpy(&_pStr[lenz], _str, lenS);
 	_pStr[lenz + lenS] = 0;
