@@ -200,7 +200,8 @@ inline void _TREE::create_encoding(const int _From,
 		
 		_bt |=_Dir;
 
-	 filterPhase:
+	filterPhase:
+
 		_sameVal = _bt;
 		_prevX = _sameVal;
 
@@ -235,6 +236,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	int _DivSize = (int)_fCompRate;
 	int _msk = 0, _BT = 2, _Dir = L;
 	
+
 	if (!_vPair.empty()) _vPair.clear();
 
 	for (int t = 0; t < _TreeSizes; t += _DivSize)
@@ -245,7 +247,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 		_msk ^= _BT--;
 
 		if (_BT < 1) 
-		    _BT = 2; 
+			_BT = 2; 
 			
 
 		_Dir = _Dir ^ 1;
@@ -275,7 +277,7 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 
 // Save the encoded's information data table into a file.
-static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<packed_info>& _pacData)
+static inline const std::size_t writePackInfo(const std::string& _fiName,  const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
 	std::FILE* _fpT = std::fopen(_fiName.data(), "wb");
@@ -354,6 +356,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	// get the first integer value of file
 	 pif_blocks = std::fgetc(_fiT);
 
+
 	// reads up number of 'packed_info' blocks to the buffer _PIF.
 	for(int j = 0; j < pif_blocks; j++)
 	{
@@ -370,84 +373,71 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 }
 
 
-
-// Save the packed raw data source to a file.
-static inline const std::size_t writePack(const std::string& _File, const std::vector<packed_info>& _packedSrc)
+// Packed the raw data source and saves it to a file.
+static inline const std::size_t writePack(const std::string& _File, const std::vector<packed_info>& _PackNfo)
 {
-	int _bitseg = 0, _Part = 0;
-	std::size_t _chunkWritten = 0;
-	std::FILE* _fp = std::fopen(_File.data(), "wb");
-	std::vector<int> _nPack;
+	std::size_t _packedSize = 0;
+	const std::size_t _PckSz = _PackNfo.size();
+	std::FILE* _FPack = std::fopen(_File.data(), "wb");
+	int _cByte = 0, _Bits = 0;
 
-	if (!_fp)
+	if (!_FPack)
 	{
-		std::cerr << "Error writing compressed data to file. " << "\n\n";
-		goto finishedWrite;
+		std::cerr << "Error initiates input source file." << "\n\n";
+		goto DonePacking;
 	}
+
 	
-	for (packed_info const& _packInfo : _packedSrc)
-		_nPack.push_back(_packInfo._PACKED);
-
-
-	for (const int& _i : _nPack)
+	for (std::size_t _g = 0; _g < _PckSz; _g++)
 	{
-		_bitseg = 0;
-		MAX_BIT = proper_bits(_i);
+		_cByte = _PackNfo[_g]._PACKED;
+		
+			MAX_BIT = proper_bits(_cByte);
 
-		if (MAX_BIT <= BYTE)
-		{
-			if (_i > 0)
+			if (MAX_BIT <= BYTE)
 			{
-				std::fputc(_i, _fp);
-				++_chunkWritten;
-			}
-			continue;
-		}
-		else if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 Bit
-		{
-			while ((_Part = extract_byte(_i)) > 0)
-			{
-				_Part = (_bitseg)? _Part : _Part >> 8;
-				++_bitseg;
-
-				if (_Part > 0)
+				if (_cByte > 0)
 				{
-					std::fputc(_Part, _fp);
-					++_chunkWritten;
+					std::fputc(_cByte, _FPack);
+					++_packedSize;
 				}
 			}
-			continue;
-		}
-		else if (MAX_BIT > WORD) // 32 Bit
-		{
-			while ((_Part = extract_byte(_i)) > 0) // 16 Bit High & Low
+			else if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 Bit
 			{
-				_Part = (_bitseg)? _Part : _Part >> 16;
-				++_bitseg;
-				
-				if (BYTE_PTR_HI(_Part) > 0)
+				if (_cByte > 0)
 				{
-					std::fputc(BYTE_PTR_HI(_Part) >> 8, _fp);
-					++_chunkWritten;
+					std::fputc(BYTE_PTR_HI(_cByte) >> 8, _FPack);
+					std::fputc(BYTE_PTR_LO(_cByte), _FPack);
+					++_packedSize;
+				}
+			}
+			else if (MAX_BIT > WORD) // 32 Bit
+			{
+				_Bits = WORD_PTR_HI(_cByte); // 16 bit high
+
+				if (_cByte > 0)
+				{
+					std::fputc(BYTE_PTR_HI(_Bits) >> 8, _FPack);
+					std::fputc(BYTE_PTR_LO(_Bits), _FPack);
+					++_packedSize;
 				}
 
-				if (BYTE_PTR_LO(_Part) > 0)
+				_Bits = WORD_PTR_LO(_cByte); // 16 bit low
+
+				if (_cByte > 0)
 				{
-					std::fputc(BYTE_PTR_LO(_Part), _fp);
-					++_chunkWritten;
+					std::fputc(BYTE_PTR_HI(_Bits) >> 8, _FPack);
+					std::fputc(BYTE_PTR_LO(_Bits), _FPack);
+					++_packedSize;
 				}
 			}
 		}
-	}
 
 
-	goto finishedWrite;
-
-finishedWrite:
-		std::fflush(_fp);
-		if (_fp) std::fclose(_fp);
-		_nPack.clear();
-		return _chunkWritten;
+		
+DonePacking:
+	if (_FPack) std::fclose(_FPack);
+	return _packedSize;
 }
 
 
@@ -652,6 +642,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 
 	CoreProcesses:
+
 	F_SIZE = FS::file_size(_srcF.data());
 	_iBuffer = new char[F_SIZE];
 	std::memset(_iBuffer, 0, F_SIZE);
@@ -669,9 +660,9 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	if (!std::strlen(_iBuffer)) goto finishedDone;
 
 	for (std::uintmax_t _ix = 0; _ix < F_SIZE; _ix++)
+	{
 		_pq.push(_iBuffer[_ix]);
-
-	
+	}
 
 	while (!_pq.empty())
 	{
@@ -704,48 +695,34 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	   '_CodeMap '  is the previous generated encoding information data table. */
 	mix::generic::t_sort(_CodeMap.begin(), _CodeMap.end(),0.25,chrLess());
 
-	_bIF = {};
-	_vbI.clear();
-	vpck0.clear();
-
-	
-	// Find the encoding match to every character in '_vecSrc' and bind the data from '_CodeMap'.
-	for (std::uintmax_t _ix = 0; _ix < F_SIZE; _ix++)
+	// Find the encoding match to pair to each data in '_iBuffer' and save the encoded data to a file.
+	for (std::size_t _g = 0; _g < F_SIZE; _g++)
 	{
-		_cF = _iBuffer[_ix];
-		if (mix::generic::vector_search(_CodeMap.begin(), _CodeMap.end(), (char)_cF, chrLess(), _BiT))
+		if (mix::generic::vector_search(_CodeMap.begin(), _CodeMap.end(), (char)_iBuffer[_g], chrLess(), _BiT))
 		{
 			_bIF.X = _BiT->_val;
 			_bIF._Alpha = _BiT->_data;
 			_bIF.numBits = oneAdder(num_of_bits<int>::eval(_bIF.X));
-
 			_vbI.push_back(_bIF);
 			_bIF = {};
 		}
 	}
 
-	bitsPack(vpck0, _vbI);
+	bitsPack(vpck0, _vbI); // packed the raw data source
 
-	if ( (writePackInfo(_SystemFile.data(), vpck0)) < 0 )
+	if ( !writePackInfo(_SystemFile.data(), vpck0) )
 	{
-		std::cerr << "Error writing encoded information of the input data. " << "\n\n";
+		std::cerr << "Error writing encoded's information of the input file. " << "\n\n";
 		goto finishedDone;
 	}
 
-	vpck0.clear();
-
-	if ( (readPackInfo(_SystemFile.data(), vpck0)) < 0 )
+	if (_destF.empty())
 	{
-		std::cerr << "Error reading encoded information of the input data. " << "\n\n";
+		std::cerr << "The File's name for the compressed one could not be empty. " << "\n\n";
 		goto finishedDone;
 	}
 
-	ReSync(vpck0);
-
-	
-	if (!_destF.empty()) _copyOne = (char*)_destF.data();
-
-	if (writePack(_copyOne, vpck0) < 0)
+	if ( !writePack(_destF, vpck0) )
 	{
 		std::cerr << "Error writing packed data source !" << "\n\n";
 		goto finishedDone;
@@ -836,7 +813,7 @@ EndStage:
 	_ReadIntBckup.clear();
 	_ReadCodeMap.clear();
 	_ReadPck.clear();
-
 }
+
 
 
