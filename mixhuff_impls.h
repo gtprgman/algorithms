@@ -56,27 +56,23 @@ static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int
 	int hi = 0, lo = 0;
 	_Int_Bits _iReg = { 0,0,0,0 };
 	const std::size_t packed_size = _srcPack.size();
+	std::vector<int>::iterator _Itr;
 
-	for (std::size_t j = 0; j < packed_size; j++)
+	for (std::size_t j = 0, k = 0; j < packed_size; j++)
 	{
 		MAX_BIT = proper_bits(_srcPack[j]);
 
 		if (_srcPack[j] != _destPack[j])
 		{
-			if (_destPack[j] < 0)
-			{
-				_destPack[j] = _srcPack[j];
-				continue;
-			}
-			
-			
 			if (MAX_BIT > BYTE && MAX_BIT <= WORD)
 			{
 				hi = _destPack[j] << 8;
 				lo = _destPack[j + 1];
 
 				_destPack[j] = hi | lo;
-				_destPack[j + 1] = -1;
+				_Itr = _destPack.begin() + j;
+				_destPack.erase(_Itr);
+				
 			}
 			else if (MAX_BIT > WORD)
 			{
@@ -90,9 +86,12 @@ static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int
 
 				_destPack[j] = hi | lo;
 
-				for (std::size_t i = j + 1; i < (j + 4); i++)
-					_destPack[i] = -1;
-				
+				k = j + 3;
+				for (std::size_t i = j; i < k; i++)
+				{
+					_Itr = _destPack.begin() + i;
+					_destPack.erase(_Itr);
+				}
 			}	
 		}
 	}
@@ -210,7 +209,7 @@ inline void _TREE::create_encoding(const int _From,
 		//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
 			_sameVal = _iGet->_val;
-			++_sameVal;
+			_sameVal += (int)((_iGet - _vPair.begin()) / 2);
 			_bt = _sameVal;
 			_prevX = _sameVal;
 		}
