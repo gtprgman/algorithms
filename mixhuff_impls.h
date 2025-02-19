@@ -267,8 +267,8 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 	for (int n = 0, m = 0; m < _MaxSz; m++)
 	{
-		_Addend = m - n;
-		_bPairs[m]._val += _Addend;
+		_Addend = m;
+		_bPairs[m]._val += (_Addend + 1);
 		_Addend = 0;
 	}
 }
