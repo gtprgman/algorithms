@@ -1,5 +1,5 @@
-/ * Using License: GPL v.3.0  */
-	
+/* using License GPL v 3.0 */
+
 #include <filesystem>
 
 #ifndef REQUIRE_H
@@ -10,7 +10,7 @@
 
 
 /*
-; Usages: For compressing one file into a *.sqz file.
+; Usages: 	  For compressing one file into a *.sqz file.
 		  squzip -q <file1.(ext)> <file2.sqz> [COMP_RATE]
 		  eg: "squzip -q Letter1.txt Letter1.sqz" --> uses default COMP_RATE
 		      "squzip -q Letter1.txt Letter1.sqz 0.65" --> takes COMP_RATE specified by user.
@@ -22,9 +22,6 @@
 */
 
 constexpr int MAX = 5;
-static char* _pSource = nullptr;
-
-
 
 int main(const int argc, const char* args[MAX])
 {
@@ -41,12 +38,14 @@ int main(const int argc, const char* args[MAX])
 			    _fN = (args[4])? args[4] : "\0"; // COMP_RATE argument
 
 		const double _d1 = (_fN.empty())? 0 : std::strtod(_fN.data(), nullptr);
+		const std::uintmax_t SIZE_F = std::filesystem::file_size(_f0.data());
+		std::vector<char> _rawSrc(SIZE_F);
 
 
 		switch (_c0[1])
 		{
 		case 'q':
-			Compress(_f1, _f0, _d1, _pSource);
+			Compress(_f1, _f0, _d1, _rawSrc);
 			goto EndStop;
 
 		case 'd':
@@ -60,9 +59,7 @@ int main(const int argc, const char* args[MAX])
 	
 
 EndStop:
-
 	return -1;
 }
-
 
 
