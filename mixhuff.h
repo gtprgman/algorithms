@@ -106,8 +106,8 @@ struct BPAIR
 
 struct node {
 	node();
+	node(const int);
 	node(const char); // for data tree
-	node(const int); // for data tree
 	node(const double); // for frequency tree
 	node(const int, const double);
 
@@ -119,7 +119,7 @@ struct node {
 	node&& operator= (node&&) noexcept;
 	~node();
 
-	void setData(const int);
+	void setData(const char);
 	void setFrequencyData(const double);
 	
 	const int Value() const;
@@ -138,7 +138,7 @@ struct node {
 	
 private:
 	double _fdata;
-	int _data;
+	char _data;
 	
 };
 
@@ -264,7 +264,7 @@ struct chrLess
 #ifndef MX_HUFF_IMPLS
 
 /* Filters priority queue nodes and compute the frequency of each node */
-inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t);
+inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>&);
 
 #include "mixhuff_impls.h"
 
@@ -278,6 +278,12 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 	}
 
 
+	node::node(const int _Val) : _data(_Val), _fdata(0.00)
+	{
+
+	}
+
+
 	node::node(const char _uChar) :_fdata(0.00),_data((int)_uChar)
 	{
 		
@@ -288,12 +294,7 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 		
 	}
 
-	node::node(const int c): _data(c), _fdata(0.00) 
-	{
-		
-	}
-
-
+	
 	node::node(const int _c, const double _fv) : _data(_c), _fdata(_fv)
 	{
 		
@@ -349,7 +350,7 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 	}
 
 
-	void node::setData(const int uc) {
+	void node::setData(const char uc) {
 		this->_data = uc;
 	}
 
@@ -361,12 +362,12 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 
 	// Get Accessor Methods..
 	const int node::Value() const {
-		return this->_data;
+		return (int)this->_data;
 	}
 
 
 	const char node::dataValue() const {
-		return (char)this->_data;
+		return this->_data;
 	}
 
 
@@ -377,7 +378,7 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 	
 	// implicit conversion
 	node::operator int() const {
-		return this->_data;
+		return (int)this->_data;
 	}
 
 	const node node::Release() const {
@@ -388,7 +389,7 @@ inline static void filter_pq_nodes(std::vector<node>&, node&&, const std::size_t
 
 
 	const int node::operator()() const {
-		return this->_data;
+		return (int)this->_data;
 	}
 
 	
