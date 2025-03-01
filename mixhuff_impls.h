@@ -3,7 +3,6 @@
 
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
-	namespace FS = std::filesystem;
 
 #endif
 
@@ -125,37 +124,39 @@ static inline void ReSync(std::vector<packed_info>& _readVec)
 
 
 
-static inline void filter_pq_nodes(std::vector<node>& _target, node&& _Nod, const std::size_t _maxLen)
+static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_queue<node>& _Pqueue)
 {
-	node _nod = _Nod; /* fetches new node from the priority queue each time
-			     this function is called. */
+	std::size_t _Cnt = 0;
+	node _nod = 0;
 	double _fqr = 0;
-	static int _q = 0;
-	int _p = _q;
 
-	if ((_target.empty()) && (_nod.Value() != 0) )
-	{
-		_fqr = _nod.FrequencyData();
-		++_fqr;
-		_nod.setFrequencyData(_fqr);
-		_target.push_back(_nod);
-		return;
-	}
 
-	if (_target[_p].Value() == _nod.Value())
+	while (!_Pqueue.empty())
 	{
-		_fqr = _target[_p].FrequencyData();
-		++_fqr;
-		_target[_p].setFrequencyData(_fqr);
-	}
-	else
-	{
-		_fqr = _nod.FrequencyData();
-		++_fqr;
-		_nod.setFrequencyData(_fqr);
-		_target.push_back(_nod);
-		_q++; // increases the index in target vector
-	}
+		_nod = _Pqueue.top();
+		_Pqueue.pop();
+
+		if (_target.empty() && _nod() != 0)
+		{
+			_target.push_back(_nod);
+			continue;
+		}
+
+		if (_target[_Cnt] == _nod)
+		{
+			_target[_Cnt].setFrequencyData(++_fqr);
+		}
+		else
+		{
+			if (_nod != 0)
+			{
+				_fqr = 1;
+				_nod.setFrequencyData(_fqr);
+				_target.push_back(_nod);
+				_Cnt = _target.size() - 1;
+			}
+		}
+	}	
 }
 
 
@@ -165,7 +166,7 @@ inline void _TREE::create_encoding(const int _From,
 				   int _bt,
 				   const std::vector<node>& _Vn)
 {
-	node _e = 0;
+	node _e = '0';
 	int _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
 	static double _fq = 100.00;
 	std::vector<BPAIR>::iterator _iGet;
@@ -206,7 +207,7 @@ inline void _TREE::create_encoding(const int _From,
 
 		if (mix::generic::
 			vector_search(_vPair.begin(), _vPair.end(), _sameVal, bitLess(), _iGet))
-		//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
+			//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
 			_sameVal = _iGet->_val;
 			_sameVal += (int)((_iGet - _vPair.begin()) / 2);
@@ -255,7 +256,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	}
 
 	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
-	_TREE::enforce_unique(_vPair);
+	_TREE::enforce_unique(_vPair); 
 }
 
 
@@ -276,7 +277,7 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 
 // Save the encoded's information data table into a file.
-static inline const std::size_t writePackInfo(const std::string& _fiName,  const std::vector<packed_info>& _pacData)
+static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<packed_info>& _pacData)
 {
 	std::size_t _blocksWritten = 0;
 	std::FILE* _fpT = std::fopen(_fiName.data(), "wb");
@@ -431,9 +432,7 @@ static inline const std::size_t writePack(const std::string& _File, const std::v
 				}
 			}
 		}
-
-
-		
+	
 DonePacking:
 	if (_FPack) std::fclose(_FPack);
 	return _packedSize;
@@ -442,7 +441,7 @@ DonePacking:
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& _inVec)
+static inline const std::size_t readPack(const std::string& _inFile,  std::vector<int>& _inVec)
 {
 	std::size_t _readChunk = 0;
 	std::FILE* _fi = std::fopen(_inFile.data(), "rb");
@@ -476,7 +475,7 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 	const std::size_t _codeSize = _codeInfo.size();
 	std::FILE* _fOrig = std::fopen(_OriginFile.data(), "wb");
 	std::vector<BPAIR>::iterator _bIt;
-	std::vector<BPAIR> _codTab = _codeInfo;
+	std::vector<BPAIR> _codTab = {};
 
 	if (!_fOrig)
 	{
@@ -484,6 +483,11 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 		goto EndWrite;
 	}
 	
+	for (BPAIR const& _bc : _codeInfo)
+	{
+		_codTab.push_back(_bc);
+	}
+
 	mix::generic::t_sort(_codTab.begin(), _codTab.end(), 0.25, bitLess());
 
 	for (int const& _i : _intSrc)
@@ -493,40 +497,42 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 			std::fputc((int)_bIt->_data, _fOrig);
 			++_wordsWritten;
 		}
+		else std::cerr << "Bit for integer: " << _i << " not Found!!" << "\n\n";
 	}
 
 EndWrite:
 	std::fflush(_fOrig);
 	if (_fOrig) std::fclose(_fOrig);
-	
+	_codTab.clear();
+
 	return _wordsWritten;
 }
 
 
 
 // read the saved original uncompressed data from a file
-static inline const std::size_t readOriginal(const std::string& _OrigFile, void* _mBuffer,const std::size_t _bufLen)
+static inline const std::size_t readOriginal(std::FILE* _fHandle , std::vector<char>& _DataSrc)
 {
 	std::size_t _wordsRead = 0;
-	std::FILE* _fOri = std::fopen(_OrigFile.data(), "rb");
-	const std::size_t _BufLen = _bufLen;
-	int _rC = 0;
+	const std::size_t dataSize = _DataSrc.capacity();
+	char _rC = 0;
 
-	if (!_fOri)
+	if (!_fHandle)
 	{
 		std::cerr << "Error reading file.. !! " << "\n\n";
 		goto EndRead;
 	}
 
-	for(std::size_t _zi = 0; _zi < _BufLen; _zi++)
+	for(std::size_t j = 0; j < dataSize; j++ )
 	{
-		_rC = std::fgetc(_fOri);
-		((char*)_mBuffer)[_zi] = _rC;
-		++_wordsRead;
+		if ((_rC = std::fgetc(_fHandle)) > 0)
+		{
+			_DataSrc[j] = _rC;
+			++_wordsRead;
+		}
 	}
 
 EndRead:
-	if (_fOri) std::fclose(_fOri);
 	return _wordsRead;
 }
 
@@ -572,33 +578,35 @@ static inline void Construct_BPAIR_Table(std::vector<BPAIR>& _BPAIR, const std::
 
 
 
-static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, char*& _iBuffer)
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, std::vector<char>& _iBuffer)
 {
 	bool _bDone = 0;
 	int _cF = 0, _CountStr = 0;
 	char* _copyOne = nullptr;
 	const char* _sExt = "\0";
-	
 	bitInfo<int> _bIF = {};
 
-	std::vector<node> nodes;
-	std::vector<BPAIR> _CodeMap;
+	std::vector<node> nodes = {};
+	std::vector<BPAIR> _CodeMap = {};
 	std::vector<BPAIR>::iterator _BiT;
-	std::vector<bitInfo<int>> _vbI;
-	std::vector<packed_info> vpck0;
+	std::vector<bitInfo<int>> _vbI = {};
+	std::vector<packed_info> vpck0 = {};
 
 	
-	std::priority_queue<node, std::vector<node>, std::greater<node>> _pq;
+	std::priority_queue<node, std::vector<node>, std::less<node>> _pq;
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq;
 
 	std::FILE* _FO = std::fopen(_srcF.data(), "rb");
+	std::size_t F_SIZE = 0;
+
 
 	if (!_FO)
 	{
-		std::cerr << "Error in opening source file!" << "\n\n";
+		std::cerr << "Error opened input source file. " << "\n\n";
 		goto finishedDone;
 	}
-	
+
+
 	_SystemFile.assign(_srcF);
 
 
@@ -642,40 +650,27 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	CoreProcesses:
 
-	F_SIZE = FS::file_size(_srcF.data());
-	_iBuffer = new char[F_SIZE];
-	std::memset(_iBuffer, 0, F_SIZE);
-
-	if (!_iBuffer) goto finishedDone;
-
-	// tops-up the buffer
-	for (std::uintmax_t _iu = 0; _iu < F_SIZE; _iu++)
+	if (!(F_SIZE = readOriginal(_FO, _iBuffer)) )
 	{
-		if ((_cF = std::fgetc(_FO)) > 0)
-			_iBuffer[_iu] = _cF;
+		std::cerr << "Error reading source file." << "\n\n";
+		goto finishedDone;
 	}
-
-
-	if (!std::strlen(_iBuffer)) goto finishedDone;
-
-	for (std::uintmax_t _ix = 0; _ix < F_SIZE; _ix++)
+	
+	
+	for (std::size_t _i = 0; _i < F_SIZE; _i++)
 	{
-		_pq.push(_iBuffer[_ix]);
-	}
-
-	while (!_pq.empty())
-	{
-		filter_pq_nodes(nodes, (node&&)_pq.top(), 0);
-		_pq.pop();
+		node _C = _iBuffer[_i];
+		_pq.emplace(_C);
 	}
 	
 
+	filter_pq_nodes(nodes, _pq);
+	
 	for (auto const& _eV : nodes)
 		_fpq.push(_eV);
 
 
-	nodes.clear();
-
+	if (!nodes.empty()) nodes.clear();
 
 	for (node _nF = 0; !_fpq.empty(); )
 	{
@@ -684,12 +679,14 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		_fpq.pop();
 	}
 
-	
 	_TREE::plot_tree(nodes, compRate);
 
 	_CodeMap = _TREE::CodeMap();
 
-	
+	_bIF = {};
+	_vbI = {};
+	vpck0 = {};
+
 	/* Working on the bare raw data source ..
 	   '_CodeMap '  is the previous generated encoding information data table. */
 	mix::generic::t_sort(_CodeMap.begin(), _CodeMap.end(),0.25,chrLess());
@@ -709,15 +706,15 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	bitsPack(vpck0, _vbI); // packed the raw data source
 
-	if ( !writePackInfo(_SystemFile.data(), vpck0) )
-	{
-		std::cerr << "Error writing encoded's information of the input file. " << "\n\n";
-		goto finishedDone;
-	}
-
 	if (_destF.empty())
 	{
 		std::cerr << "The File's name for the compressed one could not be empty. " << "\n\n";
+		goto finishedDone;
+	}
+
+	if (!writePackInfo(_SystemFile.data(), vpck0))
+	{
+		std::cerr << "Error writing encoded's information data table to a file. " << "\n\n";
 		goto finishedDone;
 	}
 
@@ -731,14 +728,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 finishedDone:
 	if (_FO) std::fclose(_FO);
-
-	if (_iBuffer) delete[] _iBuffer;
-	 nodes.clear();
-	_CodeMap.clear();
-	_vbI.clear();
-	vpck0.clear();
+	if (!_iBuffer.empty()) _iBuffer.clear();
+	if (!nodes.empty()) nodes.clear();
+	if (!_CodeMap.empty()) _CodeMap.clear();
+	if (!_vbI.empty()) _vbI.clear();
+	if (!vpck0.empty()) vpck0.clear();
 	NULLP(_copyOne);
-	_SystemFile.clear();
+	if (!_SystemFile.empty()) _SystemFile.clear();
 	_TREE::Clean();
 
 	return _bDone;
@@ -762,13 +758,12 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 	_OriginCopy = (char*)"\0";
 
 
-	if ( readPackInfo(_SystemFile.data(), _ReadPck) < 0) // *.tbi
+	if ( !readPackInfo(_SystemFile.data(), _ReadPck) ) // *.tbi
 	{
 		std::cerr << "Error reading encoded's information data table ! " << "\n\n";
 		goto EndStage;
 	}
 
-	
 	ReSync(_ReadPck);
 
 	for (const packed_info& _pik : _ReadPck)
@@ -776,15 +771,13 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 		_ReadIntBckup.push_back(_pik._PACKED);
 	}
 
-
 	// read a *.sqz file
-	if (readPack(_packedFile.data(), _ReadInt) < 0) // *.sqz
+	if ( !readPack(_packedFile.data(), _ReadInt) ) // *.sqz
 	{
 		std::cerr << "Error reading compressed file. " << "\n\n";
 		goto EndStage;
 	}
 
-	
 	ReSync_Int(_ReadInt, _ReadIntBckup);
 
 	UnPack_Bits(_ReadInt, _ReadPck);
@@ -799,13 +792,12 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 	else _OriginCopy = (char*)_unPackedFile.data();
 
 	
-	if (writeOriginal(_OriginCopy, _ReadInt, _ReadCodeMap) < 0)
+	if ( !writeOriginal(_OriginCopy, _ReadInt, _ReadCodeMap) )
 	{
 		std::cerr << "Error writing decoded format of a file. " << "\n\n";
 		goto EndStage;
 	}
 	
-
 EndStage:
 	NULLP(_OriginCopy);
 	_ReadInt.clear();
@@ -813,6 +805,5 @@ EndStage:
 	_ReadCodeMap.clear();
 	_ReadPck.clear();
 }
-
 
 
