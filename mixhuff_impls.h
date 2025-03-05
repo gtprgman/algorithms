@@ -80,7 +80,7 @@ static inline void ReSync_Int(std::vector<int>& _destPack, const std::vector<int
 				_iReg._eax[1] = _destPack[j + 2];
 				_iReg._eax[0] = _destPack[j + 3];
 
-				hi = (_iReg._eax[3] | _iReg._eax[2]) << 16;
+				hi = _iReg._eax[3] | _iReg._eax[2];
 				lo = _iReg._eax[1] | _iReg._eax[0];
 
 				_destPack[j] = hi | lo;
@@ -285,7 +285,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, const 
 	packed_info _PiF = {};
 	_32Bit _Datum;
 	_Int_Bits _saved_bits;
-	int n_PiF_blocks = (int)_pacData.size();
+	std::size_t n_PiF_blocks = _pacData.size();
 
 
 	if (!_fpT)
@@ -295,8 +295,8 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, const 
 	}
 
 	// save information about the number of 'packed_info' blocks at the beginning of file.
-	std::fputc(n_PiF_blocks, _fpT);
-	
+	std::fwrite(&n_PiF_blocks, sizeof(n_PiF_blocks), 1, _fpT);
+
 	// saving table of encoded information ..
 	for (packed_info const& _pi : _pacData)
 	{
@@ -344,7 +344,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	std::FILE* _fiT = std::fopen(_inFile.data(), "rb");
 
 	packed_info _PIF = {};
-	int pif_blocks = 0;
+	std::size_t pif_blocks = 0;
 	
 
 	if (!_fiT)
@@ -353,9 +353,8 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 		goto finishedRead;
 	}
 
-	// get the first integer value of file
-	 pif_blocks = std::fgetc(_fiT);
-
+	// get the Number of Saved Records from a file
+	std::fread(&pif_blocks, sizeof(size_t), 1, _fiT);
 
 	// reads up number of 'packed_info' blocks to the buffer _PIF.
 	for(int j = 0; j < pif_blocks; j++)
@@ -432,7 +431,9 @@ static inline const std::size_t writePack(const std::string& _File, const std::v
 				}
 			}
 		}
-	
+
+
+		
 DonePacking:
 	if (_FPack) std::fclose(_FPack);
 	return _packedSize;
@@ -441,7 +442,7 @@ DonePacking:
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(const std::string& _inFile,  std::vector<int>& _inVec)
+static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& _inVec)
 {
 	std::size_t _readChunk = 0;
 	std::FILE* _fi = std::fopen(_inFile.data(), "rb");
@@ -501,8 +502,13 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 	}
 
 EndWrite:
-	std::fflush(_fOrig);
-	if (_fOrig) std::fclose(_fOrig);
+	
+	if (_fOrig)
+	{
+		std::fflush(_fOrig);
+		std::fclose(_fOrig);
+	}
+
 	_codTab.clear();
 
 	return _wordsWritten;
@@ -511,7 +517,7 @@ EndWrite:
 
 
 // read the saved original uncompressed data from a file
-static inline const std::size_t readOriginal(std::FILE* _fHandle , std::vector<char>& _DataSrc)
+static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<char>& _DataSrc)
 {
 	std::size_t _wordsRead = 0;
 	const std::size_t dataSize = _DataSrc.capacity();
@@ -712,11 +718,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
+	
 	if (!writePackInfo(_SystemFile.data(), vpck0))
 	{
 		std::cerr << "Error writing encoded's information data table to a file. " << "\n\n";
 		goto finishedDone;
 	}
+
 
 	if ( !writePack(_destF, vpck0) )
 	{
@@ -727,7 +735,11 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	_bDone = true;
 
 finishedDone:
-	if (_FO) std::fclose(_FO);
+	if (_FO) {
+		std::fflush(_FO);
+		std::fclose(_FO);
+	}
+
 	if (!_iBuffer.empty()) _iBuffer.clear();
 	if (!nodes.empty()) nodes.clear();
 	if (!_CodeMap.empty()) _CodeMap.clear();
@@ -764,12 +776,14 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 		goto EndStage;
 	}
 
+	
 	ReSync(_ReadPck);
 
-	for (const packed_info& _pik : _ReadPck)
+	for (const packed_info& _pi : _ReadPck)
 	{
-		_ReadIntBckup.push_back(_pik._PACKED);
+		_ReadIntBckup.push_back(_pi._PACKED);
 	}
+
 
 	// read a *.sqz file
 	if ( !readPack(_packedFile.data(), _ReadInt) ) // *.sqz
@@ -778,6 +792,7 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 		goto EndStage;
 	}
 
+	
 	ReSync_Int(_ReadInt, _ReadIntBckup);
 
 	UnPack_Bits(_ReadInt, _ReadPck);
@@ -798,6 +813,7 @@ static inline void UnCompress(const std::string& _packedFile, const std::string&
 		goto EndStage;
 	}
 	
+
 EndStage:
 	NULLP(_OriginCopy);
 	_ReadInt.clear();
