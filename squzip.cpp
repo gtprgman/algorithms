@@ -1,4 +1,4 @@
-/* using License GPL v 3.0 */
+/* Using License: GPL v. 3.0 */
 
 #include <filesystem>
 
@@ -61,5 +61,4 @@ int main(const int argc, const char* args[MAX])
 EndStop:
 	return -1;
 }
-
 
