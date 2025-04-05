@@ -33,6 +33,9 @@ constexpr int i8Mask = 255;
 constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
 
+// the max. number of bits evaluated by 'BIT_TOKEN()'
+unsigned int MAX_BIT = 0;
+
 
 constexpr int BYTE_PTR_HI(const int _Bx)
 {
@@ -56,8 +59,39 @@ constexpr int WORD_PTR_LO(const int EDX_)
 
 
 
-// the max. number of bits evaluated by 'BIT_TOKEN()'
-unsigned MAX_BIT = 0;
+/* generates number of set bits on the LSB of a data unit. (little - endian)
+   NB: bit indices are specified based on average user habitual convention style. */
+constexpr int set_low_bit(const int& _Max_to_Zero)
+{
+	int _TotSum = 0;
+	const double _hi = (double)(_Max_to_Zero - 1);
+
+	for (double _bi = _hi; _bi >= 0;  _bi--)
+	{
+		_TotSum += (int)( 1 * std::pow(2, _bi) );
+	}
+
+	return (int)_TotSum;
+}
+
+
+
+/* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
+   The indices of bit are specified using average user habitual convention style. (little-endian) */
+constexpr int range_bit_set(const int& _Min, const int& _Max)
+{
+	double _Sum = 0;
+	const double _start_bit = (double)(_Min - 1), _end_bit = (double)(_Max - 1);
+
+	for (double _bi = _start_bit; _bi <= _end_bit; _bi++)
+	{
+		_Sum += (int)(1 * std::pow(2, _bi) );
+	}
+
+	return (int)_Sum;
+}
+
+
 
 
 // returns a specific named token which evaluates to a max. number of bits.
@@ -78,6 +112,26 @@ constexpr unsigned BIT_TOKEN(const unsigned nBits)
    represent the MSB of a 32-bit integer. */
 struct _Int_Bits
 {
+	_Int_Bits() : _eax{ 0,0,0,0 } {}
+
+	_Int_Bits(_Int_Bits const& _DWORD)
+	{
+		if (this == &_DWORD) return;
+		*this = _DWORD;
+	}
+
+	const _Int_Bits& operator= (const _Int_Bits& _rDWORD)
+	{
+		if (this == &_rDWORD) return *this;
+
+		this->_eax[0] = _rDWORD._eax[0];
+		this->_eax[1] = _rDWORD._eax[1];
+		this->_eax[2] = _rDWORD._eax[2];
+		this->_eax[3] = _rDWORD._eax[3];
+
+		return *this;
+	}
+
 	int _eax[4] = { 0,0,0,0 };
 };
 
@@ -270,11 +324,17 @@ inline static const char* rtrim(const char*);
 
 inline static const char* reverse_str(const char*);
 
-// replicate the given char 'aChar' a number of '_repSize' times
-inline static const std::string repl_char(const char, const std::size_t);
+// replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
+inline static const char* repl_char(char*, const char, const std::size_t);
 
 // decomposes a given packed int into its original bit form
-inline static const int unPack(const int&, std::size_t const, std::size_t const);
+inline static const int unPack(const int&, int const&, int const&);
+
+// returns the masking integer for the LSB of a specified integer '_v'
+inline static const int low_mask(const int&);
+
+// returns the masking integer for the MSB of a specified integer '_v'
+inline static const int high_mask(const int&);
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
@@ -349,7 +409,7 @@ struct bin_to_dec
 	// the bit string is assumed to be in little-endian order.
 	static inline const value_type eval(const std::string&& _strBits)
 	{
-		std::size_t lenMax = std::strlen(_strBits.data());
+		std::size_t lenMax = _strBits.size();
 		std::size_t _maxBit = lenMax - 1;
 		int k = 0, b = 0;
 
@@ -625,7 +685,7 @@ inline static const char downCase(const int _cAlpha)
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr),
-			  _Sz2 = std::strlen(_cStr);
+			   _Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -667,7 +727,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
 	const std::size_t _lenZ = std::strlen(_Str0), 
-			  _lenX = std::strlen(_searchStr);
+			   _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -693,8 +753,9 @@ inline static const char* concat_str(char* _target, const char* _str)
 		lenS = std::strlen(_str);
 
 	char* _pStr = new char[lenz + lenS];
+
 	if (_pStr) std::memset(_pStr, 0, lenz + lenS);
-	
+
 	std::strncpy(_pStr, _target, lenz);
 	std::strncpy(&_pStr[lenz], _str, lenS);
 	_pStr[lenz + lenS] = 0;
@@ -788,7 +849,7 @@ inline static const char* tapStr(const char* _pStr, const char _tpChr, const int
 static inline const char* tapStrBy(const char* _aStr, const char* _aSubstitute, const int _startPos)
 {
 	const std::size_t _maxSz = std::strlen(_aStr), 
-			  _Len = std::strlen(_aSubstitute);
+						_Len = std::strlen(_aSubstitute);
 
 	char* _begin = (char*)_aStr, *_end = (char*)((_aStr + _maxSz) - 1);
 	
@@ -907,15 +968,17 @@ inline static const char* rtrim(const char* _string)
 }
 
 
-inline static const std::string repl_char(char const aChar, std::size_t const _repSize)
+inline static const char* repl_char(char* _dest, char const aChar, std::size_t const _repSize)
 {
-	char* _reps = new char[_repSize];
+	_dest = new char[_repSize];
+	std::memset(_dest, 0, _repSize);
+
 	for (int i = 0; i < _repSize; i++)
-		_reps[i] = aChar;
+		_dest[i] = aChar;
 
 
-	_reps[_repSize] = 0;
-	return _reps;
+	_dest[_repSize] = 0;
+	return _dest;
 }
 
 
@@ -952,8 +1015,8 @@ struct bitInfo
 // a data structure of a packed data information
 struct packed_info
 {
-	packed_info() : L_ALPHA(0), R_ALPHA(0),
-		_PACKED(0), L_BIT(0), R_BIT(0), packed_bits{ 0,0,0,0 }
+	packed_info() :
+		_PACKED(0), L_BIT(0), R_BIT(0), _Reg{ _Int_Bits() }
 	{ };
 
 	packed_info(packed_info const& _rPif)
@@ -965,15 +1028,11 @@ struct packed_info
 	packed_info const& operator= (packed_info const& _rPif)
 	{
 		if (this == &_rPif) return *this;
-		
-		this->L_ALPHA = _rPif.L_ALPHA;
-		this->R_ALPHA = _rPif.R_ALPHA;
-
-		this->L_BIT = _rPif.L_BIT;
-		this->R_BIT = _rPif.R_BIT;
 
 		this->_PACKED = _rPif._PACKED;
-		this->packed_bits = _rPif.packed_bits;
+		this->L_BIT = _rPif.L_BIT;
+		this->R_BIT = _rPif.R_BIT;
+		this->_Reg = _rPif._Reg;
 
 		return *this;
 	}
@@ -984,13 +1043,7 @@ struct packed_info
 
 	}
 
-	// the first char encoded on the MSB part of the packed bits.
-	char L_ALPHA;
-
-	// the second char encoded on the LSB part of the packed bits.
-	char R_ALPHA;
-
-	// the encoded bits of the first & second char packed into one integer value.
+	// the first & second char packed into one integer value.
 	int _PACKED;
 
 	// the number of encoded bits on the MSB part of the _PACKED.
@@ -999,22 +1052,105 @@ struct packed_info
 	// the number of encoded bits on the LSB part of the _PACKED.
 	int R_BIT;
 
-	/* data storage for the packed bits to represent their complete bits arrangement.
-	   ( little-endian ) */
-	_Int_Bits packed_bits;
+	// a member for represent the complete bits of _PACKED.
+	_Int_Bits _Reg;
 };
 
 
-// pack the entire bits of the vector into a 'packed_info' vector
+
+// a data structure of a Pair of Bit and Byte
+struct BPAIR
+{
+	BPAIR() :_data('0'), _val(0), bit_len(0), _PacInfo{} {};
+	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0), _PacInfo{} {};
+
+	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0), _PacInfo{}
+	{
+		this->bit_len = num_of_bits<int>::eval(_v);
+	};
+
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(0), _PacInfo{}
+	{
+		this->bit_len = num_of_bits<int>::eval(_v);
+	};
+
+	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0), _PacInfo{}
+	{
+		this->bit_len = num_of_bits<int>::eval(_v);
+	};
+
+	~BPAIR() = default;
+
+	BPAIR(BPAIR&& _mvBpa)
+	{
+		if (this == &_mvBpa) return;
+		*this = std::move(_mvBpa);
+	}
+
+	BPAIR(const BPAIR& _rBpa)
+	{
+		if (this == &_rBpa) return;
+		*this = _rBpa;
+	}
+
+	const BPAIR& operator= (const BPAIR& _bpa)
+	{
+		if (this == &_bpa) return *this;
+		this->_data = _bpa._data;
+		this->_val = _bpa._val;
+		this->bit_len = _bpa.bit_len;
+
+		this->_PacInfo= _bpa._PacInfo;
+		
+		return *this;
+	}
+
+	BPAIR&& operator= (BPAIR&& _rvBpa)
+	{
+		if (this == &_rvBpa) return std::move(*this);
+		this->_data = _rvBpa._data;
+		this->_val = _rvBpa._val;
+		this->bit_len = _rvBpa.bit_len;
+
+		this->_PacInfo = _rvBpa._PacInfo;
+		
+		_rvBpa.~BPAIR();
+
+		return std::move(*this);
+	}
+
+	operator char() const {
+		return this->_data;
+	}
+
+
+	operator int() const {
+		return this->_val;
+	}
+
+	char _data; // byte
+	int _val /* bit */, bit_len;
+	packed_info _PacInfo;
+};
+
+
+
+// pack the entire bits of the vector into a 'BPAIR' vector
 template < typename T >
-static inline void bitsPack(std::vector<packed_info>& _packed, const std::vector<bitInfo<T>>& _vb)
+static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitInfo<T>>& _vb)
 {
 	int _bx = 0b0, _Ax = 0b0;
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
-	std::size_t _loopn = 0;
+	const std::size_t _bpSz = _packed.size();
+
+	std::size_t _loopn = 0, _Idx = 0;
 	packed_info _pif = {};
 
 	T _n = 0;
+
+	if (_bpSz < _vcSz)
+		_packed.resize(_bpSz + (_vcSz - _bpSz));
+	
 
 	for (std::size_t i = 0; i < _vcSz; i++)
 	{
@@ -1026,17 +1162,14 @@ static inline void bitsPack(std::vector<packed_info>& _packed, const std::vector
 
 		_loopn++;
 
-		if ((_loopn > _nIter) || ((i + 1) == _vcSz))
+		if ((_loopn > _nIter) || ((i + 1) >= _vcSz))
 		{
 			_pif._PACKED = _Ax;
 
 			_pif.L_BIT = _vb[i - 1].numBits;
 			_pif.R_BIT = _vb[i].numBits;
 
-			_pif.L_ALPHA = _vb[i - 1]._Alpha;
-			_pif.R_ALPHA = _vb[i]._Alpha;
-
-			_packed.push_back(_pif);
+			_packed[_Idx++]._PacInfo = _pif;
 
 			_Ax = 0b0;
 			_loopn = 0;
@@ -1046,16 +1179,14 @@ static inline void bitsPack(std::vector<packed_info>& _packed, const std::vector
 }
 
 
-inline static const int unPack(const int& _Packed, std::size_t const _leftBits,
-				 std::size_t const _rightBits)
+inline static const int unPack(const int& _Packed, int const& _leftBits, int const& _rightBits)
 {
-	const std::string s0 = repl_char('1', _leftBits).data();
+	MAX_BIT = proper_bits(_Packed);
+	const int bit_count = MAX_BIT - _rightBits;
+	const int _hiMsk = range_bit_set(_rightBits, _rightBits + bit_count);
+	const int _LeftUnPacked = (_hiMsk & _Packed) >> _rightBits;
 
-	const int iDec = bin_to_dec<int>::eval(s0.data()),
-		bin1 = iDec << _rightBits, _pac = _Packed,
-		bin2 = (bin1 & _pac) >> _rightBits;
-
-	return bin2; 
+	return _LeftUnPacked;
 }
 
 
