@@ -25,85 +25,6 @@ constexpr int L = 1;
 constexpr int ROOT = -1;
 
 
-// a data structure of a Pair of Bit and Byte
-struct BPAIR
-{
-	BPAIR() :_data('0'), _val(0), bit_len(0) {};
-	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0) {};
-
-	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0) 
-	{
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_v));
-	};
-
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v) ,bit_len(0) 
-	{
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_v) );
-	};
-
-	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0) 
-	{
-		this->bit_len = oneAdder(num_of_bits<int>::eval(_v));
-	};
-
-	~BPAIR() = default;
-
-	BPAIR(BPAIR&& _mvBpa)
-	{
-		if (this == &_mvBpa) return;
-		*this = std::move(_mvBpa);
-	}
-
-	BPAIR(BPAIR& _Rpa)
-	{
-		if (this == &_Rpa) return;
-		*this = _Rpa;
-	}
-
-
-	BPAIR(const BPAIR& _rBpa)
-	{
-		if (this == &_rBpa) return;
-		*this = _rBpa;
-	}
-
-	const BPAIR& operator= (const BPAIR& _bpa)
-	{
-		if (this == &_bpa) return *this;
-		this->_data = _bpa._data;
-		this->_val = _bpa._val;
-		this->bit_len = _bpa.bit_len;
-
-		return *this;
-	}
-
-	BPAIR&& operator= (BPAIR&& _rvBpa)
-	{
-		if (this == &_rvBpa) return std::move(*this);
-		this->_data = _rvBpa._data;
-		this->_val = _rvBpa._val;
-		this->bit_len = _rvBpa.bit_len;
-
-		_rvBpa.~BPAIR();
-
-		return std::move(*this);
-	}
-
-	operator char() const {
-		return this->_data;
-	}
-
-
-	operator int() const {
-		return this->_val;
-	}
-
-	char _data;
-	int _val, bit_len;
-};
-
-
-
 struct node {
 	node();
 	node(const int);
@@ -183,7 +104,7 @@ private:
 	// iterates through the dataset elements in the vector to project a certain section of tree-view
 	static inline void schema_Iter(const std::vector<node>&, const double);
 
-	// directly create a huffman encoding table from the std::vector<node> without prebuilt the tree
+	// directly create a huffman encoding table from the std::vector<node> without actually prebuilt the tree
 	static inline void create_encoding(const int, const int, int, const std::vector<node>&);
 
 	static std::vector<BPAIR> _vPair;
