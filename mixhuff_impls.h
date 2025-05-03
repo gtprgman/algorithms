@@ -7,125 +7,111 @@
 #endif
 
 
-extern "C" std::uintmax_t F_SIZE = 0;
+const size_t _ROWSZ = 80;
 static std::string _SystemFile = "\0";
 
 
-
-static inline const int decompose(const int& _Packed, const int& _LeftNBits, const int& _RightNBits)
-{
-	int _v = 0;
-	_v = unPack(_Packed, _LeftNBits, _RightNBits);
-
-	return _v;
-}
-
-
-constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it 
+constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
 				      in the command line */
 
 
-
-/* Using the information in _srcPackInfo to decompose each bit in _destPack.
-   NB: 'ReSync_Int_Of_Pack()' is assumed to be called first on _destPack before calling 'Unpack_Bits()' */
-static inline const std::size_t UnPack_Bits(std::vector<int>& _destPack, const std::vector<packed_info>& _srcPackInfo)
+// ReSync the integers data of the read *.sqz using information from the read packed symbols table *.tbi.
+static inline const std::size_t ReSync_Int(std::vector<int>& _SqzInt, const std::vector<packed_info>& _ReadPac)
 {
-	std::size_t UnPack_Sze = 0;
-	const std::size_t _PckSize = _srcPackInfo.size(), _OriSize = 2 * _PckSize;
-	int elem1 = 0, elem2 = 0, unpack_value = 0, _Msk = 0;
-	
+	int len_bit = 0, _dat = 0;
+	std::size_t _Synced_Sz = 0;
+	const std::size_t _SqzSize = _SqzInt.size();
 
-	_destPack.resize(_OriSize);
-	
-	for (size_t g = 0, j = 0; j < _PckSize; j++)
+	for (size_t i = 0,j = 0; (i < _SqzSize && j < _SqzSize); i++,j++)
 	{
-		elem2 = _srcPackInfo[j]._PACKED;
-		elem1 = unPack(elem2, _srcPackInfo[j].L_BIT, _srcPackInfo[j].R_BIT);
-		unpack_value = elem1;
+		_dat = _SqzInt[i];
 
-		_Msk = set_low_bit(_srcPackInfo[j].R_BIT);
-		elem2 = _Msk & elem2;
+		if (!_dat) continue;
 
-		_destPack[g] = unpack_value;
-		_destPack[g + 1] = elem2;
+		len_bit = num_of_bits<int>::eval(_dat);
 
-		g += 2;
-		++UnPack_Sze;
-
-		_Msk = 0;
-	}
-
-return UnPack_Sze;
-}
-
-
-// Resync the integers of packed_info read from *.tbi, it returns zero if all the packed integers is in byte ordered.
-static inline const std::size_t ReSync_Int_Of_Pack(std::vector<packed_info>& _Pac)
-{
-	int _Hi = 0, _Lo = 0;
-	std::size_t _Synced_Size = 0;
-	const std::size_t _PacSz = _Pac.size();
-
-	for (std::size_t z =0 ; z < _PacSz; z++)
-	{
-		if (!_Pac[z]._PACKED)
+		if (len_bit != _ReadPac[j]._BITLEN)
 		{
-			_Hi = (_Pac[z]._Reg._eax[0]) << 8 | _Pac[z]._Reg._eax[1];
+			if ((_ReadPac[j]._BITLEN > BYTE ) && 
+				(_ReadPac[j]._BITLEN <= WORD) ) // 16 bits
+			{
+				_dat = _SqzInt[i] << 8;
+				_dat |= _SqzInt[i + 1];
+				_SqzInt[i] = _dat;
+				_SqzInt[i + 1] = 0;
+				i += 2;
+				_Synced_Sz += 2;
+			}
+			else if ( (_ReadPac[j]._BITLEN > WORD) &&
+				      (_ReadPac[j]._BITLEN <= DWORD) )
+			{
+				_dat = _SqzInt[i] << 24;
+				_dat |= _SqzInt[i + 1] << 16; _SqzInt[i + 1] = 0;
+				_dat |= _SqzInt[i + 2] << 8; _SqzInt[i + 2] = 0;
+				_dat |= _SqzInt[i + 3]; _SqzInt[i + 3] = 0;
+				_SqzInt[i] = _dat;
 
-			_Hi <<= 24; // Shift to 16 bit high
-
-			_Lo = (_Pac[z]._Reg._eax[2]) << 8 | _Pac[z]._Reg._eax[3];
-
-			_Pac[z]._PACKED = _Hi | _Lo;
-			_Synced_Size += 1;
+				i += 4;
+				_Synced_Sz += 4;
+			}
 		}
+		_dat = 0;
 	}
-	return _Synced_Size;
+
+	return _Synced_Sz;
 }
 
 
 
-// ReSync the read packed int (*.sqz) with the int read from information data table file (*.tbi)
-static inline const std::size_t ReSync_Int(std::vector<int> _SqzInt, const std::vector<int>& _TbiInt)
+
+/* Using the information in _SrcPck to decompose each bit in _SqzPack.
+   NB: 'ReSync_Int()' is assumed to be called first on _SqzPack before calling 'Unpack_Bits()' */
+static inline const std::size_t UnPack_Bits(std::vector<int>& _SqzPack, std::vector<packed_info>& _SrcPck)
 {
-	std::size_t _Synced_Szi = 0;
-	const std::size_t _TbSz = _TbiInt.size();
-	int _Byte = 0;
-	
-	for (std::size_t g = 0, j = 0; j < _TbSz; j++)
+	std::size_t unPck_Size = 0;
+	const std::size_t _SqzSize = _SqzPack.size();
+	packed_info _tmpPck = {};
+	std::vector<int> _CopyBits = {};
+
+	int l_bit = 0, r_bit = 0, elem1 = 0, elemX = 0, elem2 = 0,
+		tot_bit = 0, bit_difft = 0;
+
+	for (size_t q = 0; q < _SqzSize; q++)
 	{
-		g = (g)? g : j;
-		
-		if (_TbiInt[j] != _SqzInt[g])
-		{
-			MAX_BIT = proper_bits(_TbiInt[j]);
-			if (MAX_BIT > BYTE && MAX_BIT <= WORD) // 16 bit
-			{
-				_Byte = _SqzInt[g];
-				_Byte <<= 8;
-				_Byte |= _SqzInt[g + 1];
-				_SqzInt[g] = _Byte;
-				_SqzInt[g + 1] = 0;
+		if (!_SqzPack[q]) continue;
 
-				++_Synced_Szi;
-				g += 2; // index to the next element
-			}
-			else if (MAX_BIT > WORD) // 32 bit
-			{
-				_Byte = (_SqzInt[g] << 24) | (_SqzInt[g + 1] << 16) | (_SqzInt[g + 2] << 8) |
-					 _SqzInt[g + 3];
+		_tmpPck = _SrcPck[q];
 
-				_SqzInt[g] = _Byte;
-				_SqzInt[g + 1] = 0;
-				_SqzInt[g + 2] = 0;
-				_SqzInt[g + 3] = 0;
-				
-				_Synced_Szi += 3;
-				g += 4; // index to the next element
-			}
-		}
+		if (_tmpPck._BITLEN > 0) l_bit = _tmpPck.L_BIT; else continue;
+
+		tot_bit = num_of_bits<int>::eval(_SqzPack[q]);
+		bit_difft = tot_bit - l_bit;
+		r_bit = bit_difft;
+
+		elem1 = unPack(_SqzPack[q], l_bit, bit_difft);
+		elemX = elem1 << bit_difft;
+		elem2 = elemX ^ _SqzPack[q];
+
+		_CopyBits.push_back(elem1);
+		_CopyBits.push_back(elem2);
+		unPck_Size += 2;
+
+		_tmpPck = {};
+		tot_bit = 0; l_bit = 0; r_bit = 0; bit_difft = 0;
+		elemX = 0; elem1 = 0; elem2 = 0;
 	}
-	return _Synced_Szi;
+
+	if (!_SqzPack.empty()) _SqzPack.clear();
+	_SqzPack = {};
+
+	for (const int& _e : _CopyBits)
+		_SqzPack.push_back(_e);
+
+	if (!_CopyBits.empty()) _CopyBits.clear();
+	_CopyBits = {};
+
+
+return unPck_Size;
 }
 
 
@@ -163,6 +149,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 			}
 		}
 	}
+		
 }
 
 
@@ -284,110 +271,57 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 
 // Save the encoded's information data table into a file.
-static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<BPAIR>& _pacData)
+static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<BPAIR>& _pacData, const std::vector<packed_info>& _nfoPac)
 {
-	std::size_t _blocksWritten = 0, _RecSz = 0;
-	std::FILE* _fpT = std::fopen(_fiName.data(), "wb");
+	packed_info _Pack = {};
 
-	int _Datum = 0, _DataBits = 0;
-	BPAIR _bTemp = {};
-	packed_info _PiF = {};
-	_32Bit BIT_UNIT;
+	std::size_t _codesWritten = 0;
+	const std::size_t _CODESIZE = _pacData.size(), _PACKSIZE = _nfoPac.size();
+	std::FILE* _FPack = std::fopen(_fiName.data(), "wb");
+
+	if (!_FPack)
+	{
+		std::cerr << "\n Error writing packed information! Could not proceed. \n\n";
+		return 0;
+	}
+	else if (!std::fwrite(&_CODESIZE, sizeof(_CODESIZE), 1, _FPack)) {
+		std::cerr << "\n Incorrect 'BPAIR' Records' size! Could not proceed \n\n";
+		if (_FPack) std::fclose(_FPack);
+		return 0;
+	}
+
+	// Writing 'BPAIR' Records to file
+	for (size_t c = 0; c < _CODESIZE; c++)
+	{
+		if (((int)_pacData[c]._data) > 0)
+		{
+			std::fputc(_pacData[c]._data, _FPack);
+			std::fputc(_pacData[c]._val, _FPack);
+			++_codesWritten;
+		}
+	}
 	
-	const std::size_t n_BPAIR_blocks = _pacData.size(), // BPAIR Records' Size
-					  n_PCKINF_blocks = n_BPAIR_blocks / 2;  // packed_info records' size
-
-
-	if (!_fpT)
+	if (!std::fwrite(&_PACKSIZE, sizeof(_PACKSIZE), 1, _FPack))
 	{
-		std::cerr << "Failed to Open File !! " << "\\n\n";
-		goto PackageWritten;
+		std::cerr << "\n  Incorrect 'packed_info' records' size! Could not proceed. \n\n";
+		if (_FPack) std::fclose(_FPack);
+		return 0;
 	}
 
-	// saving information about the number of 'BPAIR' blocks at the beginning of file.
-	if (!(_RecSz = std::fwrite(&n_BPAIR_blocks, sizeof(n_BPAIR_blocks), 1, _fpT))) {
-		std::cerr << "Error writing BPAIR records size number !!" << "\n\n";
-		goto PackageWritten;
-	}
-
-	_RecSz = n_BPAIR_blocks;
-
-	// saving table of encoded information ..
-	for (BPAIR const& _pi : _pacData)
+	// Writing 'packed_info' records right after the written blocks of 'BPAIR' data
+	for (size_t x = 0; x < _PACKSIZE; x++)
 	{
-		_Datum = _pi._data;
-		
-		if (_Datum > 0)
+		if (_nfoPac[x]._BITLEN > 0)
 		{
-			_bTemp = _pi;
-			_bTemp._PacInfo = {};
-
-			if (!std::fwrite(&_bTemp, sizeof(_bTemp), 1, _fpT))
-				std::cerr << "Error writing Rec: #" << _RecSz << " of BPAIR." << "\n\n";
-			else ++_blocksWritten;
+			std::fputc(_nfoPac[x]._BITLEN, _FPack);
+			std::fputc(_nfoPac[x].L_BIT, _FPack);
+			++_codesWritten;
 		}
-			
-		_bTemp = {}; _Datum = 0; _RecSz -= 1;
 	}
-
-	// Saving 'packed_info' records' size next after 'BPAIR' data blocks in the file.
-	if ( !(_RecSz = std::fwrite(&n_PCKINF_blocks, sizeof(n_PCKINF_blocks), 1, _fpT)) )
-		std::cerr << "Error writing packed_info records size number !! " << "\n\n";
-
-	_RecSz = n_PCKINF_blocks;
-
-	// saving table of packed information..
-	for (const BPAIR& _bpi : _pacData)
-	{
-		_PiF = _bpi._PacInfo;
-		BIT_UNIT = _PiF._PACKED;
-		MAX_BIT = BIT_UNIT.BitLength();
-
-		if ((MAX_BIT > BYTE) && (MAX_BIT <= WORD))   // 16 bit
-		{
-			_Datum = _PiF._PACKED;
-			_PiF._PACKED = 0;
-
-			_PiF._Reg._eax[0] = 0;
-			_PiF._Reg._eax[1] = 0;
-			_PiF._Reg._eax[2] = BYTE_PTR_HI(_Datum) >> 8;
-			_PiF._Reg._eax[3] = BYTE_PTR_LO(_Datum);
-
-		}
-		else if (MAX_BIT > WORD)  // 32 bit
-		{
-			_Datum = _PiF._PACKED;
-			_PiF._PACKED = 0;
-			_DataBits = WORD_PTR_HI(_Datum) >> 24;   // Moves 16 bit high to LSB
-
-			_PiF._Reg._eax[0] = BYTE_PTR_HI(_DataBits) >> 8;
-			_PiF._Reg._eax[1] = BYTE_PTR_LO(_DataBits);
-
-			_DataBits = WORD_PTR_LO(_Datum); // 16 bit low
-
-			_PiF._Reg._eax[2] = BYTE_PTR_HI(_DataBits) >> 8;
-			_PiF._Reg._eax[3] = BYTE_PTR_LO(_DataBits);
-		}
-		
-		if (BIT_UNIT.Value() > 0) // make sure the data to be saved is not null
-		{
-			if (!std::fwrite(&_PiF, sizeof(_PiF), 1, _fpT))
-				std::cerr << "Error writing Rec: #" << _RecSz << " of packed_info table." << "\n\n";
-			else ++_blocksWritten;
-		}
-
-		_PiF = {}; BIT_UNIT = 0; _Datum = 0;  _DataBits = 0; _RecSz -= 1;
-	}
-
 	
-PackageWritten:
-	if (_fpT)
-	{
-		std::fflush(_fpT);
-		std::fclose(_fpT);
-	}
+	if (_FPack) std::fclose(_FPack);
 
-	return _blocksWritten;
+	return _codesWritten;
 }
 
 
@@ -395,64 +329,57 @@ PackageWritten:
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<BPAIR>& _ReadVector)
 {
-	std::size_t _blocksRead = 0;
-	std::FILE* _fiT = std::fopen(_inFile.data(), "rb");
+	BPAIR _Bpr = {};
+	int l_bit = 0,bit_len = 0;
 
-	BPAIR _bpr = {};
-	packed_info _pack = {};
-
-	std::size_t bpair_blocks = 0, pckinfo_blocks = 0;
+	std::size_t _symbolsRead = 0, _bpair_Recs = 0, _packed_Recs = 0;
+	std::FILE* _FR = std::fopen(_inFile.data(), "rb");
 	
-	// get the Number of Saved 'BPAIR' Records from a file
-	if (!std::fread(&bpair_blocks, sizeof(size_t), 1, _fiT)) {
-		std::cerr << "Error getting BPAIR records size number read from file !!" << "\n\n";
-		if (_fiT) std::fclose(_fiT);
+	if (!std::fread(&_bpair_Recs, sizeof(size_t), 1, _FR))
+	{
+		std::cerr << "\n 'BPAIR' records' size read error." << "\n\n";
+		if (_FR) std::fclose(_FR);
 		return 0;
 	}
 
-	const std::size_t n_bpair_rec = bpair_blocks;
+	const std::size_t _bpair_size = _bpair_Recs;
 
-	// reads up number of 'BPAIR' blocks to the buffer _bpr.
-	for(std::size_t j = 0; j < n_bpair_rec; j++)
+	for (size_t c = 0; c < _bpair_size; c++)
 	{
-		if (std::fread(&_bpr, sizeof(BPAIR), 1, _fiT))
-		{
-			++_blocksRead;
-			_ReadVector.push_back(_bpr);
-		}
-		else
-			std::cerr << "Record #" << j << " of BPAIR is read error from file !!" << "\n\n";
+		_Bpr._data = std::fgetc(_FR);
+		_Bpr._val = std::fgetc(_FR);
+		if ( ((int)_Bpr._data) > 0 ) _ReadVector.push_back(_Bpr);
+		_Bpr = {}; ++_symbolsRead;
 
-		_bpr = {};
 	}
 
-	_bpr = {};
-
-	if (!std::fread(&pckinfo_blocks, sizeof(size_t), 1, _fiT)) {
-		std::cerr << "Error getting packed_info records size number read from file !!" << "\n\n";
-		if (_fiT) std::fclose(_fiT);
+	if (!std::fread(&_packed_Recs, sizeof(size_t), 1, _FR))
+	{
+		std::cerr << "\n 'packed_info' records size read error. " << "\n\n";
+		if (_FR) std::fclose(_FR);
 		return 0;
 	}
 
-	const std::size_t n_pack_blocks = pckinfo_blocks;
+	const std::size_t _PackedInfo_Size = _packed_Recs;
+	_ReadVector.resize(_PackedInfo_Size + _bpair_size);
 
-	for (std::size_t k = 0; k < n_pack_blocks; k++)
+	for (size_t k = 0; k < _PackedInfo_Size; k++)
 	{
-		if (std::fread(&_pack, sizeof(packed_info), 1, _fiT))
-		{
-			++_blocksRead;
-			_ReadVector[k]._PacInfo = _pack;
-		}
-		else 
-			std::cerr << "Error Read Rec: #" << pckinfo_blocks << " of packed_info table from the file." << "\n\n";
-		
+		bit_len = std::fgetc(_FR);
+		l_bit = std::fgetc(_FR);
 
-		_pack = {}; pckinfo_blocks -= 1;
+		if (bit_len > 0) {
+			_ReadVector[k]._PacInfo._BITLEN = bit_len;
+			_ReadVector[k]._PacInfo.L_BIT = l_bit;
+			++_symbolsRead;
+		}
+		bit_len = 0; l_bit = 0;
 	}
 
-	
-	if (_fiT) std::fclose(_fiT);
-return _blocksRead;
+
+	if (_FR) std::fclose(_FR);
+
+return _symbolsRead;
 }
 
 
@@ -463,62 +390,56 @@ static inline const std::size_t writePack(const std::string& _File, const std::v
 {
 	std::size_t _packedSize = 0;
 	const std::size_t _PckSz = _PackNfo.size();
-	std::FILE* _FPack = std::fopen(_File.data(), "wb");
-	int _cByte = 0, _Bits = 0;
+	std::FILE* _FC = std::fopen(_File.data(), "wb");
 
-	if (!_FPack)
+	if (!_FC)
 	{
-		std::cerr << "Error opened input source file." << "\n\n";
-		goto DonePacking;
+		std::cerr << "\n Error opened " << _File.data() << " to write. " << "\n\n";
+		return 0;
 	}
-
 	
-	for (std::size_t _g = 0; _g < _PckSz; _g++)
+	int data_bits = 0,bit_len = 0 ,_Dat = 0;
+
+
+	for (size_t x = 0; x < _PckSz; x++)
 	{
-		_cByte = _PackNfo[_g]._PACKED;
-		
-			MAX_BIT = proper_bits(_cByte);
+		_Dat = _PackNfo[x]._PACKED;
+		bit_len = _PackNfo[x]._BITLEN;
 
-			if (MAX_BIT <= BYTE)
-			{
-				if (_cByte > 0)
-				{
-					std::fputc(_cByte, _FPack);
-					++_packedSize;
-				}
+		if (bit_len <= BYTE)
+		{
+			if (_Dat > 0) {
+				std::fputc(_Dat, _FC);
+				++_packedSize;
 			}
-			else if ( (MAX_BIT > BYTE) && (MAX_BIT <= WORD) ) // 16 Bit
-			{
-				if (_cByte > 0)
-				{
-					std::fputc(BYTE_PTR_HI(_cByte) >> 8, _FPack);
-					std::fputc(BYTE_PTR_LO(_cByte), _FPack);
-					++_packedSize;
-				}
-			}
-			else if (MAX_BIT > WORD) // 32 Bit
-			{
-				if (_cByte > 0)
-				{
-					_Bits = WORD_PTR_HI(_cByte) >> 24;  // 16 bit high moved to LSB
-					std::fputc(BYTE_PTR_HI(_Bits) >> 8, _FPack);
-					std::fputc(BYTE_PTR_LO(_Bits), _FPack);
-					++_packedSize;
+		}
+		else if ((bit_len > BYTE) && (bit_len <= WORD)) // 16 bit
+		{
+			std::fputc(BYTE_PTR_HI(_Dat) >> 8, _FC);
+			std::fputc(BYTE_PTR_LO(_Dat), _FC);
+			++_packedSize;
+		}
+		else if (bit_len > WORD) // 32 bit
+		{
+			data_bits = WORD_PTR_HI(_Dat) >> 16;
 
-					_Bits = WORD_PTR_LO(_cByte);  // 16 bit low
-					std::fputc(BYTE_PTR_HI(_Bits) >> 8, _FPack);
-					std::fputc(BYTE_PTR_LO(_Bits), _FPack);
-					++_packedSize;
-				}
-			}
+			std::fputc(BYTE_PTR_HI(data_bits) >> 8, _FC);
+			std::fputc(BYTE_PTR_LO(data_bits), _FC);
+			++_packedSize;
+
+			data_bits = WORD_PTR_LO(_Dat);
+
+			std::fputc(BYTE_PTR_HI(data_bits) >> 8, _FC);
+			std::fputc(BYTE_PTR_LO(data_bits), _FC);
+			++_packedSize;
+		}
+		else if (bit_len <= 0) continue;
+
+		_Dat = 0; bit_len = 0;
 	}
 
+	if (_FC) std::fclose(_FC);
 
-DonePacking:
-	if (_FPack) {
-		std::fflush(_FPack);
-		std::fclose(_FPack);
-	}
 	return _packedSize;
 }
 
@@ -527,33 +448,31 @@ DonePacking:
 // Read the packed data source to a int Vector.
 static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& _inVec)
 {
-	std::size_t _readChunk = 0;
-	std::FILE* _fi = std::fopen(_inFile.data(), "rb");
+	std::size_t _readByte = 0;
+	std::FILE* _FRP = std::fopen(_inFile.data(), "rb");
 	int _C = 0;
 
-	if (!_fi)
+	if (!_FRP)
 	{
-		std::cerr << "File Read Error.. !! " << "\n\n";
-		goto finishedRead;
+		std::cerr << "\n Error opened " << _inFile.data() << "to read. " << "\n\n";
+		return 0;
 	}
 
-	while ((_C = std::fgetc(_fi)) > 0)
+	while ((_C = std::fgetc(_FRP)) > 0)
 	{
 		_inVec.push_back(_C);
-		++_readChunk;
+		++_readByte;
 	}
+	
+	if (_FRP) std::fclose(_FRP);
 
-
-finishedRead:
-		if (_fi) std::fclose(_fi);
-		return _readChunk;
+return _readByte;
 }
 
 
 
 // write the original uncompressed form of the data into a file.
-static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, 
-											  const std::vector<BPAIR>& _codeInfo)
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, const std::vector<BPAIR>& _codeInfo)
 {
 	
 	std::size_t _wordsWritten = 0;
@@ -564,7 +483,7 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 
 	if (!_fOrig)
 	{
-		std::cerr << "Error writing file.. !! " << "\n\n";
+		std::cerr << "\n Error writing file.. !! " << "\n\n";
 		goto EndWrite;
 	}
 	
@@ -572,22 +491,20 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 
 	for (int const& _i : _intSrc)
 	{
-		if ( (_i > 0) && mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, bitLess(), _bIt)  )
+		if ( _i > 0 )
 		{
-			std::fputc((int)_bIt->_data, _fOrig);
-			++_wordsWritten;
+			if (mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, bitLess(), _bIt))
+			{
+				std::fputc((int)_bIt->_data, _fOrig);
+				++_wordsWritten;
+			}
+			else std::cerr << "\n Bit for integer: " << _i << " not Found!!" << "\n\n";
 		}
-		else if ( _i > 0 ) std::cerr << "Bit for integer: " << _i << " not Found!!" << "\n\n";
 	}
 
 EndWrite:
 	
-	if (_fOrig)
-	{
-		std::fflush(_fOrig);
-		std::fclose(_fOrig);
-	}
-
+	if (_fOrig) std::fclose(_fOrig);
 	_codTab.clear();
 
 	return _wordsWritten;
@@ -595,27 +512,31 @@ EndWrite:
 
 
 
-// read the saved original uncompressed data from a file
-static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<char>& _DataSrc)
+// read the source original uncompressed form of a file
+static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<char>& _vecData, char*& _DataSrc)
 {
 	std::size_t _wordsRead = 0;
-	const std::size_t dataSize = _DataSrc.capacity();
-	int _rC = 0;
-
+	
 	if (!_fHandle)
 	{
-		std::cerr << "Error reading file.. !! " << "\n\n";
+		std::cerr << "\n Error reading source file.. !! " << "\n\n";
 		goto EndRead;
 	}
 
-	for(std::size_t j = 0; j < dataSize; j++ )
+	if (!_DataSrc) _DataSrc = new char[_ROWSZ];
+	
+	while (std::fgets(_DataSrc, _ROWSZ, _fHandle))
 	{
-		if ((_rC = std::fgetc(_fHandle)) > 0)
-		{
-			_DataSrc[j] = _rC;
-			++_wordsRead;
+		for (size_t c = 0; c < _ROWSZ; c++) {
+			if (_DataSrc[c] > 0) {
+				_vecData.push_back(_DataSrc[c]);
+				++_wordsRead;
+			}
 		}
+
+		std::memset(_DataSrc, 0, _ROWSZ);
 	}
+	
 
 EndRead:
 	return _wordsRead;
@@ -624,8 +545,7 @@ EndRead:
 
 
 
-static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, 
-								  std::vector<char>& _iBuffer)
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, char* _cBuff)
 {
 	bool _bDone = 0;
 	int _cF = 0, _CountStr = 0;
@@ -633,6 +553,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	const char* _sExt = "\0";
 	bitInfo<int> _bIF = {};
 
+	std::vector<char> _srcData = {};
 	std::vector<node> nodes = {};
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<BPAIR>::iterator _BiT;
@@ -644,6 +565,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq;
 
 	std::FILE* _FO = std::fopen(_srcF.data(), "rb");
+	std::size_t F_SIZE = 0;
 
 
 	if (!_FO)
@@ -659,10 +581,10 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	if ((_cF = strNPos(_SystemFile.data(), '.')) > -1) // if source file has extension
 	{
 		_SystemFile.assign(lstr(_srcF.data(), _cF));
-		_SystemFile = (char*)concat_str(_SystemFile.data(), ".tbi");
+		_SystemFile = (char*)concat_str((char*)_SystemFile.data(), ".tbi");
 	}
 	else
-		_SystemFile = (char*)concat_str(_SystemFile.data(), ".tbi");
+		_SystemFile = (char*)concat_str((char*)_SystemFile.data(), ".tbi");
 	
 
 
@@ -696,16 +618,19 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	CoreProcesses:
 
-	if (!(F_SIZE = readOriginal(_FO, _iBuffer)) )
+	if (!(F_SIZE = readOriginal(_FO,_srcData, _cBuff)) )
 	{
+		RET;
 		std::cerr << "Error read source file." << "\n\n";
 		goto finishedDone;
 	}
 	
+	if (_FO) std::fclose(_FO);
+
 	
 	for (std::size_t _i = 0; _i < F_SIZE; _i++)
 	{
-		node _C = _iBuffer[_i];
+		node _C = _srcData[_i];
 		_pq.emplace(_C);
 	}
 	
@@ -729,7 +654,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	_CodeMap = _TREE::CodeMap();
 
-	
 	_bIF = {};
 	_vbI = {};
 	vpck0 = {};
@@ -741,7 +665,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	// Find the encoding match to pair to each data in '_iBuffer' and save the encoded data to a file.
 	for (std::size_t _g = 0; _g < F_SIZE; _g++)
 	{
-		if (mix::generic::vector_search(_CodeMap.begin(), _CodeMap.end(), (char)_iBuffer[_g], chrLess(), _BiT))
+		if (mix::generic::vector_search(_CodeMap.begin(), _CodeMap.end(), _srcData[_g], chrLess(), _BiT))
 		{
 			_bIF.X = _BiT->_val; // encoded bit
 			_bIF._Alpha = _BiT->_data; // data
@@ -755,6 +679,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	if (_destF.empty())
 	{
+		RET;
 		std::cerr << "The File's name for the compressed one could not be empty. " << "\n\n";
 		goto finishedDone;
 	}
@@ -765,28 +690,25 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		vpck0.push_back(_bpc._PacInfo);
 	}
 
-
-	if (!writePackInfo(_SystemFile.data(), _CodeMap))
+	
+	if (!writePackInfo(_SystemFile.data(), _CodeMap,vpck0))
 	{
+		RET;
 		std::cerr << "Error writing encoded's information data table to a file. " << "\n\n";
 		goto finishedDone;
 	}
 
 
-	if ( !(_bDone = (writePack(_destF, vpck0)) > 0 ) )
+	if ( !(_bDone = writePack(_destF, vpck0)) )
 	{
+		RET;
 		std::cerr << "Error writing packed data source !" << "\n\n";
 		goto finishedDone;
 	}
 
 
 finishedDone:
-	if (_FO) {
-		std::fflush(_FO);
-		std::fclose(_FO);
-	}
-
-	if (!_iBuffer.empty()) _iBuffer.clear();
+	if (!_srcData.empty()) _srcData.clear();
 	if (!nodes.empty()) nodes.clear();
 	if (!_CodeMap.empty()) _CodeMap.clear();
 	if (!_vbI.empty()) _vbI.clear();
@@ -802,17 +724,17 @@ finishedDone:
 
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
-	std::vector<int> _ReadInt, _ReadIntBckup;
+	std::vector<int> _ReadInt;
 	std::vector<packed_info> _ReadPck;
 	std::vector<BPAIR> _ReadCodeMap;
-
+	
 	int _Cnt = 0;
 	std::size_t _UnSquezzed = 0;
 	char* _OriginCopy = nullptr;
 
 	// to obtain a *.tbi file
 	_SystemFile = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
-	_SystemFile = (char*)concat_str(_SystemFile.data(), "tbi");
+	_SystemFile = (char*)concat_str((char*)_SystemFile.data(), "tbi");
 
 
 	if ( !readPackInfo(_SystemFile.data(), _ReadCodeMap) ) // Read a *.tbi into vector<BPAIR>
@@ -821,12 +743,12 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndStage;
 	}
 
-	
+
 	for (BPAIR const& _bp : _ReadCodeMap) {
 		_ReadPck.push_back(_bp._PacInfo);
 	}
 
-
+	
 	// read a *.sqz file
 	if ( !readPack(_packedFile.data(), _ReadInt) ) // read a *.sqz into vector<int>
 	{
@@ -835,10 +757,10 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	}
 
 	
-	ReSync_Int_Of_Pack(_ReadPck);
+	ReSync_Int(_ReadInt, _ReadPck);
 
 	UnPack_Bits(_ReadInt, _ReadPck);
-	
+
 	if (_unPackedFile.empty())
 	{
 		_OriginCopy = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
@@ -855,11 +777,9 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	
 
 EndStage:
-
 	NULLP(_OriginCopy);
 	if (_SystemFile.size()) _SystemFile.clear();
 	if (!_ReadInt.empty()) _ReadInt.clear();
-	if (!_ReadIntBckup.empty()) _ReadIntBckup.clear();
 	if (!_ReadCodeMap.empty()) _ReadCodeMap.clear();
 	if (!_ReadPck.empty()) _ReadPck.clear();
 
