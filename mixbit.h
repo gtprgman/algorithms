@@ -2,18 +2,20 @@
 /* Using License: GPL .v .3.0 */
 
 #ifndef HUFF_TREE
-#ifndef REQUIRE_H
-	#include <vector>
-#endif
+	#ifndef REQUIRE_H
+		#include <vector>	 
+	#endif
 #endif
 
 
 #ifndef MX_BIT
 	#define MX_BIT
+		#include <tuple>
 #endif
 
 
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
+
 
 constexpr const UINT oneAdder(const UINT _x)
 {
@@ -22,6 +24,7 @@ constexpr const UINT oneAdder(const UINT _x)
 
 #define SPACE (char)32
 
+constexpr unsigned HEXBIT = 4;
 constexpr unsigned BYTE = 8;
 constexpr unsigned WORD = 16;
 constexpr unsigned DWORD = 32;
@@ -36,6 +39,16 @@ constexpr int i32Mask = 0xFFFFFFFF;
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
 
+
+constexpr int HI_HEX(const int _Bx)
+{
+	return (i4Mask << 4) & _Bx;
+}
+
+constexpr int LO_HEX(const int _Bx)
+{
+	return (i4Mask & _Bx);
+}
 
 constexpr int BYTE_PTR_HI(const int _Bx)
 {
@@ -92,12 +105,11 @@ constexpr int range_bit_set(const int& _Min, const int& _Max)
 }
 
 
-
-
 // returns a specific named token which evaluates to a max. number of bits.
 constexpr unsigned BIT_TOKEN(const unsigned nBits)
 {
-	if (nBits <= BYTE) MAX_BIT = BYTE;
+	if (nBits > 0 && nBits <= HEXBIT) MAX_BIT = HEXBIT;
+	else if (nBits > HEXBIT && nBits <= BYTE) MAX_BIT = BYTE;
 	else if (nBits > BYTE && nBits <= WORD) MAX_BIT = WORD;
 	else if (nBits > WORD && nBits <= DWORD) MAX_BIT = DWORD;
 	else if (nBits > DWORD && nBits <= QWORD) MAX_BIT = QWORD;
@@ -330,11 +342,6 @@ inline static const char* repl_char(char*, const char, const std::size_t);
 // decomposes a given packed int into its original bit form
 inline static const int unPack(const int&, int const&, int const&);
 
-// returns the masking integer for the LSB of a specified integer '_v'
-inline static const int low_mask(const int&);
-
-// returns the masking integer for the MSB of a specified integer '_v'
-inline static const int high_mask(const int&);
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
@@ -594,6 +601,7 @@ int const extract_byte(const int& _v)
 }
 
 
+
 // fixed point numeric type
 template <const unsigned BITS>
 struct fixN
@@ -684,8 +692,7 @@ inline static const char downCase(const int _cAlpha)
 
 inline static const int strPos(const char* _aStr, const char* _cStr)
 {
-	const std::size_t _Sz1 = std::strlen(_aStr),
-			   _Sz2 = std::strlen(_cStr);
+	const std::size_t _Sz1 = std::strlen(_aStr), _Sz2 = std::strlen(_cStr);
 	int _Pos = 0;
 	bool _bFound = false;
 
@@ -726,8 +733,7 @@ inline static const int strNPos(const char* _StSrc, const int _chr)
 
 inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 {
-	const std::size_t _lenZ = std::strlen(_Str0), 
-			   _lenX = std::strlen(_searchStr);
+	const std::size_t _lenZ = std::strlen(_Str0), _lenX = std::strlen(_searchStr);
 	
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
@@ -848,8 +854,7 @@ inline static const char* tapStr(const char* _pStr, const char _tpChr, const int
 
 static inline const char* tapStrBy(const char* _aStr, const char* _aSubstitute, const int _startPos)
 {
-	const std::size_t _maxSz = std::strlen(_aStr), 
-						_Len = std::strlen(_aSubstitute);
+	const std::size_t _maxSz = std::strlen(_aStr),  _Len = std::strlen(_aSubstitute);
 
 	char* _begin = (char*)_aStr, *_end = (char*)((_aStr + _maxSz) - 1);
 	
@@ -1016,7 +1021,7 @@ struct bitInfo
 struct packed_info
 {
 	packed_info() :
-		_PACKED(0), L_BIT(0), R_BIT(0), _Reg{ _Int_Bits() }
+		_BITLEN(0), _PACKED(0), L_BIT(0), R_BIT(0), _Reg{ _Int_Bits() }
 	{ };
 
 	packed_info(packed_info const& _rPif)
@@ -1029,6 +1034,7 @@ struct packed_info
 	{
 		if (this == &_rPif) return *this;
 
+		this->_BITLEN = _rPif._BITLEN;
 		this->_PACKED = _rPif._PACKED;
 		this->L_BIT = _rPif.L_BIT;
 		this->R_BIT = _rPif.R_BIT;
@@ -1042,6 +1048,9 @@ struct packed_info
 	{
 
 	}
+
+	// the total bit length of a packed integer value.
+	int _BITLEN;
 
 	// the first & second char packed into one integer value.
 	int _PACKED;
@@ -1061,20 +1070,20 @@ struct packed_info
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	BPAIR() :_data('0'), _val(0), bit_len(0), _PacInfo{} {};
-	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0), _PacInfo{} {};
+	BPAIR() :_data('0'), _val(0), bit_len(0), _PacInfo{ packed_info() } {};
+	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0), _PacInfo{ packed_info() } {};
 
-	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0), _PacInfo{}
+	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0), _PacInfo{ packed_info() }
 	{
 		this->bit_len = num_of_bits<int>::eval(_v);
 	};
 
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(0), _PacInfo{}
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(0), _PacInfo{packed_info()}
 	{
 		this->bit_len = num_of_bits<int>::eval(_v);
 	};
 
-	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0), _PacInfo{}
+	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0), _PacInfo{packed_info()}
 	{
 		this->bit_len = num_of_bits<int>::eval(_v);
 	};
@@ -1099,9 +1108,8 @@ struct BPAIR
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
 		this->bit_len = _bpa.bit_len;
+		this->_PacInfo = _bpa._PacInfo;
 
-		this->_PacInfo= _bpa._PacInfo;
-		
 		return *this;
 	}
 
@@ -1111,9 +1119,8 @@ struct BPAIR
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
 		this->bit_len = _rvBpa.bit_len;
-
 		this->_PacInfo = _rvBpa._PacInfo;
-		
+
 		_rvBpa.~BPAIR();
 
 		return std::move(*this);
@@ -1166,6 +1173,7 @@ static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitIn
 		{
 			_pif._PACKED = _Ax;
 
+			_pif._BITLEN = num_of_bits<int>::eval(_Ax);
 			_pif.L_BIT = _vb[i - 1].numBits;
 			_pif.R_BIT = _vb[i].numBits;
 
@@ -1711,5 +1719,4 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
-
 
