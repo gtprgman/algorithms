@@ -21,8 +21,9 @@ static inline const std::size_t ReSync_Int(std::vector<int>& _SqzInt, const std:
 	int len_bit = 0, _dat = 0;
 	std::size_t _Synced_Sz = 0;
 	const std::size_t _SqzSize = _SqzInt.size();
+	const std::size_t _TbiSize = _ReadPac.size();
 
-	for (size_t i = 0,j = 0; (i < _SqzSize && j < _SqzSize); i++,j++)
+	for (size_t i = 0,j = 0; (i < _SqzSize && j < _TbiSize); i++,j++)
 	{
 		_dat = _SqzInt[i];
 
@@ -39,7 +40,7 @@ static inline const std::size_t ReSync_Int(std::vector<int>& _SqzInt, const std:
 				_dat |= _SqzInt[i + 1];
 				_SqzInt[i] = _dat;
 				_SqzInt[i + 1] = 0;
-				i += 2;
+				++i;
 				_Synced_Sz += 2;
 			}
 			else if ( (_ReadPac[j]._BITLEN > WORD) &&
@@ -51,7 +52,7 @@ static inline const std::size_t ReSync_Int(std::vector<int>& _SqzInt, const std:
 				_dat |= _SqzInt[i + 3]; _SqzInt[i + 3] = 0;
 				_SqzInt[i] = _dat;
 
-				i += 4;
+				i += 3;
 				_Synced_Sz += 4;
 			}
 		}
@@ -70,17 +71,22 @@ static inline const std::size_t UnPack_Bits(std::vector<int>& _SqzPack, std::vec
 {
 	std::size_t unPck_Size = 0;
 	const std::size_t _SqzSize = _SqzPack.size();
+	const std::size_t _PckSize = _SrcPck.size();
+
 	packed_info _tmpPck = {};
 	std::vector<int> _CopyBits = {};
 
 	int l_bit = 0, r_bit = 0, elem1 = 0, elemX = 0, elem2 = 0,
 		tot_bit = 0, bit_difft = 0;
 
-	for (size_t q = 0; q < _SqzSize; q++)
+	for (size_t q = 0, p = 0; (q < _SqzSize && p < _PckSize); q++,p++)
 	{
-		if (!_SqzPack[q]) continue;
+		if (!_SqzPack[q]) {
+			--p; // adjust the index in _SrcPck vector
+			continue;
+		}
 
-		_tmpPck = _SrcPck[q];
+		_tmpPck = _SrcPck[p];
 
 		if (_tmpPck._BITLEN > 0) l_bit = _tmpPck.L_BIT; else continue;
 
@@ -454,7 +460,7 @@ static inline const std::size_t readPack(const std::string& _inFile, std::vector
 
 	if (!_FRP)
 	{
-		std::cerr << "\n Error opened " << _inFile.data() << "to read. " << "\n\n";
+		std::cerr << "\n Error opened " << _inFile.data() << " to read. " << "\n\n";
 		return 0;
 	}
 
@@ -570,7 +576,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	if (!_FO)
 	{
-		std::cerr << "Error opened input source file. " << "\n\n";
+		std::cerr << "\n Error opened input source file. " << "\n\n";
 		goto finishedDone;
 	}
 
@@ -662,6 +668,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	   '_CodeMap '  is the previous generated encoding information data table. */
 	mix::generic::t_sort(_CodeMap.begin(), _CodeMap.end(),0.25,chrLess());
 
+	
 	// Find the encoding match to pair to each data in '_iBuffer' and save the encoded data to a file.
 	for (std::size_t _g = 0; _g < F_SIZE; _g++)
 	{
@@ -680,7 +687,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	if (_destF.empty())
 	{
 		RET;
-		std::cerr << "The File's name for the compressed one could not be empty. " << "\n\n";
+		std::cerr << "\n The File's name for the compressed one could not be empty. " << "\n\n";
 		goto finishedDone;
 	}
 
@@ -694,7 +701,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	if (!writePackInfo(_SystemFile.data(), _CodeMap,vpck0))
 	{
 		RET;
-		std::cerr << "Error writing encoded's information data table to a file. " << "\n\n";
+		std::cerr << "\n Error writing encoded's information data table to a file. " << "\n\n";
 		goto finishedDone;
 	}
 
@@ -702,7 +709,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	if ( !(_bDone = writePack(_destF, vpck0)) )
 	{
 		RET;
-		std::cerr << "Error writing packed data source !" << "\n\n";
+		std::cerr << "\n Error writing packed data source !" << "\n\n";
 		goto finishedDone;
 	}
 
@@ -739,10 +746,11 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	if ( !readPackInfo(_SystemFile.data(), _ReadCodeMap) ) // Read a *.tbi into vector<BPAIR>
 	{
-		std::cerr << "Error reading encoded's information data table ! " << "\n\n";
+		std::cerr << "\n Error reading encoded's information data table ! " << "\n\n";
 		goto EndStage;
 	}
 
+	
 
 	for (BPAIR const& _bp : _ReadCodeMap) {
 		_ReadPck.push_back(_bp._PacInfo);
@@ -752,7 +760,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	// read a *.sqz file
 	if ( !readPack(_packedFile.data(), _ReadInt) ) // read a *.sqz into vector<int>
 	{
-		std::cerr << "Error reading compressed file. " << "\n\n";
+		std::cerr << "\n Error reading compressed file. " << "\n\n";
 		goto EndStage;
 	}
 
@@ -771,7 +779,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	
 	if ( !(_UnSquezzed = writeOriginal(_OriginCopy, _ReadInt, _ReadCodeMap) ) )
 	{
-		std::cerr << "Error writing decoded format of a file. " << "\n\n";
+		std::cerr << "\n Error writing decoded format of a file. " << "\n\n";
 		goto EndStage;
 	}
 	
