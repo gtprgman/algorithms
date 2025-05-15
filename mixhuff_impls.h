@@ -154,8 +154,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 				_Cnt = _target.size() - 1;
 			}
 		}
-	}
-		
+	}	
 }
 
 
@@ -493,8 +492,10 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 		goto EndWrite;
 	}
 	
+	PRINT("\n Sorting integers of symbols ..");
 	mix::generic::t_sort(_codTab.begin(), _codTab.end(), 0.25, bitLess());
 
+	PRINT("\n Rematching integer with data ..");
 	for (int const& _i : _intSrc)
 	{
 		if ( _i > 0 )
@@ -733,7 +734,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 {
 	std::vector<int> _ReadInt;
 	std::vector<packed_info> _ReadPck;
-	std::vector<BPAIR> _ReadCodeMap;
+	std::vector<BPAIR> _ReadCodeMap, _EncSymbols;
 	
 	int _Cnt = 0;
 	std::size_t _UnSquezzed = 0;
@@ -750,9 +751,17 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndStage;
 	}
 
-	
+	for (const BPAIR& _bp : _ReadCodeMap)
+	{
+		if (_bp._PacInfo._BITLEN > 0)
+			_EncSymbols.push_back(_bp);
+	}
 
-	for (BPAIR const& _bp : _ReadCodeMap) {
+
+	if (!_ReadCodeMap.empty()) _ReadCodeMap.clear();
+
+
+	for (BPAIR const& _bp : _EncSymbols) {
 		_ReadPck.push_back(_bp._PacInfo);
 	}
 
@@ -764,9 +773,10 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndStage;
 	}
 
-	
+	PRINT("\n Resolving packed integers ..");
 	ReSync_Int(_ReadInt, _ReadPck);
 
+	PRINT("\n Remapping integers ..");
 	UnPack_Bits(_ReadInt, _ReadPck);
 
 	if (_unPackedFile.empty())
@@ -776,8 +786,9 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	}
 	else _OriginCopy = (char*)_unPackedFile.data();
 
-	
-	if ( !(_UnSquezzed = writeOriginal(_OriginCopy, _ReadInt, _ReadCodeMap) ) )
+	std::cout << "\n Writing unpacked integers.. this may take a few minutes .. \n";
+
+	if ( !(_UnSquezzed = writeOriginal(_OriginCopy, _ReadInt, _EncSymbols) ) )
 	{
 		std::cerr << "\n Error writing decoded format of a file. " << "\n\n";
 		goto EndStage;
@@ -789,6 +800,7 @@ EndStage:
 	if (_SystemFile.size()) _SystemFile.clear();
 	if (!_ReadInt.empty()) _ReadInt.clear();
 	if (!_ReadCodeMap.empty()) _ReadCodeMap.clear();
+	if (!_EncSymbols.empty()) _EncSymbols.clear();
 	if (!_ReadPck.empty()) _ReadPck.clear();
 
 	return _UnSquezzed;
