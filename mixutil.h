@@ -37,13 +37,13 @@ typedef LONGFLOAT LFLOAT;
 #define RET std::cout << "\n";
 
 template <typename T>
-constexpr void PRINT(const T& _t) { std::cout << (_t) << "\n"; }
+constexpr void PRINT(const T& _t) { std::cout << _t << "\n"; }
 
 template <typename T>
-constexpr void RPRINT(T const& _t) { std::cout << (_t); }
+constexpr void RPRINT(T const& _t) { std::cout << _t; }
 
 template < typename T >
-constexpr void RPRINTC(T const& _t) { std::cout << (_t) << ","; }
+constexpr void RPRINTC(T const& _t) { std::cout << _t << ","; }
 
 
 inline void RET2() {
@@ -565,7 +565,7 @@ namespace mix {
 			};
 
 			// overloaded copy-ctor
-			Bucket(Bucket const& rBuck) {
+			Bucket(Bucket const& rBuck): _msize(sizeof(rBuck)) {
 				if (this == &rBuck) return;
 				*this = rBuck;
 			}
@@ -977,6 +977,7 @@ namespace mix {
   
 		cleanUp:
 			fast_sort(_Begin, _End, _fCmp, _maxSz);
+			_uT.reset(nullptr);
 			_uT.release();
 		}
 
