@@ -10,7 +10,7 @@
 
 #ifndef MX_BIT
 	#define MX_BIT
-		#include <tuple>
+
 #endif
 
 
@@ -35,6 +35,10 @@ constexpr int i4Mask = 0xF;
 constexpr int i8Mask = 255;
 constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
+
+
+// Invoker macro for 'num_of_bits<T>::eval()'
+static const int _Get_Num_of_Bits(const int&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -102,6 +106,35 @@ constexpr int range_bit_set(const int& _Min, const int& _Max)
 	}
 
 	return (int)_Sum;
+}
+
+
+// get '_n_Bits' from the LSB of a specified integer ' _valX '.
+constexpr int get_n_of_lsb(const int& _valX, const int& _n_Bits)
+{
+	int _v = 0;
+	const int _b = 0b1;
+
+	for (int _x = 0; _x < _n_Bits; _x++)
+	{
+		_v |= _valX & (_b << _x);
+	}
+	return _v;
+}
+
+
+// get 'N_Bits' from the MSB of a specified integer '_Vx'.
+static inline const int get_n_of_msb(const int& _Vx, const int& N_Bits)
+{
+	const int _tot_Bits = _Get_Num_of_Bits(_Vx) - 1;
+	const int _bx = 0b1 << _tot_Bits;
+	int _dx = _bx;
+
+	for (int _n = 0; _n < N_Bits; _n++)
+	{
+		_dx |= _Vx & (_bx >> _n);
+	}
+	return _dx;
 }
 
 
@@ -375,14 +408,13 @@ struct to_binary
 
 	static inline const std::string eval(const value_type _dec)
 	{
-		_bs = nullptr;
-		unsigned int _bsz = oneAdder(num_of_bits<unsigned int>::eval(_dec));
+		int _bsz = num_of_bits<unsigned int>::eval(_dec);
 		_value = _dec;
 
 		if (_bsz > 0)
-			_bs = new char[_bsz];
+			_bs = new char[_bsz]; 
 
-		for (unsigned int i = 0; i < _bsz; i++)
+		for (int i = 0; i < _bsz; i++)
 		{
 			_bs[i] = (_value % 2)? 49 : 48;
 			_value >>= 1;
@@ -390,13 +422,13 @@ struct to_binary
 
 		_value = 0;
 		_bs[_bsz] = 0;
-		_bs = (char*)reverse_str(_bs);
+		_bs = (char*)reverse_str(_bs.data());
 		return _bs;
 	}
 
 private:
 	static value_type _value;
-	static char* _bs;
+	static std::string _bs;
 };
 
 // static members initializer
@@ -404,8 +436,7 @@ template <class T>
 T to_binary<T>::_value = 0;
 
 template <class T>
-char* to_binary<T>::_bs = nullptr;
-
+std::string to_binary<T>::_bs = "\0";
 
 
 template <class T >
@@ -440,6 +471,13 @@ private:
 // static member initializer
 template <class T>
 T bin_to_dec<T>::_Dec = 0;
+
+
+
+static inline const int _Get_Num_of_Bits(const int& _ax)
+{
+	return num_of_bits<int>::eval(_ax);
+}
 
 
 
