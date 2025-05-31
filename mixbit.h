@@ -13,7 +13,23 @@
 
 #endif
 
+// a header data structure for storing encoding information of huffman method
+struct _Canonical
+{
+	char _xData;
+	int _bitLen;
+	int _codeWord;
 
+	operator int() {
+		return this->_bitLen;
+	}
+
+	operator char() {
+		return this->_xData;
+	}
+};
+
+#define SPACE (char)32
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
 
 
@@ -22,7 +38,12 @@ constexpr const UINT oneAdder(const UINT _x)
 	return _x + (UINT)1;
 }
 
-#define SPACE (char)32
+template < class T >
+constexpr bool vectorClean(std::vector<T>& _vecT)
+{
+	if (!_vecT.empty()) _vecT.clear();
+	return (_vecT.empty());
+}
 
 constexpr unsigned HEXBIT = 4;
 constexpr unsigned BYTE = 8;
@@ -39,6 +60,21 @@ constexpr int i32Mask = 0xFFFFFFFF;
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static const int _Get_Num_of_Bits(const int&);
+
+// Invoker macro for 'to_binary<T>::eval()'
+static const std::string _Get_Binary_Str(const int&);
+
+
+// Invoker macro for 'bin_to_dec<T>::eval()'
+static const int _Int_from_Bit_Str(const std::string&);
+
+
+// generate encoding information table based on Huffman Canonical Method
+static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
+
+// packing a series of canonical bits into one integer and return the result as a bits string.
+static const std::string cni_bits_pack(const std::vector<int>&);
+
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -376,6 +412,29 @@ inline static const char* repl_char(char*, const char, const std::size_t);
 inline static const int unPack(const int&, int const&, int const&);
 
 
+inline static const char* repl_char(char* _dest, char const aChar, std::size_t const _repSize)
+{
+	_dest = new char[_repSize];
+	std::memset(_dest, 0, _repSize);
+
+	for (int i = 0; i < _repSize; i++)
+		_dest[i] = aChar;
+
+
+	_dest[_repSize] = 0;
+	return _dest;
+}
+
+
+// generates bit '0' a number of n_Bits
+const std::string zero_bits(const int& n_Bits)
+{
+	std::string _ci = repl_char(_ci.data(), '0', n_Bits);
+
+	return _ci;
+}
+
+
 
 // evaluate to how much number of bits that made up a constant value '_v'
 template < class T >
@@ -476,9 +535,98 @@ T bin_to_dec<T>::_Dec = 0;
 
 static inline const int _Get_Num_of_Bits(const int& _ax)
 {
-	return num_of_bits<int>::eval(_ax);
+	if (!_ax) return 1;
+	else
+	  return num_of_bits<int>::eval(_ax);
 }
 
+
+static inline const std::string _Get_Binary_Str(const int& _Dx)
+{
+	int _Abs = _Dx;
+	if (_Abs < 0)  _Abs = std::abs(_Abs);
+
+	if (!_Abs) return "0";
+	else
+	  return to_binary<int>::eval(_Abs);
+}
+
+
+
+static inline const int _Int_from_Bit_Str(const std::string& Bit_Str)
+{
+	return bin_to_dec<int>::eval(Bit_Str.data());
+}
+
+
+
+static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
+{
+	std::string _si;
+	int _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
+	const std::size_t _codeSize = _Codes.size();
+	const std::size_t _xBitSize = _cBit.size();
+	_Canonical _Canon = _Codes[0];
+
+	_len1 = _Canon._bitLen;
+
+	_si = zero_bits(_len1);
+	_bi = strtoint(_si.data());
+	_Canon._codeWord = _bi;
+
+	_cBit.push_back(_Canon); _Canon = {};
+
+	for (size_t z = 1; z < _codeSize; z++)
+	{
+		_Canon = _cBit[z - 1];
+		_len1 = _Get_Num_of_Bits(_Canon._codeWord);
+		_len2 = _Codes[z]._bitLen;
+
+		if (_len2 > _len1)
+		{
+			_xDiff = _len2 - _len1;
+			_bi = _Canon._codeWord;
+			++_bi;
+			_bi <<= _xDiff;
+		}
+		else if (_len2 < _len1)
+		{
+			_xDiff = _len1 - _len2;
+			_bi = _Canon._codeWord;
+			--_bi;
+			_bi >>= _xDiff;
+
+		}
+		else if (_len2 == _len1)
+		{
+			_bi = _Canon._codeWord;
+			++_bi;
+		}
+
+		_Canon = _Codes[z];
+		_Canon._codeWord = _bi;
+
+		_cBit.push_back(_Canon );
+		_Canon = {};
+	}
+}
+
+
+static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
+{
+	int _x = 0b0;
+	std::string _xBitStr;
+	const std::size_t canSize = _canVec.size();
+
+	for (size_t t = 0; t < canSize; t++)
+	{
+		_x = (_x << _Get_Num_of_Bits(_canVec[t])) | _canVec[t];
+	}
+
+	_xBitStr = concat_str((char*)"0",_Get_Binary_Str(_x).data());
+
+	return _xBitStr;
+}
 
 
 inline static const unsigned int proper_bits(const int _n)
@@ -515,6 +663,7 @@ inline static const int LoPart(const int _v)
 	}
 
 	return _Result;
+
 }
 
 
@@ -1011,18 +1160,7 @@ inline static const char* rtrim(const char* _string)
 }
 
 
-inline static const char* repl_char(char* _dest, char const aChar, std::size_t const _repSize)
-{
-	_dest = new char[_repSize];
-	std::memset(_dest, 0, _repSize);
 
-	for (int i = 0; i < _repSize; i++)
-		_dest[i] = aChar;
-
-
-	_dest[_repSize] = 0;
-	return _dest;
-}
 
 
 
