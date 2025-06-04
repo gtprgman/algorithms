@@ -75,6 +75,11 @@ static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
 // packing a series of canonical bits into one integer and return the result as a bits string.
 static const std::string cni_bits_pack(const std::vector<int>&);
 
+// Save a Canonical Encoding Information Table to a file.
+static const size_t _SaveCanonical(const std::string&, const std::vector<_Canonical>&);
+
+// Read a saved Canonical Information from a file and put the data on a vector
+static const size_t _ReadCanonical(const std::string&, std::vector<_Canonical>&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -627,6 +632,86 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 
 	return _xBitStr;
 }
+
+
+static inline const size_t _SaveCanonical(const std::string& _File, const std::vector<_Canonical>& _Canoe)
+{
+	size_t _writtenSize = 0;
+	const size_t _CanSize = _Canoe.size();
+	std::FILE* _FOut = std::fopen(_File.data(), "wb");
+
+	if (!_FOut)
+	{
+		std::cerr << "\n Error output file !" << "\n\n";
+		if (_FOut) std::fclose(_FOut);
+		return 0;
+	}
+
+	if (!std::fwrite(&_CanSize, sizeof(_CanSize), 1, _FOut))
+	{
+		std::cerr << "\n\n Incorrect table record size !" << "\n\n";
+		if (_FOut) std::fclose(_FOut);
+		return 0;
+	}
+
+	for (size_t _ci = 0; _ci < _CanSize; _ci++)
+	{
+		_writtenSize += std::fputc(_Canoe[_ci]._xData, _FOut);
+	}
+
+	for (size_t _zi = 0; _zi < _CanSize; _zi++)
+	{
+		_writtenSize += std::fputc(_Canoe[_zi]._codeWord, _FOut);
+	}
+
+	if (_FOut) std::fclose(_FOut);
+
+
+	return _writtenSize;
+}
+
+
+
+static inline const size_t _ReadCanonical(const std::string& _CFile, std::vector<_Canonical>& _CanData)
+{
+	_Canonical _Cani = {};
+
+	std::size_t _nRead = 0, _nRecs = 0;
+	std::FILE* _FIn = std::fopen(_CFile.data(), "rb");
+
+	if (!_FIn)
+	{
+		std::cerr << "\n Error read file !" << "\n\n";
+		if (_FIn) std::fclose(_FIn);
+		return 0;
+	}
+
+	if (!std::fread(&_nRecs, sizeof(size_t), 1, _FIn))
+	{
+		std::cerr << "\n Incorrect table records' size \n\n";
+		if (_FIn) std::fclose(_FIn);
+		return 0;
+	}
+
+	const std::size_t _recSize = _nRecs;
+
+	for (size_t _cni = 0; _cni < _recSize; _cni++)
+	{
+		_Cani._xData = std::fgetc(_FIn);
+		_CanData.push_back(_Cani);
+		_Cani = {};
+		++_nRead;
+	}
+
+	for (size_t _nc = 0; _nc < _recSize; _nc++)
+	{
+		_CanData[_nc]._codeWord = std::fgetc(_FIn);
+		++_nRead;
+	}
+
+	return _nRead;
+}
+
 
 
 inline static const unsigned int proper_bits(const int _n)
