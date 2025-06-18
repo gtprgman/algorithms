@@ -19,6 +19,7 @@ struct _Canonical
 	char _xData;
 	int _bitLen;
 	int _codeWord;
+	int _rle_bit_len;
 
 	operator int() {
 		return this->_bitLen;
@@ -57,13 +58,14 @@ constexpr int i8Mask = 255;
 constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
 
+// generates bit '0' a number of n_Bits
+static const std::string zero_bits(const int&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static const int _Get_Num_of_Bits(const int&);
 
 // Invoker macro for 'to_binary<T>::eval()'
 static const std::string _Get_Binary_Str(const int&);
-
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
 static const int _Int_from_Bit_Str(const std::string&);
@@ -75,11 +77,15 @@ static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
 // packing a series of canonical bits into one integer and return the result as a bits string.
 static const std::string cni_bits_pack(const std::vector<int>&);
 
-// Save a Canonical Encoding Information Table to a file.
-static const size_t _SaveCanonical(const std::string&, const std::vector<_Canonical>&);
+// saves a packed canonical bit to one specified file
+static const size_t save_cni_bit(const std::string&, const int&);
 
-// Read a saved Canonical Information from a file and put the data on a vector
-static const size_t _ReadCanonical(const std::string&, std::vector<_Canonical>&);
+// reads a packed canonical bit from one file and parses it to a vector integer
+static const size_t read_cni_bit(const std::string&, std::vector<int>&);
+
+// merges the read integers into one single packed canonical bit again
+static const size_t merge_cni_bit(const std::vector<int>&, int&);
+
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -177,6 +183,8 @@ static inline const int get_n_of_msb(const int& _Vx, const int& N_Bits)
 	}
 	return _dx;
 }
+
+
 
 
 // returns a specific named token which evaluates to a max. number of bits.
@@ -431,8 +439,8 @@ inline static const char* repl_char(char* _dest, char const aChar, std::size_t c
 }
 
 
-// generates bit '0' a number of n_Bits
-const std::string zero_bits(const int& n_Bits)
+
+static inline const std::string zero_bits(const int& n_Bits)
 {
 	std::string _ci = repl_char(_ci.data(), '0', n_Bits);
 
@@ -549,11 +557,15 @@ static inline const int _Get_Num_of_Bits(const int& _ax)
 static inline const std::string _Get_Binary_Str(const int& _Dx)
 {
 	int _Abs = _Dx;
+	std::string bit_str;
+
 	if (_Abs < 0)  _Abs = std::abs(_Abs);
 
 	if (!_Abs) return "0";
 	else
-	  return to_binary<int>::eval(_Abs);
+	  bit_str = to_binary<int>::eval(_Abs).data();
+
+	return bit_str;
 }
 
 
@@ -570,7 +582,7 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 	std::string _si;
 	int _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
 	const std::size_t _codeSize = _Codes.size();
-	const std::size_t _xBitSize = _cBit.size();
+	
 	_Canonical _Canon = _Codes[0];
 
 	_len1 = _Canon._bitLen;
@@ -625,91 +637,101 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 
 	for (size_t t = 0; t < canSize; t++)
 	{
-		_x = (_x << _Get_Num_of_Bits(_canVec[t])) | _canVec[t];
+		_x <<= _Get_Num_of_Bits(_canVec[t]);
+		_x |= _canVec[t];
 	}
 
-	_xBitStr = concat_str((char*)"0",_Get_Binary_Str(_x).data());
-
+	_xBitStr = concat_str((char*)zero_bits(1).data(), _Get_Binary_Str(_x).data());
+	
 	return _xBitStr;
 }
 
 
-static inline const size_t _SaveCanonical(const std::string& _File, const std::vector<_Canonical>& _Canoe)
+static inline const size_t save_cni_bit(const std::string& _File, const int& cni_bit)
 {
-	size_t _writtenSize = 0;
-	const size_t _CanSize = _Canoe.size();
-	std::FILE* _FOut = std::fopen(_File.data(), "wb");
+	int bit_cni = 0, bit_8 = 0;
+	size_t bit_size = 0, saved_bit = 0;
+	std::FILE* _Fi = std::fopen(_File.data(), "wb");
 
-	if (!_FOut)
+	if (!_Fi) return 0;
+
+	bit_size = _Get_Num_of_Bits(cni_bit);
+
+	if (bit_size <= 8)
+		saved_bit = std::fputc(cni_bit,  _Fi);
+
+	else if (bit_size > 8 && bit_size <= 16)
 	{
-		std::cerr << "\n Error output file !" << "\n\n";
-		if (_FOut) std::fclose(_FOut);
-		return 0;
+		bit_cni = BYTE_PTR_HI(cni_bit) >> 8;
+		saved_bit = std::fputc(bit_cni, _Fi);
+
+		bit_cni = BYTE_PTR_LO(cni_bit);
+		saved_bit += std::fputc(bit_cni, _Fi);
+	}
+	else if (bit_size > 16 && bit_size <= 32)
+	{
+		bit_cni = WORD_PTR_HI(cni_bit) >> 16;
+
+			bit_8 = BYTE_PTR_HI(bit_cni) >> 8;
+			saved_bit = std::fputc(bit_8, _Fi);
+
+			bit_8 = BYTE_PTR_LO(bit_cni);
+			saved_bit += std::fputc(bit_8, _Fi);
+	
+		bit_cni = WORD_PTR_LO(cni_bit);
+
+			bit_8 = BYTE_PTR_HI(bit_cni) >> 8;
+			saved_bit += std::fputc(bit_8, _Fi);
+
+			bit_8 = BYTE_PTR_LO(bit_cni);
+			saved_bit += std::fputc(bit_8, _Fi);
 	}
 
-	if (!std::fwrite(&_CanSize, sizeof(_CanSize), 1, _FOut))
-	{
-		std::cerr << "\n\n Incorrect table record size !" << "\n\n";
-		if (_FOut) std::fclose(_FOut);
-		return 0;
-	}
+	if (_Fi) std::fclose(_Fi);
 
-	for (size_t _ci = 0; _ci < _CanSize; _ci++)
-	{
-		_writtenSize += std::fputc(_Canoe[_ci]._xData, _FOut);
-	}
-
-	for (size_t _zi = 0; _zi < _CanSize; _zi++)
-	{
-		_writtenSize += std::fputc(_Canoe[_zi]._codeWord, _FOut);
-	}
-
-	if (_FOut) std::fclose(_FOut);
-
-
-	return _writtenSize;
+	return saved_bit;
 }
 
 
-
-static inline const size_t _ReadCanonical(const std::string& _CFile, std::vector<_Canonical>& _CanData)
+static inline const size_t read_cni_bit(const std::string& _File, std::vector<int>& Int_Bit)
 {
-	_Canonical _Cani = {};
+	int read_bit = 0;
+	size_t read_size = 0;
+	std::FILE* _FBit = std::fopen(_File.data(), "rb");
 
-	std::size_t _nRead = 0, _nRecs = 0;
-	std::FILE* _FIn = std::fopen(_CFile.data(), "rb");
+	if (!_FBit) return 0;
 
-	if (!_FIn)
+	while ((read_bit = std::fgetc(_FBit)) > 0 )
 	{
-		std::cerr << "\n Error read file !" << "\n\n";
-		if (_FIn) std::fclose(_FIn);
-		return 0;
+		Int_Bit.push_back(read_bit);
+		read_bit = 0;
+		++read_size;
 	}
 
-	if (!std::fread(&_nRecs, sizeof(size_t), 1, _FIn))
+	if (_FBit) std::fclose(_FBit);
+
+	return read_size;
+}
+
+
+static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int& bit_cni)
+{
+	size_t merged_size = 0;
+	const size_t vbnSize = v_bit.size(), bit_size = vbnSize * 8;
+
+	if (bit_size <= 8) bit_cni = v_bit[0];
+
+	else if (bit_size > 8 )
 	{
-		std::cerr << "\n Incorrect table records' size \n\n";
-		if (_FIn) std::fclose(_FIn);
-		return 0;
+		for (size_t z = 0; z < vbnSize; z++)
+		{
+			bit_cni <<= _Get_Num_of_Bits(v_bit[z]) + 1;
+			bit_cni |= v_bit[z];
+			++merged_size;
+		}
 	}
 
-	const std::size_t _recSize = _nRecs;
-
-	for (size_t _cni = 0; _cni < _recSize; _cni++)
-	{
-		_Cani._xData = std::fgetc(_FIn);
-		_CanData.push_back(_Cani);
-		_Cani = {};
-		++_nRead;
-	}
-
-	for (size_t _nc = 0; _nc < _recSize; _nc++)
-	{
-		_CanData[_nc]._codeWord = std::fgetc(_FIn);
-		++_nRead;
-	}
-
-	return _nRead;
+	return merged_size;
 }
 
 
@@ -1246,9 +1268,6 @@ inline static const char* rtrim(const char* _string)
 
 
 
-
-
-
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1331,22 +1350,22 @@ struct packed_info
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	BPAIR() :_data('0'), _val(0), bit_len(0), _PacInfo{ packed_info() } {};
-	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0), _PacInfo{ packed_info() } {};
+	BPAIR() :_data('0'), _val(0), bit_len(0) {};
+	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(0), _PacInfo{ packed_info() }
+	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(_Get_Num_of_Bits(_v))
 	{
-		this->bit_len = num_of_bits<int>::eval(_v);
+	
 	};
 
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(0), _PacInfo{packed_info()}
+	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
 	{
-		this->bit_len = num_of_bits<int>::eval(_v);
+	
 	};
 
-	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(0), _PacInfo{packed_info()}
+	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
 	{
-		this->bit_len = num_of_bits<int>::eval(_v);
+		
 	};
 
 	~BPAIR() = default;
@@ -1368,19 +1387,17 @@ struct BPAIR
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
-		this->bit_len = _bpa.bit_len;
-		this->_PacInfo = _bpa._PacInfo;
+		this->bit_len = _Get_Num_of_Bits(_bpa._val);
 
 		return *this;
 	}
 
-	BPAIR&& operator= (BPAIR&& _rvBpa)
+	BPAIR&& operator= (BPAIR&& _rvBpa) noexcept
 	{
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
-		this->bit_len = _rvBpa.bit_len;
-		this->_PacInfo = _rvBpa._PacInfo;
+		this->bit_len = _Get_Num_of_Bits(_rvBpa._val);
 
 		_rvBpa.~BPAIR();
 
@@ -1398,7 +1415,6 @@ struct BPAIR
 
 	char _data; // byte
 	int _val /* bit */, bit_len;
-	packed_info _PacInfo;
 };
 
 
@@ -1411,8 +1427,7 @@ static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitIn
 	const std::size_t _vcSz = _vb.size(), _nIter = 1;
 	const std::size_t _bpSz = _packed.size();
 
-	std::size_t _loopn = 0, _Idx = 0;
-	packed_info _pif = {};
+	std::size_t _loopn = 0;
 
 	T _n = 0;
 
@@ -1432,17 +1447,8 @@ static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitIn
 
 		if ((_loopn > _nIter) || ((i + 1) >= _vcSz))
 		{
-			_pif._PACKED = _Ax;
-
-			_pif._BITLEN = num_of_bits<int>::eval(_Ax);
-			_pif.L_BIT = _vb[i - 1].numBits;
-			_pif.R_BIT = _vb[i].numBits;
-
-			_packed[_Idx++]._PacInfo = _pif;
-
 			_Ax = 0b0;
 			_loopn = 0;
-			_pif = {};
 		}
 	}
 }
