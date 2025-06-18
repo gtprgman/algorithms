@@ -9,7 +9,6 @@
 
 #ifndef MX_BIT
 #include "mixbit.h"
-	BitN biXs;
 #endif
 
 
@@ -28,25 +27,22 @@ constexpr int ROOT = -1;
 struct node {
 	node();
 	node(const int);
-	node(const char); // for data tree
-	node(const double); // for frequency tree
-	node(const int, const double);
+	node(const char, const int); // for data & frequency
 
-	node(node&); // simple copy
 	node(const node&); // overloaded copy
-	node(node&&) noexcept;	// move
+	node(node&&);	// move
 
 	const node& operator= (const node&);
 	node&& operator= (node&&) noexcept;
 	~node();
 
-	void setData(const char);
-	void setFrequencyData(const double);
+	void setData(const int);
+	void setFrequencyData(const int);
 	
 	const int Value() const;
 	const char dataValue() const;
-	const double FrequencyData() const;
-	const double Count() const;
+	const int FrequencyData() const;
+	const int Count() const;
 	const int Code() const;
 
 	const node Release() const;
@@ -58,7 +54,7 @@ struct node {
 	void Print() const;
 	
 private:
-	double _fdata;
+	int _fdata;
 	char _data;
 	
 };
@@ -113,29 +109,6 @@ private:
 std::vector<BPAIR> _TREE::_vPair = {};
 
 
-
-// returns the value of a node as specified by a reference to any node in the tree.
-template < class N >
-constexpr inline const N VALT(const node& _Nod) {
-	N _vt;
-	
-	_vt = (std::strcmp("int", typeid(_vt).name()))?
-		(N)_Nod.FrequencyData() : (N)_Nod.Value();
-
-	return _vt;
-}
-
-
-// returns the value of a node specified by a pointer to any node in the tree.
-template < class N > 
-constexpr inline const N VALX(const node* const _p) {
-	N _v;
-
-	if (nullptr == _p) return 0;
-	_v = (std::strcmp("int", typeid(_v).name()))? (N)_p->FrequencyData() : (N)_p->Value();
-
-	return _v;
-}
 
 
 // Extracts nodes information from the vector
@@ -193,38 +166,21 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 
 
 	// Node Class Impl..
-	node::node() :_data(0), _fdata(0.00)
+	node::node() :_data(0), _fdata(0)
 	{
 		
 	}
 
 
-	node::node(const int _Val) : _data(_Val), _fdata(0.00)
-	{
-
-	}
-
-
-	node::node(const char _uChar) :_fdata(0.00),_data((int)_uChar)
-	{
-		
-	}
-
-	node::node(const double frq_data):_fdata(frq_data)
+	node::node(const int _Val): _data(_Val), _fdata(0)
 	{
 		
 	}
 
 	
-	node::node(const int _c, const double _fv) : _data(_c), _fdata(_fv)
+	node::node(const char _c, const int _fv) : _data(_c), _fdata(_fv)
 	{
 		
-	}
-
-
-	node::node(node& rNod) {
-		if (this == &rNod) return;
-		*this = rNod;
 	}
 
 
@@ -234,10 +190,10 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	node::node(node&& rvNod) noexcept {
+	node::node(node&& rvNod) {
 		if (this == &rvNod) return;
-		*this = rvNod;
-	}
+		*this = std::move(rvNod);
+	};
 
 
 	
@@ -258,7 +214,7 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 		this->_fdata = rvNod._fdata;
 	
 		rvNod._data = 0;
-		rvNod._fdata = 0.00;
+		rvNod._fdata = 0;
 		
 		rvNod.~node();
 
@@ -271,19 +227,19 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	void node::setData(const char uc) {
+	void node::setData(const int uc) {
 		this->_data = uc;
 	}
 
 
-	void node::setFrequencyData(const double fc) {
+	void node::setFrequencyData(const int fc) {
 		this->_fdata = fc;
 	}
 
 
 	// Get Accessor Methods..
 	const int node::Value() const {
-		return (int)this->_data;
+		return this->_data;
 	}
 
 
@@ -292,7 +248,7 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	const double node::FrequencyData() const {
+	const int node::FrequencyData() const {
 		return this->_fdata;
 	}
 
