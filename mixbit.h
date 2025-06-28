@@ -13,6 +13,8 @@
 
 #endif
 
+
+
 // a header data structure for storing encoding information of huffman method
 struct _Canonical
 {
@@ -30,6 +32,19 @@ struct _Canonical
 	}
 };
 
+// a data structure representing a subset of _Canonical
+struct Can_Bit : virtual public _Canonical
+{
+	operator char() {
+		return this->_xData;
+	}
+
+	operator int() {
+		return this->_codeWord;
+	}
+};
+
+
 #define SPACE (char)32
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
 
@@ -39,12 +54,14 @@ constexpr const UINT oneAdder(const UINT _x)
 	return _x + (UINT)1;
 }
 
+
 template < class T >
 constexpr bool vectorClean(std::vector<T>& _vecT)
 {
 	if (!_vecT.empty()) _vecT.clear();
 	return (_vecT.empty());
 }
+
 
 constexpr unsigned HEXBIT = 4;
 constexpr unsigned BYTE = 8;
@@ -60,6 +77,9 @@ constexpr int i32Mask = 0xFFFFFFFF;
 
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int&);
+
+// forward declaration prototype of repl_char() function
+static const char* repl_char(char*, const char&, const int&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static const int _Get_Num_of_Bits(const int&);
@@ -85,7 +105,6 @@ static const size_t read_cni_bit(const std::string&, std::vector<int>&);
 
 // merges the read integers into one single packed canonical bit again
 static const size_t merge_cni_bit(const std::vector<int>&, int&);
-
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -120,7 +139,6 @@ constexpr int WORD_PTR_LO(const int EDX_)
 {
 	return i16Mask & EDX_;
 }
-
 
 
 /* generates number of set bits on the LSB of a data unit. (little - endian)
@@ -183,7 +201,6 @@ static inline const int get_n_of_msb(const int& _Vx, const int& N_Bits)
 	}
 	return _dx;
 }
-
 
 
 
@@ -419,13 +436,13 @@ inline static const char* rtrim(const char*);
 inline static const char* reverse_str(const char*);
 
 // replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
-inline static const char* repl_char(char*, const char, const std::size_t);
+inline static const char* repl_char(char*, const char&, const int&);
 
 // decomposes a given packed int into its original bit form
 inline static const int unPack(const int&, int const&, int const&);
 
 
-inline static const char* repl_char(char* _dest, char const aChar, std::size_t const _repSize)
+inline static const char* repl_char(char* _dest, const char& aChar, const int& _repSize)
 {
 	_dest = new char[_repSize];
 	std::memset(_dest, 0, _repSize);
@@ -442,7 +459,8 @@ inline static const char* repl_char(char* _dest, char const aChar, std::size_t c
 
 static inline const std::string zero_bits(const int& n_Bits)
 {
-	std::string _ci = repl_char(_ci.data(), '0', n_Bits);
+	char* _Ch = new char[n_Bits];
+	std::string _ci = repl_char(_Ch, '0', n_Bits);
 
 	return _ci;
 }
@@ -650,12 +668,12 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 static inline const size_t save_cni_bit(const std::string& _File, const int& cni_bit)
 {
 	int bit_cni = 0, bit_8 = 0;
-	size_t bit_size = 0, saved_bit = 0;
+	size_t saved_bit = 0;
 	std::FILE* _Fi = std::fopen(_File.data(), "wb");
 
 	if (!_Fi) return 0;
 
-	bit_size = _Get_Num_of_Bits(cni_bit);
+	const size_t bit_size = _Get_Num_of_Bits(cni_bit);
 
 	if (bit_size <= 8)
 		saved_bit = std::fputc(cni_bit,  _Fi);
@@ -721,14 +739,17 @@ static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int& bit
 
 	if (bit_size <= 8) bit_cni = v_bit[0];
 
-	else if (bit_size > 8 )
+	else if (bit_size > 8 && bit_size <= 16 )
 	{
-		for (size_t z = 0; z < vbnSize; z++)
-		{
-			bit_cni <<= _Get_Num_of_Bits(v_bit[z]) + 1;
-			bit_cni |= v_bit[z];
-			++merged_size;
-		}
+		bit_cni |= v_bit[0] << 8;
+		bit_cni |= v_bit[1];
+	}
+	else if (bit_size > 16 && bit_size <= 32)
+	{
+		bit_cni |= v_bit[0] << 24;
+		bit_cni |= v_bit[1] << 16;
+		bit_cni |= v_bit[2] << 8;
+		bit_cni |= v_bit[3];
 	}
 
 	return merged_size;
