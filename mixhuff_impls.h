@@ -12,32 +12,37 @@ static std::string _SystemFile = "\0";
 
 
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
-					in the command line */
+				     in the command line */
 
 
 // ReSync the integers of *.sqz using information from the canonical symbols table *.tbi.
-static inline const std::size_t ReSync_Int(std::vector<int>& _SqzInt, const std::vector<_Canonical>& _ReadPac)
+static inline const std::size_t ReSync_Int(std::vector<int>& _vecSqz, const int& _SqzInt, const std::vector<Can_Bit>& _ReadPac)
 {
-	int len_bit = 0, cod_len = 0, _dat = 0;
-	std::size_t _Synced_Sz = 0;
-	const std::size_t _SqzSize = _SqzInt.size();
-	const std::size_t _TbiSize = _ReadPac.size();
+	int _bit = 0;
+	size_t Synced_Size = 0;
+	const std::string _xsBit = _Get_Binary_Str(_SqzInt);
+	const size_t _bitWide = _xsBit.size();
+	const size_t _CndSize = _ReadPac.size();
+	char* _pBit = (char*)_xsBit.data(); 
+	const char*_p1stBit = _pBit;
+	
 
-	for (size_t i = 0, j = 0; (i < _SqzSize && j < _TbiSize); i++, j++)
+	vectorClean(_vecSqz);
+
+	for (size_t i = 0; i < _bitWide; i++) _vecSqz.push_back(0);
+
+	for (size_t z = 0; z < _CndSize; z++)
 	{
-		_dat = _SqzInt[i];
+		_bit = _ReadPac[z]._codeWord;
 
-		if (!_dat) continue;
-
-		len_bit = _Get_Num_of_Bits(_dat);
-		cod_len = _Get_Num_of_Bits(_ReadPac[j]._codeWord);
-
-		RPRINTC(_Get_Binary_Str(_dat)); RPRINTC(_Get_Binary_Str(_ReadPac[j]._codeWord));
-		RET;
-
+		
 	}
-	return _Synced_Sz;
+
+
+	return Synced_Size;
 }
+
+
 
 
 
@@ -151,7 +156,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	const int _TreeSizes = (int)_fpNods.size();
 
 	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-						std::floor(COMP_RATE*_TreeSizes);
+					     std::floor(COMP_RATE*_TreeSizes);
 
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
 	int _DivSize = (int)_fCompRate;
@@ -202,7 +207,6 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<_Canonical>& _CanPack)
 {
 	size_t pckSize = 0;
-	
 	std::vector<node> _vnodes;
 	std::vector<_Canonical> _CniPck = _CanPack;
 	const size_t _CniSize = _CniPck.size();
@@ -218,10 +222,6 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, const 
 		return 0;
 	}
 
-
-	mix::generic::t_sort(_CniPck.begin(), _CniPck.end(), 0.25, mix::generic::NLess<char>());
-	mix::generic::t_sort(_CniPck.begin(), _CniPck.end(), 0.25, mix::generic::NLess<int>());
-	
 
 	for (const _Canonical& _cni : _CniPck)
 	{
@@ -254,6 +254,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, const 
 		_nf = {};
 	}
 	
+	mix::generic::t_sort(_vnodes.begin(), _vnodes.end(), 0.25, mix::generic::NLess<int>());
 	
 	if (!std::fwrite(&_CniSize, sizeof(_CniSize), 1, _FCni))
 	{
@@ -262,10 +263,6 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, const 
 		return 0;
 	}
 
-
-	mix::generic::t_sort(_vnodes.begin(), _vnodes.end(), 0.25,mix::generic::NLess<int>());
-
-	
 	// save encoded character
 	for (size_t t = 0; t < _CniSize; t++)
 	{
@@ -378,20 +375,12 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 
 // Packed the raw data source and saves it to a file.
-static inline const std::size_t writePack(const std::string& _File, const std::vector<_Canonical>& _PackNfo)
+static inline const std::size_t writePack(const std::string& _File, const int& _vPacked)
 {
-	int bit_len = 0, xBit = 0;
 	size_t _writtenSize = 0;
-	std::vector<int> _IntsPac;
-	const std::size_t _NfoSize = _PackNfo.size();
 	
-	for (size_t _i = 0; _i < _NfoSize; _i++)
-		_IntsPac.push_back(_PackNfo[_i]._codeWord);
-	
-		
-	const std::string _sBitPck = cni_bits_pack(_IntsPac);
-	const int xBitPck = _Int_from_Bit_Str(_sBitPck.data());
-	_writtenSize = save_cni_bit(_File.data(), xBitPck);
+
+	_writtenSize = save_cni_bit(_File, _vPacked);
 	
 	
 	return _writtenSize;
@@ -413,14 +402,13 @@ return _readBytes;
 
 
 // write the original uncompressed form of the data into a file.
-static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, const std::vector<BPAIR>& _codeInfo)
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<int>& _intSrc, const std::vector<Can_Bit>& _codeInfo)
 {
-	
 	std::size_t _wordsWritten = 0;
 	const std::size_t _codeSize = _codeInfo.size();
 	std::FILE* _fOrig = std::fopen(_OriginFile.data(), "wb");
-	std::vector<BPAIR>::iterator _bIt;
-	std::vector<BPAIR> _codTab = _codeInfo;
+	std::vector<Can_Bit>::iterator _bIt;
+	std::vector<Can_Bit>& _codTab = (std::vector<Can_Bit>&)_codeInfo;
 
 	if (!_fOrig)
 	{
@@ -430,13 +418,13 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 	
 	
 	PRINT("\n Rematching integer with data ..");
-	for (int const& _i : _intSrc)
+	for (const int& _i : _intSrc)
 	{
-		if ( _i > 0 )
+		if ( _i > -1 )
 		{
-			if (mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, bitLess(), _bIt))
+			if (mix::generic::vector_search(_codTab.begin(), _codTab.end(), _i, mix::generic::NLess<int>(), _bIt))
 			{
-				std::fputc((int)_bIt->_data, _fOrig);
+				std::fputc((int)_bIt->_xData, _fOrig);
 				++_wordsWritten;
 			}
 			else std::cerr << "\n Bit for integer: " << _i << " not Found!!" << "\n\n";
@@ -492,6 +480,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	int _cF = 0, _CountStr = 0;
 	char* _copyOne = nullptr;
 	const char* _sExt = "\0";
+	std::string _xniBit;
 
 	std::vector<char> _srcData = {};
 	std::vector<int> _pacInts = {};
@@ -500,8 +489,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	std::vector<BPAIR> _CodeMap = {};
 
 	_Canonical _Canic = {};
+	Can_Bit BitCan = {};
+
 	std::vector<_Canonical> _CanSrc = {}, _CanDat = {};
-	
+	std::vector<Can_Bit> _CanBit = {};
+
+	std::vector<Can_Bit>::iterator _CBiT;
+
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq;
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq;
 
@@ -559,10 +553,10 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	CoreProcesses:
 
-	if (!(F_SIZE = readOriginal(_FO,_srcData, _cBuff)) )
+	if (!(F_SIZE = readOriginal(_FO, _srcData, _cBuff)) )
 	{
 		RET;
-		std::cerr << "Error read source file." << "\n\n";
+		std::cerr << "\n Error read source file." << "\n\n";
 		goto finishedDone;
 	}
 	
@@ -575,7 +569,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		_pq.emplace(_C);
 	}
 	
-	vectorClean(_srcData);
 
 	filter_pq_nodes(nodes, _pq);
 	
@@ -597,57 +590,67 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	_CodeMap = _TREE::CodeMap(); // encoding information generated
 
-	
 	for (const BPAIR& _bic : _CodeMap)
 	{
 		if (_bic._data > 0) {
-			_srcData.push_back(_bic._data);
-			_pacInts.push_back(_bic.bit_len);
-		}
-	}
-
-
-	// set up the data for generating the canonical encoding information ..
-	for (const char& _ci : _srcData)
-	{
-		if (_ci > 0)
-		{
-			_Canic._xData = _ci;
+			_Canic._xData = _bic._data;
+			_Canic._bitLen = _bic.bit_len;
 			_CanSrc.push_back(_Canic);
 			_Canic = {};
 		}
 	}
 
-	for (size_t _zi = 0; _zi < _pacInts.size(); _zi++)
+	_Gen_Canonical_Info(_CanDat, _CanSrc); 
+
+	for (const _Canonical& _Cnd : _CanDat)
 	{
-		if (_pacInts[_zi] > 0)
+		BitCan._xData = _Cnd._xData;
+		BitCan._codeWord = _Cnd._codeWord;
+		_CanBit.push_back(BitCan);
+		BitCan = {};
+	}
+
+	
+	mix::generic::t_sort(_CanBit.begin(), _CanBit.end(), 0.25, mix::generic::NLess<char>());
+
+	
+	// gathering source data..
+	for (size_t fz = 0; fz < F_SIZE; fz++)
+	{
+		char _ci = _srcData[fz];
+
+		if (_ci > 0)
 		{
-			_CanSrc[_zi]._bitLen = _pacInts[_zi];
+			if (mix::generic::vector_search(_CanBit.begin(), _CanBit.end(), _ci, mix::generic::NLess<char>(), _CBiT))
+			{
+				_pacInts.push_back(_CBiT->_codeWord);
+			}
 		}
 	}
 
 	
-	_Gen_Canonical_Info(_CanDat, _CanSrc);
-
-	
-	if (!writePackInfo(_SystemFile.data(), _CanDat))
+	// writing encoding information table ..
+	if (!writePackInfo(_SystemFile.data(), _CanSrc))
 	{
 		RET;
 		std::cerr << "\n Error writing encoded's information data table to a file. \n\n";
 		goto finishedDone;
 	}
 
-
-	if ( !(_bDone = writePack(_destF, _CanDat)) )
+	_xniBit = cni_bits_pack(_pacInts);
+	_cF = _Int_from_Bit_Str(_xniBit.data());
+	
+	// writing packed data source into a file ( *.sqz ).
+	if ( !(_bDone = writePack(_destF, _cF)) )
 	{
 		RET;
-		std::cerr << "\n Error writing packed data source !  \n\n";
+		std::cerr << "\n Error writing compressed file !  \n\n";
 		goto finishedDone;
 	}
 
 
 finishedDone:
-	if (!_srcData.empty()) _srcData.clear();
+	if (!_xniBit.empty()) _xniBit.clear();
 
 	vectorClean(_srcData);
 	vectorClean(_pacInts);
@@ -655,6 +658,7 @@ finishedDone:
 	vectorClean(_CodeMap);
 	vectorClean(_CanSrc);
 	vectorClean(_CanDat);
+	
 	NULLP(_copyOne);
 	if (!_SystemFile.empty()) _SystemFile.clear();
 	_TREE::Clean();
@@ -667,14 +671,14 @@ finishedDone:
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
 	int _bi = 0;
-	std::vector<char> _ReadChar;
+	Can_Bit CandyBit = {};
+
 	std::vector<int> _xBitLen;
+	std::vector<Can_Bit> _ReadCanie;
 	std::vector<_Canonical> _Canie = {}, _Candy = {};
 	
 	std::size_t _Cnt = 0;
 	std::size_t _UnSquezzed = 0;
-
-	std::string _xniBit;
 
 	// to obtain a *.tbi file
 	_SystemFile = (char*)lstr(_packedFile.data(), _packedFile.size() - 3);
@@ -687,6 +691,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		return 0;
 	}
 
+
 	for (const _Canonical& _Ce : _Canie)
 	{
 		_xBitLen.push_back(_Ce._bitLen);
@@ -697,7 +702,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	size_t _Ci = 0;
 
 
-	// RLE method arranges the bit length information ..
+	// RLE method arranges the bit length information in _Canie ..
 	for (size_t _Zi = 0,  _Ci = 0; _Ci < _CnSize; _Ci++ )
 	{
 		_bi = _xBitLen[_Ci];
@@ -715,30 +720,54 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	vectorClean(_xBitLen);
 
+	const size_t CnaSize = _Candy.size();
+
+	for (size_t _a = 0; _a < CnaSize; _a++)
+	{
+		CandyBit._xData = _Candy[_a]._xData;
+		CandyBit._codeWord = _Candy[_a]._codeWord;
+		_ReadCanie.push_back(CandyBit);
+		CandyBit = {};
+	}
 	
+	
+	// Reads up packed integers from a *.sqz file into _xBitLen
 	if (!readPack(_packedFile.data(), _xBitLen))
 	{
-		std::cerr << "Error Read *.sqz File. \n\n";
+		std::cerr << "\nError Read *.sqz File. \n\n";
 		return 0;
 	}
 
-	
 	_bi = 0;
 
+	PRINT("\n Please Wait.. (this may take a while to complete)");
+	PRINT("\n Merging bits ..");
+
+	// Converge _xBitLen integers into one single value stored in _bi
 	merge_cni_bit(_xBitLen, _bi);
 		
-	RET;
+	vectorClean(_xBitLen);
 
-	PRINT(_bi);
+	// '_xBitLen' is now used to store the code word integers instead of bit length info.
+	PRINT("\nRemapping integers.. ");
+	ReSync_Int(_xBitLen, _bi, _ReadCanie);
 
-	RET;
+	
+	for (const auto& ei : _xBitLen)
+		RPRINTC(ei);
+
+	return 0;
+
+
+	if ( !(_UnSquezzed = writeOriginal(_unPackedFile.data(), _xBitLen, _ReadCanie)) )
+		std::cerr << "\nError Writing UnCompressed Data to File. \n\n";
+
 
 
 	if (!_SystemFile.empty()) _SystemFile.clear();
-	if (!_xniBit.empty()) _xniBit.clear();
 
-
-	vectorClean(_ReadChar);
+	CandyBit = {};
+	vectorClean(_ReadCanie);
 	vectorClean(_Canie);
 	vectorClean(_Candy);
 	vectorClean(_xBitLen);
