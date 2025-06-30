@@ -75,6 +75,8 @@ constexpr int i8Mask = 255;
 constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
 
+const int extract_byte(const int&);
+
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int&);
 
@@ -90,6 +92,11 @@ static const std::string _Get_Binary_Str(const int&);
 // Invoker macro for 'bin_to_dec<T>::eval()'
 static const int _Int_from_Bit_Str(const std::string&);
 
+// Invoker macro for extract_byte
+static const int byte_of(const int& _ebx)
+{
+	return extract_byte(_ebx);
+}
 
 // generate encoding information table based on Huffman Canonical Method
 static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
@@ -98,10 +105,10 @@ static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
 static const std::string cni_bits_pack(const std::vector<int>&);
 
 // saves a packed canonical bit to one specified file
-static const size_t save_cni_bit(const std::string&, const int&);
+static const int save_cni_bit(const std::string&, const int&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
-static const size_t read_cni_bit(const std::string&, std::vector<int>&);
+static const int read_cni_bit(const std::string&, std::vector<int>&);
 
 // merges the read integers into one single packed canonical bit again
 static const size_t merge_cni_bit(const std::vector<int>&, int&);
@@ -665,56 +672,34 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 }
 
 
-static inline const size_t save_cni_bit(const std::string& _File, const int& cni_bit)
+static inline const int save_cni_bit(const std::string& _File, const int& cni_bit)
 {
-	int bit_cni = 0, bit_8 = 0;
-	size_t saved_bit = 0;
-	std::FILE* _Fi = std::fopen(_File.data(), "wb");
+	int saved_size = 0;
+	int bit_cni = 0, bit_size = 0;
+	std::FILE* _FCni = std::fopen(_File.data(), "wb");
 
-	if (!_Fi) return 0;
+	if (!_FCni) return 0;
 
-	const size_t bit_size = _Get_Num_of_Bits(cni_bit);
-
-	if (bit_size <= 8)
-		saved_bit = std::fputc(cni_bit,  _Fi);
-
-	else if (bit_size > 8 && bit_size <= 16)
+	while ((bit_cni = byte_of(cni_bit)) > 0)
 	{
-		bit_cni = BYTE_PTR_HI(cni_bit) >> 8;
-		saved_bit = std::fputc(bit_cni, _Fi);
+		while ((bit_size = _Get_Num_of_Bits(bit_cni)) > 16)
+			bit_cni >>= 16;
 
-		bit_cni = BYTE_PTR_LO(cni_bit);
-		saved_bit += std::fputc(bit_cni, _Fi);
+		std::fputc(BYTE_PTR_HI(bit_cni) >> 8, _FCni);
+		std::fputc(BYTE_PTR_LO(bit_cni), _FCni);
+		saved_size += 2;
 	}
-	else if (bit_size > 16 && bit_size <= 32)
-	{
-		bit_cni = WORD_PTR_HI(cni_bit) >> 16;
 
-			bit_8 = BYTE_PTR_HI(bit_cni) >> 8;
-			saved_bit = std::fputc(bit_8, _Fi);
-
-			bit_8 = BYTE_PTR_LO(bit_cni);
-			saved_bit += std::fputc(bit_8, _Fi);
+	if (_FCni) std::fclose(_FCni);
 	
-		bit_cni = WORD_PTR_LO(cni_bit);
-
-			bit_8 = BYTE_PTR_HI(bit_cni) >> 8;
-			saved_bit += std::fputc(bit_8, _Fi);
-
-			bit_8 = BYTE_PTR_LO(bit_cni);
-			saved_bit += std::fputc(bit_8, _Fi);
-	}
-
-	if (_Fi) std::fclose(_Fi);
-
-	return saved_bit;
+	return saved_size;
 }
 
 
-static inline const size_t read_cni_bit(const std::string& _File, std::vector<int>& Int_Bit)
+static inline const int read_cni_bit(const std::string& _File, std::vector<int>& Int_Bit)
 {
 	int read_bit = 0;
-	size_t read_size = 0;
+	int read_size = 0;
 	std::FILE* _FBit = std::fopen(_File.data(), "rb");
 
 	if (!_FBit) return 0;
