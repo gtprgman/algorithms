@@ -48,6 +48,16 @@ struct Can_Bit : virtual public _Canonical
 #define SPACE (char)32
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
 
+#define bit_str(_x_) _Get_Binary_Str(_x_)
+#define int_bit(_x_) _Int_from_Bit_Str(_x_)
+#define len_bit(_x_) _Get_Num_of_Bits(_x_)
+
+// generates a digit '1' a number of '_reps' times
+#define x1_bit(_ch_ptr, _reps)			\
+{						\
+	repl_char(_ch_ptr, '1', _reps);		\
+}
+
 
 constexpr const UINT oneAdder(const UINT _x)
 {
@@ -81,7 +91,7 @@ const int extract_byte(const int&);
 static const std::string zero_bits(const int&);
 
 // forward declaration prototype of repl_char() function
-static const char* repl_char(char*, const char&, const int&);
+static const char* repl_char(char*&, char&&, const int&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static const int _Get_Num_of_Bits(const int&);
@@ -443,22 +453,24 @@ inline static const char* rtrim(const char*);
 inline static const char* reverse_str(const char*);
 
 // replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
-inline static const char* repl_char(char*, const char&, const int&);
+inline static const char* repl_char(char*&, char&&, const int&);
 
 // decomposes a given packed int into its original bit form
 inline static const int unPack(const int&, int const&, int const&);
 
 
-inline static const char* repl_char(char* _dest, const char& aChar, const int& _repSize)
+inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repSize)
 {
-	_dest = new char[_repSize];
-	std::memset(_dest, 0, _repSize);
+	if (_dest == nullptr) _dest = new char[_repSize];
+	char* _tmp = _dest;
 
 	for (int i = 0; i < _repSize; i++)
-		_dest[i] = aChar;
+		*_tmp++ = aChar;
 
 
-	_dest[_repSize] = 0;
+	*_tmp++ = 0;
+	NULLP(_tmp);
+
 	return _dest;
 }
 
@@ -691,15 +703,13 @@ static inline const int save_cni_bit(const std::string& _File, const int& cni_bi
 	}
 
 	if (_FCni) std::fclose(_FCni);
-	
 	return saved_size;
 }
 
 
 static inline const int read_cni_bit(const std::string& _File, std::vector<int>& Int_Bit)
 {
-	int read_bit = 0;
-	int read_size = 0;
+	int read_bit = 0, read_size = 0;
 	std::FILE* _FBit = std::fopen(_File.data(), "rb");
 
 	if (!_FBit) return 0;
@@ -1038,17 +1048,15 @@ inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 	if (!_lenX || !_lenZ) return nullptr;
 	if (_lenX > _lenZ) return nullptr;
 
-	char* _SF = new char[_lenX];
-	std::memset(_SF, 0, _lenX);
+	char* _SF = nullptr;
 
 	for (std::size_t fi = 0; fi < _lenZ; fi++)
 	{
 		if (std::strncmp(&_Str0[fi], _searchStr, _lenX)) continue;
-		_SF = std::strncpy(_SF, &_Str0[fi], _lenX);
+		_SF = (char*)&_Str0[fi];
 		break;
 	}
 
-	_SF[_lenX] = 0;
 	return _SF;
 }
 
@@ -1271,7 +1279,6 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
-
 
 
 // bit status information
