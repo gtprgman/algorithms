@@ -18,32 +18,9 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 // ReSync the integers of *.sqz using information from the canonical symbols table *.tbi.
 static inline const std::size_t ReSync_Int(std::vector<int>& _vecSqz, const int& _SqzInt, const std::vector<Can_Bit>& _ReadPac)
 {
-	int _bit = 0;
-	size_t Synced_Size = 0;
-	const std::string _xsBit = _Get_Binary_Str(_SqzInt);
-	const size_t _bitWide = _xsBit.size();
-	const size_t _CndSize = _ReadPac.size();
-	char* _pBit = (char*)_xsBit.data(); 
-	const char*_p1stBit = _pBit;
 	
 
-	vectorClean(_vecSqz);
-
-	for (size_t i = 0; i < _bitWide; i++) _vecSqz.push_back(0);
-
-	for (size_t z = 0; z < _CndSize; z++)
-	{
-		_bit = _ReadPac[z]._codeWord;
-
-		
-	}
-
-
-	return Synced_Size;
 }
-
-
-
 
 
 static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_queue<node>& _Pqueue)
@@ -156,7 +133,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	const int _TreeSizes = (int)_fpNods.size();
 
 	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-					     std::floor(COMP_RATE*_TreeSizes);
+					    std::floor(COMP_RATE*_TreeSizes);
 
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
 	int _DivSize = (int)_fCompRate;
@@ -204,170 +181,116 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 
 // Save the encoded's information data table into a file.
-static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<_Canonical>& _CanPack)
+static inline const std::size_t writePackInfo(const std::string& _fiName, const std::vector<int>& _CodWords)
 {
-	size_t pckSize = 0;
-	std::vector<node> _vnodes;
-	std::vector<_Canonical> _CniPck = _CanPack;
-	const size_t _CniSize = _CniPck.size();
+	int _b = 0;
+	size_t _writtenSize = 0;
+	const size_t _CodSize = _CodWords.size();
 
-	std::priority_queue<node, std::vector<node>, std::less<node>> _Pqn;
-	std::priority_queue<node, std::vector<node>, std::less<node>> _fPqn;
+	std::FILE* _FPck = std::fopen(_fiName.data(), "wb");
+	std::vector<int>& _vCods = (std::vector<int>&)_CodWords;
+	std::vector<node> _vNods;
 
-	std::FILE* _FCni = std::fopen(_fiName.data(), "wb");
-
-	if (!_FCni)
+	if (!_FPck)
 	{
-		std::cerr << "\n Error Write Accessed to File. \n\n";
+		std::cerr << "\n Error Write-Accessed to File.";
 		return 0;
 	}
 
-
-	for (const _Canonical& _cni : _CniPck)
+	for (size_t w = 0; w < _CodSize; w++)
 	{
-		_vnodes.push_back(_cni._bitLen);
+		_b = len_bit(_vCods[w]);
+		_vCods[w] = _b;
+	}
+
+	_b = 0;
+
+	// set up the frequency data for each bit length ..
+	for (size_t i = 0,w = 0; w < _CodSize; w++)
+	{
+		_b = _vCods[w];
+
+		if (_vNods.empty())
+		{
+			_vNods.push_back(_b);
+			_vNods[0].setFrequencyData(1);
+			++i;
+			continue;
+		}
+
+		if (_b == _vNods[i - 1].Value())
+		{
+			_b = _vNods[i - 1].FrequencyData(); ++_b;
+			_vNods[i - 1].setFrequencyData(_b);
+			continue;
+		}
+
+		_vNods.push_back(_b);
+		i = _vNods.size();
+		_vNods[i-1].setFrequencyData(1);
 	}
 
 	
-	for (const node& _vn : _vnodes)
+	// the required information is gathered
+
+	const size_t _InfoSize = _vNods.size();
+
+	if (!std::fwrite(&_InfoSize, sizeof(_InfoSize), 1, _FPck))
 	{
-		_Pqn.emplace(_vn);
-	}
-
-	vectorClean(_vnodes);
-
-	filter_pq_nodes(_vnodes, _Pqn);
-
-	
-	for (const node& _vni : _vnodes)
-	{
-		_fPqn.emplace(_vni);
-	}
-
-	vectorClean(_vnodes);
-
-	for (node _nf = 0; !_fPqn.empty(); )
-	{
-		_nf = _fPqn.top();
-		_fPqn.pop();
-		_vnodes.push_back(_nf);
-		_nf = {};
-	}
-	
-	mix::generic::t_sort(_vnodes.begin(), _vnodes.end(), 0.25, mix::generic::NLess<int>());
-	
-	if (!std::fwrite(&_CniSize, sizeof(_CniSize), 1, _FCni))
-	{
-		std::cerr << "\n Error write table records' size. \n\n";
-		if (_FCni) std::fclose(_FCni);
+		std::cerr << "\n Error writing header data.";
+		if (_FPck) std::fclose(_FPck);
 		return 0;
 	}
-
-	// save encoded character
-	for (size_t t = 0; t < _CniSize; t++)
-	{
-		std::fputc(_CniPck[t]._xData, _FCni);
-		++pckSize;
-	}
-
-	const size_t _vnSize = _vnodes.size();
-
-	if (!fwrite(&_vnSize, sizeof(_vnSize), 1, _FCni))
-	{
-		std::cerr << "\n Error write table records' size \n\n";
-		if (_FCni) std::fclose(_FCni);
-		return 0;
-	}
-
-	// save encoded bit length
-	for (size_t z =0; z < _vnSize; z++)
-	{
-		std::fputc(_vnodes[z].Value(), _FCni);
-		++pckSize;
-	}
 	
-	// save the frequency of each encoded bit length (need for RLE)
-	for (size_t k = 0; k < _vnSize; k++)
+	for (size_t f = 0; f < _InfoSize; f++)
 	{
-		std::fputc(_vnodes[k].FrequencyData(), _FCni);
-		++pckSize;
+		// writing RLE info ..
+		_b = _vNods[f].FrequencyData();
+		std::fputc(_b, _FPck);
+		++_writtenSize;
 	}
+ 
 
-	if (_FCni) std::fclose(_FCni);
+	if (_FPck) std::fclose(_FPck);
+	vectorClean(_vNods);
 
-	vectorClean(_vnodes);
-	vectorClean(_CniPck);
-
-	return pckSize;
+	return _writtenSize;
 }
 
 
 
 // Read the encoded information data table from a file.
-static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<_Canonical>& _Canoe)
+static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<int>& _CodInfo)
 {
-	int _xc = 0;
-	size_t _TSize = 0, _readSize = 0;
-	std::FILE* _FInfo = std::fopen(_inFile.data(), "rb");
-	_Canonical _ciTemp = {};
+	size_t _readSize = 0, infSize = 0;
+	std::FILE* _Fr = std::fopen(_inFile.data(), "rb");
 
-	if (!_FInfo)
+	if (!_Fr)
 	{
-		std::cerr << "\n\n Error read-accessed to file. \n\n";
-		return 0;
-	}
-	
-	if (!std::fread(&_TSize, sizeof(size_t), 1, _FInfo))
-	{
-		std::cerr << "\n Error read table records' size ! \n\n";
-		if (_FInfo) std::fclose(_FInfo);
+		std::cerr << "\n Error read accessed to file. ";
 		return 0;
 	}
 
-	const size_t _tbs = _TSize;
+	int _x = 0;
+	vectorClean(_CodInfo);
 
-		for (size_t sz = 0; sz < _tbs; sz++)
-		{
-			if ((_xc = std::fgetc(_FInfo)) > 0)
-			{
-				_ciTemp._xData = _xc;
-				_Canoe.push_back(_ciTemp);
-				++_readSize;
-				_ciTemp = {};
-			}
-		}
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header size information.";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
 
-		_TSize = 0;
+	const size_t header_size = infSize;
 
-		// number of bit length records
-		if (!std::fread(&_TSize, sizeof(size_t), 1, _FInfo))
-		{
-			std::cerr << "\n Error read table records' size ! \n\n";
-			if (_FInfo) std::fclose(_FInfo);
-			return 0;
-		}
+	for (size_t f = 0; f < header_size; f++)
+	{
+		_x = std::fgetc(_Fr);
+		_CodInfo.push_back(_x);
+		++_readSize;
+	}
 
-		const size_t _Recs = _TSize;
-
-		for (size_t t = 0; t < _Recs; t++)
-		{
-			if ((_xc = std::fgetc(_FInfo)) > 0) {
-				_Canoe[t]._bitLen = _xc;
-				++_readSize;
-			}
-		}
-
-		// number of frequency records
-		for (size_t r = 0; r < _Recs; r++)
-		{
-			if ((_xc = std::fgetc(_FInfo)) > 0) {
-				_Canoe[r]._rle_bit_len = _xc;
-				++_readSize;
-			}
-		}
-
-		if (_FInfo) std::fclose(_FInfo);
-
+	if (_Fr) std::fclose(_Fr);
 	return _readSize;
 }
 
@@ -379,23 +302,35 @@ static inline const std::size_t writePack(const std::string& _File, const int& _
 {
 	size_t _writtenSize = 0;
 	
+	_writtenSize = save_cni_bit(_File.data(), _vPacked);
 
-	_writtenSize = save_cni_bit(_File, _vPacked);
-	
-	
+
 	return _writtenSize;
 }
 
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& _inVec)
+static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& vInts)
 {
+	int bx = 0;
 	std::size_t _readBytes = 0;
-	
-	_readBytes = read_cni_bit(_inFile.data(), _inVec);
+	std::FILE* _Fp = std::fopen(_inFile.data(), "rb");
 
-	
+	if (!_Fp)
+	{
+		std::cerr << "\n Error Read-Accessed to File. ";
+		return 0;
+	}
+
+	while ((bx = std::fgetc(_Fp)) > 0)
+	{
+		vInts.push_back(bx);
+		++_readBytes;
+	}
+
+	if (_Fp) std::fclose(_Fp);
+
 return _readBytes;
 }
 
@@ -630,12 +565,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	
 	// writing encoding information table ..
-	if (!writePackInfo(_SystemFile.data(), _CanSrc))
+	if (!writePackInfo(_SystemFile.data(), _pacInts))
 	{
 		RET;
-		std::cerr << "\n Error writing encoded's information data table to a file. \n\n";
+		std::cerr << "\n Error writing encoding information to a file. \n\n";
 		goto finishedDone;
 	}
+
 
 	_xniBit = cni_bits_pack(_pacInts);
 	_cF = _Int_from_Bit_Str(_xniBit.data());
@@ -658,6 +594,7 @@ finishedDone:
 	vectorClean(_CodeMap);
 	vectorClean(_CanSrc);
 	vectorClean(_CanDat);
+	vectorClean(_CanBit);
 	
 	NULLP(_copyOne);
 	if (!_SystemFile.empty()) _SystemFile.clear();
@@ -671,11 +608,8 @@ finishedDone:
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
 	int _bi = 0;
-	Can_Bit CandyBit = {};
 
 	std::vector<int> _xBitLen;
-	std::vector<Can_Bit> _ReadCanie;
-	std::vector<_Canonical> _Canie = {}, _Candy = {};
 	
 	std::size_t _Cnt = 0;
 	std::size_t _UnSquezzed = 0;
@@ -685,91 +619,21 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	_SystemFile = (char*)concat_str((char*)_SystemFile.data(), "tbi");
 
 
-	if ( !readPackInfo(_SystemFile.data(), _Canie) )
+	if ( !readPackInfo(_SystemFile.data(), _xBitLen) )
 	{
 		std::cerr << "\n Error read encoding information ! " << "\n\n";
 		return 0;
 	}
 
-
-	for (const _Canonical& _Ce : _Canie)
-	{
-		_xBitLen.push_back(_Ce._bitLen);
-	}
-	
-
-	const size_t _CnSize = _xBitLen.size();
-	size_t _Ci = 0;
+	for (const int& _i : _xBitLen) RPRINTC(_i);
 
 
-	// RLE method arranges the bit length information in _Canie ..
-	for (size_t _Zi = 0,  _Ci = 0; _Ci < _CnSize; _Ci++ )
-	{
-		_bi = _xBitLen[_Ci];
-		_Cnt = _Canie[_Ci]._rle_bit_len;
-
-		for (size_t _ni = 0; _ni < _Cnt; _ni++)
-		{
-			if (_Zi < _CnSize) _Canie[_Zi]._bitLen = _bi;
-			++_Zi;
-		}
-	}
-	
-	
-	_Gen_Canonical_Info(_Candy, _Canie);
-
-	vectorClean(_xBitLen);
-
-	const size_t CnaSize = _Candy.size();
-
-	for (size_t _a = 0; _a < CnaSize; _a++)
-	{
-		CandyBit._xData = _Candy[_a]._xData;
-		CandyBit._codeWord = _Candy[_a]._codeWord;
-		_ReadCanie.push_back(CandyBit);
-		CandyBit = {};
-	}
-	
-	
-	// Reads up packed integers from a *.sqz file into _xBitLen
-	if (!readPack(_packedFile.data(), _xBitLen))
-	{
-		std::cerr << "\nError Read *.sqz File. \n\n";
-		return 0;
-	}
-
-	_bi = 0;
-
-	PRINT("\n Please Wait.. (this may take a while to complete)");
-	PRINT("\n Merging bits ..");
-
-	// Converge _xBitLen integers into one single value stored in _bi
-	merge_cni_bit(_xBitLen, _bi);
-		
-	vectorClean(_xBitLen);
-
-	// '_xBitLen' is now used to store the code word integers instead of bit length info.
-	PRINT("\nRemapping integers.. ");
-	ReSync_Int(_xBitLen, _bi, _ReadCanie);
+	RET;
 
 	
-	for (const auto& ei : _xBitLen)
-		RPRINTC(ei);
+	
 
-	return 0;
-
-
-	if ( !(_UnSquezzed = writeOriginal(_unPackedFile.data(), _xBitLen, _ReadCanie)) )
-		std::cerr << "\nError Writing UnCompressed Data to File. \n\n";
-
-
-
-	if (!_SystemFile.empty()) _SystemFile.clear();
-
-	CandyBit = {};
-	vectorClean(_ReadCanie);
-	vectorClean(_Canie);
-	vectorClean(_Candy);
+	
 	vectorClean(_xBitLen);
 
 	return _UnSquezzed;
