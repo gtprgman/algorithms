@@ -53,9 +53,9 @@ struct Can_Bit : virtual public _Canonical
 #define len_bit(_x_) _Get_Num_of_Bits(_x_)
 
 // generates a digit '1' a number of '_reps' times
-#define x1_bit(_ch_ptr, _reps)			\
-{						\
-	repl_char(_ch_ptr, '1', _reps);		\
+#define x1_bit(_ch_ptr, _reps)						\
+{													\
+	repl_char(_ch_ptr, '1', _reps);					\
 }
 
 
@@ -85,7 +85,7 @@ constexpr int i8Mask = 255;
 constexpr int i16Mask = 65535;
 constexpr int i32Mask = 0xFFFFFFFF;
 
-const int extract_byte(const int&);
+const int64_t extract_byte(const int64_t&);
 
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int&);
@@ -94,16 +94,16 @@ static const std::string zero_bits(const int&);
 static const char* repl_char(char*&, char&&, const int&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
-static const int _Get_Num_of_Bits(const int&);
+static const int _Get_Num_of_Bits(const int64_t&);
 
 // Invoker macro for 'to_binary<T>::eval()'
-static const std::string _Get_Binary_Str(const int&);
+static const std::string _Get_Binary_Str(const int64_t&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
-static const int _Int_from_Bit_Str(const std::string&);
+static const int64_t _Int_from_Bit_Str(const std::string&);
 
 // Invoker macro for extract_byte
-static const int byte_of(const int& _ebx)
+static const int64_t byte_of(const int64_t& _ebx)
 {
 	return extract_byte(_ebx);
 }
@@ -111,17 +111,20 @@ static const int byte_of(const int& _ebx)
 // generate encoding information table based on Huffman Canonical Method
 static void _Gen_Canonical_Info(std::vector<int>&, const std::vector<int>&);
 
+// make sure every codeword integer is unique
+static void cni_enforce_unique(std::vector<_Canonical>&);
+
 // packing a series of canonical bits into one integer and return the result as a bits string.
 static const std::string cni_bits_pack(const std::vector<int>&);
 
 // saves a packed canonical bit to one specified file
-static const int save_cni_bit(const std::string&, const int&);
+static const int save_cni_bit(const std::string&, const int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const int read_cni_bit(const std::string&, std::vector<int>&);
 
 // merges the read integers into one single packed canonical bit again
-static const size_t merge_cni_bit(const std::vector<int>&, int&);
+static const size_t merge_cni_bit(const std::vector<int>&, int64_t&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -434,7 +437,7 @@ inline static const int strtoint(std::string&&);
 inline static const char* inttostr(const int);
 
 // return the exact number of bits that composing a value '_n'
-inline static const unsigned int proper_bits(const int);
+inline static const unsigned proper_bits(const int64_t&);
 
 // return the least significant portion of bits of a specified value '_v'
 inline static const int LoPart(const int);
@@ -517,7 +520,7 @@ struct to_binary
 
 	static inline const std::string eval(const value_type _dec)
 	{
-		int _bsz = num_of_bits<unsigned int>::eval(_dec);
+		int _bsz = (int)num_of_bits<value_type>::eval(_dec);
 		_value = _dec;
 
 		if (_bsz > 0)
@@ -583,33 +586,33 @@ T bin_to_dec<T>::_Dec = 0;
 
 
 
-static inline const int _Get_Num_of_Bits(const int& _ax)
+static inline const int _Get_Num_of_Bits(const int64_t& _ax)
 {
 	if (!_ax) return 1;
 	else
-	  return num_of_bits<int>::eval(_ax);
+	  return (int)num_of_bits<int64_t>::eval(_ax);
 }
 
 
-static inline const std::string _Get_Binary_Str(const int& _Dx)
+static inline const std::string _Get_Binary_Str(const int64_t& _Dx)
 {
-	int _Abs = _Dx;
+	int _Abs = (int)_Dx;
 	std::string bit_str;
 
 	if (_Abs < 0)  _Abs = std::abs(_Abs);
 
 	if (!_Abs) return "0";
 	else
-	  bit_str = to_binary<int>::eval(_Abs).data();
+	  bit_str = to_binary<int64_t>::eval(_Abs).data();
 
 	return bit_str;
 }
 
 
 
-static inline const int _Int_from_Bit_Str(const std::string& Bit_Str)
+static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
 {
-	return bin_to_dec<int>::eval(Bit_Str.data());
+	return bin_to_dec<int64_t>::eval(Bit_Str.data());
 }
 
 
@@ -666,25 +669,66 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 }
 
 
+static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
+{
+	int cw = cniDat[0]._codeWord, dw = 0, n_diff = 0;
+	const size_t cnSize = cniDat.size();
+
+	for (size_t j = 1; j < cnSize; j++)
+	{
+		dw = cniDat[j]._codeWord;
+
+		if (cw == dw)
+		{
+			cniDat[j]._codeWord = cniDat[j - 1]._codeWord + 1;
+		}
+		else if (dw > cw)
+		{
+			n_diff = dw - cw;
+			cniDat[j]._codeWord = dw - (n_diff / 2);
+		}
+		else if (dw < cw)
+		{
+			n_diff = cw - dw;
+			cniDat[j]._codeWord = dw + (n_diff / 2);
+		}
+		cw = cniDat[j]._codeWord;
+	}
+}
+
+
 static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 {
-	int _x = 0b0;
+	int64_t _x = 0;
 	std::string _xBitStr;
-	const std::size_t canSize = _canVec.size();
 
-	for (size_t t = 0; t < canSize; t++)
-	{
-		_x <<= _Get_Num_of_Bits(_canVec[t]);
-		_x |= _canVec[t];
+	const int64_t totSize = (int64_t)_canVec.size();
+	const int64_t subSize = (int64_t)(0.25 * totSize);
+	const int64_t repSize = (int64_t)(totSize / subSize);
+
+	RPRINT("totSize: "); RPRINT(" "); RPRINT(totSize); RET;
+	RPRINT("subSize: "); RPRINT(" "); RPRINT(subSize); RET;
+	RPRINT("repSize: "); RPRINT(" "); RPRINT(repSize); RET;
+
+
+
+	for (int64_t z = 0; z < repSize; ) {
+		for (int64_t t = z; t <= (z + subSize); t++)
+		{
+			_x <<= (int64_t)_Get_Num_of_Bits(_canVec[t]);
+			_x |= (int64_t)_canVec[t];
+		}
+		z += subSize;
+		
 	}
 
-	_xBitStr = concat_str((char*)zero_bits(1).data(), _Get_Binary_Str(_x).data());
+	_xBitStr = bit_str(_x);
 	
 	return _xBitStr;
 }
 
 
-static inline const int save_cni_bit(const std::string& _File, const int& cni_bit)
+static inline const int save_cni_bit(const std::string& _File, const int64_t& cni_bit)
 {
 	int saved_size = 0;
 	int bit_cni = 0, bit_size = 0;
@@ -692,9 +736,9 @@ static inline const int save_cni_bit(const std::string& _File, const int& cni_bi
 
 	if (!_FCni) return 0;
 
-	while ((bit_cni = byte_of(cni_bit)) > 0)
+	while ((bit_cni = (int)byte_of(cni_bit)) > 0)
 	{
-		while ((bit_size = _Get_Num_of_Bits(bit_cni)) > 16)
+		while ((bit_size = len_bit(bit_cni)) > 16)
 			bit_cni >>= 16;
 
 		std::fputc(BYTE_PTR_HI(bit_cni) >> 8, _FCni);
@@ -714,10 +758,9 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int>&
 
 	if (!_FBit) return 0;
 
-	while ((read_bit = std::fgetc(_FBit)) > 0 )
+	while ((read_bit = std::fgetc(_FBit)) > -1 )
 	{
 		Int_Bit.push_back(read_bit);
-		read_bit = 0;
 		++read_size;
 	}
 
@@ -727,7 +770,7 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int>&
 }
 
 
-static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int& bit_cni)
+static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int64_t& bit_cni)
 {
 	size_t merged_size = 0;
 	const size_t vbnSize = v_bit.size(), bit_size = vbnSize * 8;
@@ -752,9 +795,9 @@ static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int& bit
 
 
 
-inline static const unsigned int proper_bits(const int _n)
+inline static const unsigned proper_bits(const int64_t& _n)
 {
-	const unsigned int _nBits = num_of_bits<int>::eval(_n);
+	const unsigned int _nBits = num_of_bits<int>::eval((int)_n);
 	const unsigned int _maxBits = BIT_TOKEN(_nBits);
 
 	return _maxBits;
@@ -858,16 +901,16 @@ inline static const int32_t MergeBits(const int _Hi, const int _Lo)
    portion of its high & low order part, otherwise 
    '_v' is extracted per byte by byte basis.
 */
-int const extract_byte(const int& _v)
+int64_t const extract_byte(const int64_t& _v)
 {
-	static int _v1 = 0;
-	static int _count = 0;
+	static int64_t _v1 = 0;
+	static int64_t _count = 0;
 
 	MAX_BIT = proper_bits(_v);
 
 	if (MAX_BIT <= BYTE)
 	{
-		_v1 = (_count)? 0 : 255 & _v;
+		_v1 = (_count)? 0 : (int64_t)255 & _v;
 		++_count;
 
 		return _v1;
@@ -881,7 +924,7 @@ int const extract_byte(const int& _v)
 			goto endResult;
 		}
 		
-		_v1 = (_count > 0)? (65535 & _v) : WORD_PTR_HI(_v);
+		_v1 = (_count > 0)? (int64_t)(65535 & _v) : (int64_t)WORD_PTR_HI((int)_v);
 		++_count;
 
 		endResult:
@@ -891,7 +934,7 @@ int const extract_byte(const int& _v)
 	switch (_count)
 	{
 	case 0:
-		_v1 = (255 << 8) & _v;
+		_v1 = (int64_t)(255 << 8) & _v;
 		++_count;
 		break;
 
@@ -1279,6 +1322,7 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
+
 
 
 // bit status information
@@ -1903,7 +1947,6 @@ inline static const char* inttostr(const int nVal)
 	}
 
 
-
 	// Implementations to _32Bit Data Structure...
 	const int _32Bit::Byte() const
 	{
@@ -1999,4 +2042,5 @@ inline static const char* inttostr(const int nVal)
 				break;
 		}
 	}
+
 
