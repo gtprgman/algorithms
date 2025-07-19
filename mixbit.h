@@ -54,7 +54,7 @@ struct Can_Bit : virtual public _Canonical
 
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
-{													\
+{									\
 	repl_char(_ch_ptr, '1', _reps);					\
 }
 
@@ -80,10 +80,10 @@ constexpr unsigned DWORD = 32;
 constexpr unsigned QWORD = 64;
 constexpr unsigned MULTIWORDS = 128;
 
-constexpr int i4Mask = 0xF;
-constexpr int i8Mask = 255;
-constexpr int i16Mask = 65535;
-constexpr int i32Mask = 0xFFFFFFFF;
+constexpr int64_t i4Mask = 0xF;
+constexpr int64_t i8Mask = 255;
+constexpr int64_t i16Mask = 65535;
+constexpr int64_t i32Mask = 0xFFFFFFFF;
 
 const int64_t extract_byte(const int64_t&);
 
@@ -118,10 +118,10 @@ static void cni_enforce_unique(std::vector<_Canonical>&);
 static const std::string cni_bits_pack(const std::vector<int>&);
 
 // saves a packed canonical bit to one specified file
-static const int save_cni_bit(const std::string&, const int64_t&);
+static const size_t save_cni_bit(const std::string&, const int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
-static const int read_cni_bit(const std::string&, std::vector<int>&);
+static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
 
 // merges the read integers into one single packed canonical bit again
 static const size_t merge_cni_bit(const std::vector<int>&, int64_t&);
@@ -130,77 +130,77 @@ static const size_t merge_cni_bit(const std::vector<int>&, int64_t&);
 unsigned int MAX_BIT = 0;
 
 
-constexpr int HI_HEX(const int _Bx)
+constexpr int64_t HI_HEX(const int64_t _rbx)
 {
-	return (i4Mask << 4) & _Bx;
+	return (i4Mask << 4) & _rbx;
 }
 
-constexpr int LO_HEX(const int _Bx)
+constexpr int64_t LO_HEX(const int64_t _rbx)
 {
-	return (i4Mask & _Bx);
+	return (i4Mask & _rbx);
 }
 
-constexpr int BYTE_PTR_HI(const int _Bx)
+constexpr int64_t BYTE_PTR_HI(const int64_t _rbx)
 {
-	return (i8Mask << 8) & _Bx;
+	return (i8Mask << 8) & _rbx;
 }
 
-constexpr int BYTE_PTR_LO(const int Bx_)
+constexpr int64_t BYTE_PTR_LO(const int64_t rbx_)
 {
-	return 0xFF & Bx_;
+	return 0xFF & rbx_;
 }
 
-constexpr int WORD_PTR_HI(const int _EDX)
+constexpr int64_t WORD_PTR_HI(const int64_t _rdx)
 {
-	return (i16Mask << 16) & _EDX;
+	return (i16Mask << 16) & _rdx;
 }
 
-constexpr int WORD_PTR_LO(const int EDX_)
+constexpr int64_t WORD_PTR_LO(const int64_t rdx_)
 {
-	return i16Mask & EDX_;
+	return i16Mask & rdx_;
 }
 
 
 /* generates number of set bits on the LSB of a data unit. (little - endian)
    NB: bit indices are specified based on average user habitual convention style. */
-constexpr int set_low_bit(const int& _Max_to_Zero)
+constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
 {
-	int _TotSum = 0;
+	int64_t _TotSum = 0;
 	const double _hi = (double)(_Max_to_Zero - 1);
 
 	for (double _bi = _hi; _bi >= 0;  _bi--)
 	{
-		_TotSum += (int)( 1 * std::pow(2, _bi) );
+		_TotSum += (int64_t)( 1 * std::pow(2, _bi) );
 	}
 
-	return (int)_TotSum;
+	return _TotSum;
 }
 
 
 
 /* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
    The indices of bit are specified using average user habitual convention style. (little-endian) */
-constexpr int range_bit_set(const int& _Min, const int& _Max)
+constexpr int64_t range_bit_set(const int64_t& _Min, const int64_t& _Max)
 {
 	double _Sum = 0;
 	const double _start_bit = (double)(_Min - 1), _end_bit = (double)(_Max - 1);
 
 	for (double _bi = _start_bit; _bi <= _end_bit; _bi++)
 	{
-		_Sum += (int)(1 * std::pow(2, _bi) );
+		_Sum += (double)(1 * (int64_t)std::pow(2, _bi) );
 	}
 
-	return (int)_Sum;
+	return (int64_t)_Sum;
 }
 
 
 // get '_n_Bits' from the LSB of a specified integer ' _valX '.
-constexpr int get_n_of_lsb(const int& _valX, const int& _n_Bits)
+constexpr int64_t get_n_of_lsb(const int64_t& _valX, const int64_t& _n_Bits)
 {
-	int _v = 0;
-	const int _b = 0b1;
+	int64_t _v = 0;
+	const int64_t _b = 0b1;
 
-	for (int _x = 0; _x < _n_Bits; _x++)
+	for (int64_t _x = 0; _x < _n_Bits; _x++)
 	{
 		_v |= _valX & (_b << _x);
 	}
@@ -209,23 +209,23 @@ constexpr int get_n_of_lsb(const int& _valX, const int& _n_Bits)
 
 
 // get 'N_Bits' from the MSB of a specified integer '_Vx'.
-static inline const int get_n_of_msb(const int& _Vx, const int& N_Bits)
+static inline const int64_t get_n_of_msb(const int64_t& _Vx, const int64_t& N_Bits)
 {
-	const int _tot_Bits = _Get_Num_of_Bits(_Vx) - 1;
-	const int _bx = 0b1 << _tot_Bits;
-	int _dx = _bx;
+	const int64_t _tot_Bits = (int64_t)_Get_Num_of_Bits(_Vx) - 1;
+	const int64_t _rbx = (int64_t)0b1 << _tot_Bits;
+	int64_t _rdx = _rbx;
 
-	for (int _n = 0; _n < N_Bits; _n++)
+	for (int64_t _n = 0; _n < N_Bits; _n++)
 	{
-		_dx |= _Vx & (_bx >> _n);
+		_rdx |= _Vx & (_rbx >> _n);
 	}
-	return _dx;
+	return _rdx;
 }
 
 
 
 // returns a specific named token which evaluates to a max. number of bits.
-constexpr unsigned BIT_TOKEN(const unsigned nBits)
+constexpr unsigned BIT_TOKEN(const int64_t& nBits)
 {
 	if (nBits > 0 && nBits <= HEXBIT) MAX_BIT = HEXBIT;
 	else if (nBits > HEXBIT && nBits <= BYTE) MAX_BIT = BYTE;
@@ -267,59 +267,8 @@ struct _Int_Bits
 };
 
 
-// 32-Bit Data Ordering structure
-struct _32Bit
-{
-	_32Bit() : AX(0) {};
-	_32Bit(const int _Ex) { this->setValue(_Ex); };
-
-	const int Byte() const;
-
-	const int32_t LoWord() const;
-	const int32_t HiWord() const;
-
-	const int16_t LoByte() const;
-	const int16_t HiByte() const;
-
-	const int Value() const;
-	const int BitLength() const;
-
-	void setValue(const int);
-	
-private:
-	int AX = 0;
-	int EAX[4] = { 0,0,0,0 };
-};
-
-
-
-struct BitN
-{
-	BitN();
-	BitN(const int);
-	BitN(const char*);
-	BitN(const std::initializer_list<bool>&);
-
-	void setBits(const std::string&&);
-	const int value_from_bitstr(const std::string&);
-	const std::string& Bits();
-	const std::string& toBits(const unsigned);
-	const int value_from_bitlist(const iList2<bool>&);
-	const std::string& to_signed_bits(const int);
-	const std::string& to_fixed_point_bits(const std::string&, const double);
-	const std::size_t bitSize() const;
-	void operator()() const;
-
-private:
-	std::string _bitStr;
-	std::size_t _bitLen;
-};
-
-
-
 template <const unsigned>
 struct fixN;
-
 
 
 // invert every bit in the bit array.
@@ -440,16 +389,16 @@ inline static const char* inttostr(const int);
 inline static const unsigned proper_bits(const int64_t&);
 
 // return the least significant portion of bits of a specified value '_v'
-inline static const int LoPart(const int);
+inline static const int64_t LoPart(const int64_t&);
 
 // return the most significant portion of bits of a specified value '_v'
-inline static const int HiPart(const int);
+inline static const int64_t HiPart(const int64_t&);
 
 // extract specific portion of each data with [BYTE PTR] attribute and store it to the Vector
 inline static void parseByte(const int, std::vector<int>&);
 
 // merge the MSB and LSB portions together to form a single unit of data
-inline static const int32_t MergeBits(const int, const int);
+inline static const int64_t MergeBits(const int64_t&, const int64_t&);
 
 inline static const char* rtrim(const char*);
 
@@ -459,7 +408,7 @@ inline static const char* reverse_str(const char*);
 inline static const char* repl_char(char*&, char&&, const int&);
 
 // decomposes a given packed int into its original bit form
-inline static const int unPack(const int&, int const&, int const&);
+inline static const int64_t unPack(const int64_t&, int64_t const&, int64_t const&);
 
 
 inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repSize)
@@ -520,16 +469,18 @@ struct to_binary
 
 	static inline const std::string eval(const value_type _dec)
 	{
-		int _bsz = (int)num_of_bits<value_type>::eval(_dec);
+		value_type _q = 0;
+		value_type _bsz = num_of_bits<value_type>::eval(_dec);
 		_value = _dec;
 
 		if (_bsz > 0)
 			_bs = new char[_bsz]; 
 
-		for (int i = 0; i < _bsz; i++)
+		for (value_type i = 0; i < _bsz && _value > 0; i++)
 		{
-			_bs[i] = (_value % 2)? 49 : 48;
-			_value >>= 1;
+			_q = _value % 2;
+			_bs[i] = (_q)? '1' : '0';
+			_value = (_value > 1)? _value /= 2 : 0;
 		}
 
 		_value = 0;
@@ -561,18 +512,18 @@ struct bin_to_dec
 	{
 		std::size_t lenMax = _strBits.size();
 		std::size_t _maxBit = lenMax - 1;
-		int k = 0, b = 0;
+		value_type k = 0, b = 0;
 
 		_Dec = 0;
 
 		for (std::size_t i = _maxBit; i > 0; i--)
 		{
 			b = (_strBits[i] == 49)? 1 : 0;
-			_Dec += b * (int)std::pow(2, k++);
+			_Dec += b * (value_type)std::pow(2, k++);
 		}
 
 		b = (_strBits[0] == 49)? 1 : 0;
-		_Dec += b * (int)std::pow(2, _maxBit);
+		_Dec += b * (value_type)std::pow(2, _maxBit);
 
 		return _Dec;
 	}
@@ -596,12 +547,10 @@ static inline const int _Get_Num_of_Bits(const int64_t& _ax)
 
 static inline const std::string _Get_Binary_Str(const int64_t& _Dx)
 {
-	int _Abs = (int)_Dx;
+	const int64_t& _Abs = _Dx;
 	std::string bit_str;
 
-	if (_Abs < 0)  _Abs = std::abs(_Abs);
-
-	if (!_Abs) return "0";
+	if (!_Abs || _Abs < 0) return "0";
 	else
 	  bit_str = to_binary<int64_t>::eval(_Abs).data();
 
@@ -701,26 +650,14 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 {
 	int64_t _x = 0;
 	std::string _xBitStr;
+	const size_t canSz = _canVec.size();
 
-	const int64_t totSize = (int64_t)_canVec.size();
-	const int64_t subSize = (int64_t)(0.25 * totSize);
-	const int64_t repSize = (int64_t)(totSize / subSize);
-
-	RPRINT("totSize: "); RPRINT(" "); RPRINT(totSize); RET;
-	RPRINT("subSize: "); RPRINT(" "); RPRINT(subSize); RET;
-	RPRINT("repSize: "); RPRINT(" "); RPRINT(repSize); RET;
-
-
-
-	for (int64_t z = 0; z < repSize; ) {
-		for (int64_t t = z; t <= (z + subSize); t++)
+		for (size_t t = 0; t < canSz; t++)
 		{
-			_x <<= (int64_t)_Get_Num_of_Bits(_canVec[t]);
-			_x |= (int64_t)_canVec[t];
+			_x <<= len_bit(_canVec[t]);
+			_x |= _canVec[t];
 		}
-		z += subSize;
 		
-	}
 
 	_xBitStr = bit_str(_x);
 	
@@ -728,21 +665,27 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 }
 
 
-static inline const int save_cni_bit(const std::string& _File, const int64_t& cni_bit)
+static inline const size_t save_cni_bit(const std::string& _File, const int64_t& cni_bit)
 {
-	int saved_size = 0;
-	int bit_cni = 0, bit_size = 0;
+	int bit8 = 0;
+	size_t saved_size = 0;
+	int64_t bit_cni = 0, bit_size = 0;
 	std::FILE* _FCni = std::fopen(_File.data(), "wb");
 
 	if (!_FCni) return 0;
 
-	while ((bit_cni = (int)byte_of(cni_bit)) > 0)
+	while ((bit_cni = byte_of(cni_bit)) > 0)
 	{
 		while ((bit_size = len_bit(bit_cni)) > 16)
 			bit_cni >>= 16;
 
-		std::fputc(BYTE_PTR_HI(bit_cni) >> 8, _FCni);
-		std::fputc(BYTE_PTR_LO(bit_cni), _FCni);
+
+		bit8 = (int)BYTE_PTR_HI(bit_cni) >> 8;
+		std::fputc(bit8, _FCni);
+
+		bit8 = (int)BYTE_PTR_LO(bit_cni);
+		std::fputc(bit8, _FCni);
+
 		saved_size += 2;
 	}
 
@@ -751,7 +694,7 @@ static inline const int save_cni_bit(const std::string& _File, const int64_t& cn
 }
 
 
-static inline const int read_cni_bit(const std::string& _File, std::vector<int>& Int_Bit)
+static inline const int read_cni_bit(const std::string& _File, std::vector<int64_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
 	std::FILE* _FBit = std::fopen(_File.data(), "rb");
@@ -770,7 +713,7 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int>&
 }
 
 
-static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int64_t& bit_cni)
+static inline const size_t merge_cni_bit(const std::vector<int64_t>& v_bit, int64_t& bit_cni)
 {
 	size_t merged_size = 0;
 	const size_t vbnSize = v_bit.size(), bit_size = vbnSize * 8;
@@ -781,6 +724,7 @@ static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int64_t&
 	{
 		bit_cni |= v_bit[0] << 8;
 		bit_cni |= v_bit[1];
+		merged_size += 2;
 	}
 	else if (bit_size > 16 && bit_size <= 32)
 	{
@@ -788,6 +732,19 @@ static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int64_t&
 		bit_cni |= v_bit[1] << 16;
 		bit_cni |= v_bit[2] << 8;
 		bit_cni |= v_bit[3];
+		merged_size += 4;
+	}
+	else if (bit_size > 32 && bit_size <= 64)
+	{
+		bit_cni |= v_bit[0] << 56;
+		bit_cni |= v_bit[1] << 48;
+		bit_cni |= v_bit[2] << 40;
+		bit_cni |= v_bit[3] << 32;
+		bit_cni |= v_bit[4] << 24;
+		bit_cni |= v_bit[5] << 16;
+		bit_cni |= v_bit[6] << 8;
+		bit_cni |= v_bit[7];
+		merged_size += 8;
 	}
 
 	return merged_size;
@@ -797,16 +754,16 @@ static inline const size_t merge_cni_bit(const std::vector<int>& v_bit, int64_t&
 
 inline static const unsigned proper_bits(const int64_t& _n)
 {
-	const unsigned int _nBits = num_of_bits<int>::eval((int)_n);
+	const int64_t _nBits = num_of_bits<int64_t>::eval(_n);
 	const unsigned int _maxBits = BIT_TOKEN(_nBits);
 
 	return _maxBits;
 }
 
 
-inline static const int LoPart(const int _v)
+inline static const int64_t LoPart(const int64_t _v)
 {
-	int _Result = 0b0;
+	int64_t _Result = 0b0;
 	
 	MAX_BIT = proper_bits(_v);
 
@@ -833,9 +790,9 @@ inline static const int LoPart(const int _v)
 }
 
 
-inline static const int HiPart(const int _v)
+inline static const int64_t HiPart(const int64_t _v)
 {
-	int _ResX = 0b0;
+	int64_t _ResX = 0b0;
 
 	MAX_BIT = proper_bits(_v);
 
@@ -858,35 +815,24 @@ inline static const int HiPart(const int _v)
 }
 
 
-inline static void parseByte(const int _EDX, std::vector<int>& _Bytes)
+inline static void parseByte(const int64_t& _rdx, std::vector<int64_t>& _Bytes)
 {
-	int _Val = 0;
+	int64_t _rbx = 0, _rcx = 0;
 
-	_Val = WORD_PTR_HI(_EDX);
-
-	if (_Val)
+	while ((_rbx = byte_of(_rdx)) > 0)
 	{
-		_Val >>= 16;
-		_Bytes.push_back(_Val);
+		while ( (_rcx = len_bit(_rbx)) > 16 )
+				_rcx >>= 16;
+
+		_Bytes.push_back(BYTE_PTR_HI(_rcx) >> 8);
+		_Bytes.push_back(BYTE_PTR_LO(_rcx));
 	}
-
-	_Val = HiPart(WORD_PTR_LO(_EDX) );
-
-	if (_Val)
-	{
-		_Val >>= 8;
-		_Bytes.push_back(_Val);
-	}
-
-	_Val = LoPart(WORD_PTR_LO(_EDX));
-
-	if (_Val) _Bytes.push_back(_Val);
 }
 
 
-inline static const int32_t MergeBits(const int _Hi, const int _Lo)
+inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
 {
-	int32_t _Bits = 0b0;
+	int64_t _Bits = 0b0;
 
 	_Bits = _Hi | _Lo;
 
@@ -924,7 +870,7 @@ int64_t const extract_byte(const int64_t& _v)
 			goto endResult;
 		}
 		
-		_v1 = (_count > 0)? (int64_t)(65535 & _v) : (int64_t)WORD_PTR_HI((int)_v);
+		_v1 = (_count > 0)? (int64_t)(65535 & _v) : (int64_t)WORD_PTR_HI(_v);
 		++_count;
 
 		endResult:
@@ -1123,10 +1069,10 @@ inline static const char* concat_str(char* _target, const char* _str)
 
 inline static const char* reverse_str(const char* _str)
 {
-	const std::size_t lenz = std::strlen(_str), _max = lenz - 1;
+	const int64_t lenz = std::strlen(_str), _max = lenz - 1;
 	char* _ps = new char[lenz];
 
-	for (int i = 0,j = (int)_max; j >= 0; )
+	for (int64_t i = 0,j = _max; j >= 0; )
 		_ps[i++] = _str[j--];
 
 	_ps[lenz] = 0;
@@ -1325,6 +1271,7 @@ inline static const char* rtrim(const char* _string)
 
 
 
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1511,12 +1458,12 @@ static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitIn
 }
 
 
-inline static const int unPack(const int& _Packed, int const& _leftBits, int const& _rightBits)
+inline static const int64_t unPack(const int64_t& _Packed, int64_t const& _leftBits, int64_t const& _rightBits)
 {
 	MAX_BIT = proper_bits(_Packed);
-	const int bit_count = MAX_BIT - _rightBits;
-	const int _hiMsk = range_bit_set(_rightBits, _rightBits + bit_count);
-	const int _LeftUnPacked = (_hiMsk & _Packed) >> _rightBits;
+	const int64_t bit_count = MAX_BIT - _rightBits;
+	const int64_t _hiMsk = range_bit_set(_rightBits, _rightBits + bit_count);
+	const int64_t _LeftUnPacked = (_hiMsk & _Packed) >> _rightBits;
 
 	return _LeftUnPacked;
 }
@@ -1627,11 +1574,11 @@ fixN<BITS>::operator int() const
 }
 
 // return how much number of decimal digits which appeared in a constant integer '_v'.
-inline static const int num_of_dec(const int _v)
+inline static const int64_t num_of_dec(const int64_t& _v)
 {
 	if (_v <= 0) return 0;
 
-	int _dec = _v, _count = 0, nMod=0;
+	int64_t _dec = _v, _count = 0, nMod=0;
 
 	while (_dec > 0)
 	{
@@ -1684,7 +1631,7 @@ inline static const int strtoint(std::string&& _sNum)
 inline static const char* inttostr(const int nVal)
 {
 	// max. spaces for negative integer
-	const int nDigits = oneAdder(num_of_dec(std::abs(nVal))); 
+	const int nDigits = oneAdder( (UINT)num_of_dec((int64_t)std::abs(nVal))); 
 
 	// max. spaces for positive integer.
 	const int nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
@@ -1732,315 +1679,5 @@ inline static const char* inttostr(const int nVal)
 	
 	return _ss;
 }
-
-
-
-// Implementation to BitN class..
-
-	BitN::BitN():_bitLen(0) {}
-
-	BitN::BitN(const int _val)  
-	{
-		_bitStr = (_val > 0)? toBits(_val) : to_signed_bits(_val);
-		
-	}
-
-	BitN::BitN(const char* _strFixBits)
-	{
-		to_fixed_point_bits(_strFixBits, 0.1);
-	}
-
-	
-	BitN::BitN(const std::initializer_list<bool>& _bitL) : _bitLen(0)
-	{
-
-		toBits(value_from_bitlist(_bitL) );
-	}
-
-
-	void BitN::setBits(const std::string&& _bitL)
-	{
-		_bitStr = _bitL;
-		_bitLen = _bitStr.size();
-	}
-
-
-	const int BitN::value_from_bitstr(const std::string& _bits)
-	{
-		int _v = bin_to_dec<int>::eval(_bits.data());
-
-		return _v;
-	}
-
-
-	const std::string& BitN::Bits()
-	{
-		return _bitStr;
-	}
-
-
-	const std::string& BitN::toBits(const unsigned _val)
-	{
-		unsigned _dec = _val;
-
-		_bitStr.clear(); 
-
-		_bitStr = to_binary<unsigned int>::eval(_val);
-		
-		_bitLen = _bitStr.size();
-		return _bitStr;
-	}
-
-
-	const int BitN::value_from_bitlist(const iList2<bool>& _bits)
-	{
-		int _bExp = 0, _v = 0;
-		_bExp = (int)(_bits.size() - 1); 
-
-		for (iList2<bool>::iterator _Bit = _bits.begin(); _Bit != _bits.end(); _Bit++)
-		{
-			_v += (*_Bit) * (0b1 << _bExp--);
-		}
-		RET;
-
-		return _v;
-	}
-
-
-	// obtain a 2-complement bits string from a specific signed value ( + / - )
-	const std::string& BitN::to_signed_bits(const int _signed_v)
-	{
-		_bitStr.clear();
-		bool* _bits = nullptr;
-		unsigned _v = 0;
-
-		unsigned _dec = (_signed_v < 0)? std::abs(_signed_v) : _signed_v;
-		_bitStr = toBits(_dec);
-		MAX_BIT = BIT_TOKEN((unsigned)std::strlen(_bitStr.data()));
-
-		// if a negative decimal value
-		if (_signed_v < 0)
-		{
-			_bits = (bool*)bits_from_str(_bitStr);
-			
-			_bitStr = "\0";
-			
-			invert_bits(_bits, MAX_BIT);
-
-			// get the inverted bits string
-			_bitStr = str_from_bits(_bits, MAX_BIT);
-
-			// convert the inverted bits string into a value
-			_v = value_from_bitstr(_bitStr);
-
-			++_v; // added 1 to the inverted bits
-
-			// convert the value into bits string again
-			_bitStr = "\0";
-			_bitStr = toBits(_v);
-
-			// convert the bits string into a bit array
-			delete[] _bits; // clear previous allocated bits
-			_bits = (bool*)bits_from_str(_bitStr);
-
-			// convert back the bit array into bits string
-			_bitStr = "\0";
-			_bitStr = str_from_bits(_bits, MAX_BIT);
-			_bitLen = _bitStr.size();
-			
-		}
-
-		delete[] _bits;
-		return _bitStr;
-	}
-
-	const size_t BitN::bitSize() const { return _bitStr.size(); }
-
-
-	// returns a string representation of a fixed point binary bits.
-	const std::string& BitN::to_fixed_point_bits(const std::string& _cf, const double _epsilon)
-	{
-		size_t _sz = std::strlen(_cf.data());
-		size_t _point = _cf.find_first_of(".", 0);
-		int _decPart = atoi(_cf.substr(0, _point).data());
-		int _frac = atoi(_cf.substr(_point + 1, _sz - (_point + 1)).data());
-
-		size_t _fracZeros = _sz - (_point + 1); // would be used in 2^(-n)
-		double _dFrac = _frac; // fraction part
-
-		toBits((unsigned)_decPart); // result is stored to _bitStr
-		_bitStr = strcat((char*)_bitStr.c_str(), ".");
-	
-		std::string _sDecPart;
-		_sDecPart.assign(_bitStr.data() );
-
-		_bitStr = "\0";
-		_bitStr = toBits((unsigned)_frac); // fraction bits stored to _bitStr
-
-		 // integrate decimal & fraction bits length
-		std::size_t s1 =0, s2 = 0;
-
-		s1 = std::strlen(_sDecPart.data()); // the bits length of decimal part
-		s2 = std::strlen(_bitStr.data()); // the bits length of fraction part
-
-
-		// new spaces for storing the integrated fix-point bits
-		char* _ps = new char[2*(s1 + s2)]; 
-
-		for (size_t i = 0; i < s1; i++)
-			_ps[i] = _sDecPart[i];
-
-		_point = _sDecPart.find_first_of('.', 0);
-		
-		_sDecPart = "\0";
-
-		// 10 being raised to the -N zeroes power equates to a value of ' 0.d1d2...d(n) '
-		for (size_t k = 0; k < _fracZeros; k++)
-			_dFrac /= 10;
-
-
-		double _fpv = 0, _exp = -1, _2e = 0;
-		const double _fv = _dFrac;
-		int _pos = (int)(++_point);
-
-		double i = 0;
-
-			while( _fpv < _fv)
-			{
-				_dFrac *= 2;
-				i = (int)_dFrac;
-
-				// how to get its fraction part as double??
-				_dFrac = std::abs(_dFrac - i);
-
-				//RPRINT("i = "); RPRINT(i); RET2();
-
-				_2e = std::pow(2, _exp--);
-				//RPRINT("2e^(-n) = "); RPRINT(_2e); RET2();
-
-				if (i > 0)
-				{
-					_fpv += i * _2e;
-					_ps[_pos++] = '1';
-				}
-				else {
-					_ps[_pos++] = '0';
-				}
-
-				// adjust number of bits behind the point with (_frac - _fpv) <= epsilon
-				if ( (_fv - _fpv) <= _epsilon ) break;
-			}
-
-			_ps[_pos] = '\0';
-			_bitStr = "\0";
-
-			_bitLen = std::strlen(_ps);
-			_bitStr.assign(_ps);
-
-			delete[] _ps;
-		return _bitStr;
-	}
-
-	void BitN::operator()() const
-	{
-		std::cout << _bitStr.data() << "\n\n";
-	}
-
-
-	// Implementations to _32Bit Data Structure...
-	const int _32Bit::Byte() const
-	{
-		return this->EAX[3];
-	}
-
-	const int32_t _32Bit::HiWord() const
-	{
-		MAX_BIT = proper_bits(this->AX);
-
-		if (MAX_BIT > WORD )
-		{
-			return MergeBits(this->EAX[0], this->EAX[1]);
-		}
-		else
-			return 0;
-	}
-
-	const int32_t _32Bit::LoWord() const
-	{
-		MAX_BIT = proper_bits(this->AX);
-
-		if (MAX_BIT > WORD )
-		{
-			return MergeBits(this->EAX[2], this->EAX[3]);
-		}
-		else
-			return 0;
-	}
-
-	const int16_t _32Bit::HiByte() const
-	{
-		MAX_BIT = proper_bits(this->AX);
-
-		if (MAX_BIT > BYTE && MAX_BIT <= WORD)
-		{
-			return this->EAX[2];
-		}
-		else
-			return 0;
-	}
-
-	const int16_t _32Bit::LoByte() const
-	{
-		MAX_BIT = proper_bits(this->AX);
-
-		if (MAX_BIT > BYTE && MAX_BIT <= WORD)
-		{
-			return this->EAX[3];
-		}
-		else
-			return 0;
-	}
-
-	const int _32Bit::Value() const
-	{
-		return this->AX;
-	}
-
-	const int _32Bit::BitLength() const
-	{
-		return proper_bits(this->AX);
-	}
-
-	void _32Bit::setValue(const int _Dx)
-	{
-		this->AX = _Dx;
-		MAX_BIT = proper_bits(this->AX);
-		int _hiWord = 0, _loWord = 0;
-		
-		switch (MAX_BIT)
-		{
-			case 8:
-				this->EAX[3] = this->AX;
-				break;
-
-			case 16:
-				this->EAX[2] = HiPart(this->AX);
-				this->EAX[3] = LoPart(this->AX);
-				break;
-
-			case 32:
-				_hiWord = HiPart(this->AX); // high-order 16 bit part of AX
-				_loWord = LoPart(this->AX); // low-order 16 bit part of AX
-
-				this->EAX[0] = HiPart(_hiWord); // high-order 8 bit of _hiWord
-				this->EAX[1] = LoPart(_hiWord);  // low-order 8 bit of _hiWord
-
-				this->EAX[2] = HiPart(_loWord); // high-order 8 bit of _loWord
-				this->EAX[3] = LoPart(_loWord); // low-order 8 bit of _loWord
-
-			default:
-				break;
-		}
-	}
 
 
