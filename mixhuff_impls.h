@@ -12,15 +12,14 @@ static std::string _SystemFile = "\0";
 
 
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
-				    in the command line */
+				     in the command line */
 
 
 // ReSync the integers of *.sqz
-static inline const std::size_t ReSync_Int(std::vector<int>& _vecSqz, std::vector<char>& ReSynced_Data,
-					   const std::vector<int>& Bits_Len,  const int64_t& IntSqz,  
-						const std::vector<Can_Bit>& _CniInfo)
+static inline const std::size_t ReSync_Int(std::vector<int64_t>& _vecSqz, std::vector<char>& ReSynced_Data,
+					   const std::vector<int64_t>& Bits_Len,  const int64_t& IntSqz, const std::vector<Can_Bit>& _CniInfo)
 {
-	int w = 0, bx = 0;
+	int64_t w = 0, bx = 0;
 	size_t synced_size = 0;
 	const std::string xsbit = bit_str(IntSqz);
 
@@ -48,8 +47,8 @@ static inline const std::size_t ReSync_Int(std::vector<int>& _vecSqz, std::vecto
 
 	for (size_t q = 0; q < SqzSize; q++)
 	{
-		if (mix::generic::vector_search(CNF.begin(), CNF.end(), _vecSqz[q],
-						 mix::generic::NLess<int>(), CBT))
+		if (mix::generic::vector_search(CNF.begin(), CNF.end(), (int)_vecSqz[q],
+							mix::generic::NLess<int>(), CBT))
 		{
 			ReSynced_Data.push_back(CBT->_xData); ++synced_size;
 		}
@@ -171,7 +170,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	const int _TreeSizes = (int)_fpNods.size();
 
 	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-					     std::floor(COMP_RATE*_TreeSizes);
+						std::floor(COMP_RATE*_TreeSizes);
 
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
 	int _DivSize = (int)_fCompRate;
@@ -220,7 +219,7 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 // Save the encoded's information data table into a file.
 static inline const std::size_t writePackInfo(const std::string& _fiName, std::vector<_Canonical>& CniSrc, 
-					      const std::vector<int>& _CodWords)
+						const std::vector<int>& _CodWords)
 {
 	int _b = 0;
 	size_t _writtenSize = 0;
@@ -451,7 +450,7 @@ static inline const std::size_t writePack(const std::string& _File, const int64_
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(const std::string& _inFile, std::vector<int>& vInts)
+static inline const std::size_t readPack(const std::string& _inFile, std::vector<int64_t>& vInts)
 {
 	std::size_t _readBytes = 0;
 
@@ -521,9 +520,9 @@ EndRead:
 
 // generates huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vector<BPAIR>& CodInfo, 
-						std::vector<_Canonical>& Cni_Dat, std::vector<int>& PacInts,
-						int64_t& SqzInt, const double& cmp_rate)
+					      std::vector<_Canonical>& Cni_Dat, std::vector<int>& PacInts, const double& cmp_rate)
 {
+	int64_t SqzInt = 0;
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq;
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq;
 	std::vector<node> PNodes;
@@ -609,11 +608,11 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 	xs_bit = cni_bits_pack(PacInts);
 	SqzInt = int_bit(xs_bit.data());
 	
-	PRINT(xs_bit.data());
-	PRINT(SqzInt);
 	
 	return SqzInt;
 }
+
+
 
 // extracting a saved encoding data into 'CnBit' and 'CnRaw' vectors
 static inline const int extract_encoding_info(const std::string& xFile,std::vector<_Canonical>& CnBit, std::vector<_Canonical>& CnRaw)
@@ -626,6 +625,7 @@ static inline const int extract_encoding_info(const std::string& xFile,std::vect
 
 	return -1;
 }
+
 
 
 static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, char* _cBuff)
@@ -703,8 +703,8 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 	
 	
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, _sqzNum, COMP_RATE);
-
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
+	PRINT(_sqzNum);
 	
 	// writing encoding information table ..
 	if (!writePackInfo(_SystemFile.data(), _CanSrc, _pacInts))
@@ -753,7 +753,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	
 	std::size_t ReckonSize = 0, _UnSquezzed = 0;
-	std::vector<int> cniBitLen, _SqzInts;
+	std::vector<int64_t> cniBitLen, _SqzInts;
 
 	char* _OriginFile = (char*)_unPackedFile.data(), * _sExt = (char*)"\0";
 
@@ -769,7 +769,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		return 0;
 	}
 	
-	for (const int& q : _SqzInts) RPRINTC(q);
+	for (const int64_t& q : _SqzInts) RPRINTC(q);
 
 	RET;
 
@@ -851,7 +851,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	vectorClean(_SqzInts);
 	vectorClean(cniBitLen);
 
+
 	return _UnSquezzed;
 }
-
 
