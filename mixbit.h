@@ -85,7 +85,7 @@ constexpr int64_t i8Mask = 255;
 constexpr int64_t i16Mask = 65535;
 constexpr int64_t i32Mask = 0xFFFFFFFF;
 
-const int64_t extract_byte(const int64_t&);
+const int64_t extract_byte(int64_t&);
 
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int&);
@@ -103,7 +103,7 @@ static const std::string _Get_Binary_Str(const int64_t&);
 static const int64_t _Int_from_Bit_Str(const std::string&);
 
 // Invoker macro for extract_byte
-static const int64_t byte_of(const int64_t& _ebx)
+static const int64_t byte_of(int64_t& _ebx)
 {
 	return extract_byte(_ebx);
 }
@@ -118,7 +118,7 @@ static void cni_enforce_unique(std::vector<_Canonical>&);
 static const std::string cni_bits_pack(const std::vector<int>&);
 
 // saves a packed canonical bit to one specified file
-static const size_t save_cni_bit(const std::string&, const int64_t&);
+static const size_t save_cni_bit(const std::string&, int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
@@ -158,6 +158,16 @@ constexpr int64_t WORD_PTR_HI(const int64_t _rdx)
 constexpr int64_t WORD_PTR_LO(const int64_t rdx_)
 {
 	return i16Mask & rdx_;
+}
+
+constexpr int64_t DWORD_PTR_HI(const int64_t _rax)
+{
+	return (i32Mask << 32) & _rax;
+}
+
+constexpr int64_t DWORD_PTR_LO(const int64_t rax_)
+{
+	return i32Mask & rax_;
 }
 
 
@@ -395,7 +405,7 @@ inline static const int64_t LoPart(const int64_t&);
 inline static const int64_t HiPart(const int64_t&);
 
 // extract specific portion of each data with [BYTE PTR] attribute and store it to the Vector
-inline static void parseByte(const int, std::vector<int>&);
+inline static void parseByte(int64_t&, std::vector<int>&);
 
 // merge the MSB and LSB portions together to form a single unit of data
 inline static const int64_t MergeBits(const int64_t&, const int64_t&);
@@ -665,9 +675,8 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 }
 
 
-static inline const size_t save_cni_bit(const std::string& _File, const int64_t& cni_bit)
+static inline const size_t save_cni_bit(const std::string& _File, int64_t& cni_bit)
 {
-	int bit8 = 0;
 	size_t saved_size = 0;
 	int64_t bit_cni = 0, bit_size = 0;
 	std::FILE* _FCni = std::fopen(_File.data(), "wb");
@@ -680,11 +689,8 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 			bit_cni >>= 16;
 
 
-		bit8 = (int)BYTE_PTR_HI(bit_cni) >> 8;
-		std::fputc(bit8, _FCni);
-
-		bit8 = (int)BYTE_PTR_LO(bit_cni);
-		std::fputc(bit8, _FCni);
+		std::fputc((int)(BYTE_PTR_HI(bit_cni) >> 8), _FCni);
+		std::fputc((int)(BYTE_PTR_LO(bit_cni)), _FCni);
 
 		saved_size += 2;
 	}
@@ -815,17 +821,17 @@ inline static const int64_t HiPart(const int64_t _v)
 }
 
 
-inline static void parseByte(const int64_t& _rdx, std::vector<int64_t>& _Bytes)
+inline static void parseByte(int64_t& _rdx, std::vector<int64_t>& _Bytes)
 {
 	int64_t _rbx = 0, _rcx = 0;
 
 	while ((_rbx = byte_of(_rdx)) > 0)
 	{
 		while ( (_rcx = len_bit(_rbx)) > 16 )
-				_rcx >>= 16;
+				_rbx >>= 16;
 
-		_Bytes.push_back(BYTE_PTR_HI(_rcx) >> 8);
-		_Bytes.push_back(BYTE_PTR_LO(_rcx));
+		_Bytes.push_back(BYTE_PTR_HI(_rbx) >> 8);
+		_Bytes.push_back(BYTE_PTR_LO(_rbx));
 	}
 }
 
@@ -842,61 +848,39 @@ inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
 
 
 /* extract byte by byte portion of an integer '_v'.
-   If '_v' is more than a 16 bit wide integer, then
-   extract_byte will successively extract each 16 bit
-   portion of its high & low order part, otherwise 
-   '_v' is extracted per byte by byte basis.
+   If '_v' is more than an 8 bit wide integer, then
+   extract_byte will subsequently extract its associated MSB &
+   LSB of the integer, otherwise '_v' is extracted per byte by byte basis.
 */
-int64_t const extract_byte(const int64_t& _v)
+int64_t const extract_byte(int64_t& _v)
 {
-	static int64_t _v1 = 0;
-	static int64_t _count = 0;
+	int64_t _d1 = -1;
 
 	MAX_BIT = proper_bits(_v);
 
 	if (MAX_BIT <= BYTE)
 	{
-		_v1 = (_count)? 0 : (int64_t)255 & _v;
-		++_count;
+		_d1 = (_v > 0)? (int64_t)255 & _v : -1;
+		_v -= _d1;
 
-		return _v1;
 	}
-	else if (MAX_BIT > WORD)
+	else if (MAX_BIT > BYTE && MAX_BIT <= WORD)
 	{
-		if (_count > 1)
-		{
-			_count = 0;
-			_v1 = 0;
-			goto endResult;
-		}
-		
-		_v1 = (_count > 0)? (int64_t)(65535 & _v) : (int64_t)WORD_PTR_HI(_v);
-		++_count;
-
-		endResult:
-			return _v1;
+		_d1 = (_v > 0)? BYTE_PTR_HI(_v) : -1;
+		_v -= _d1;
 	}
-
-	switch (_count)
+	else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
 	{
-	case 0:
-		_v1 = (int64_t)(255 << 8) & _v;
-		++_count;
-		break;
-
-	case 1:
-		_v1 = _v - _v1;
-		++_count;
-		break;
-
-	case 2:
-		_v1 = 0;
-		_count = 0;
-	default:
-		break;
+		_d1 = WORD_PTR_HI(_v);
+		_v -= _d1;
 	}
-
-	return _v1;
+	else if (MAX_BIT > DWORD && MAX_BIT <= QWORD)
+	{
+		_d1 = DWORD_PTR_HI(_v);
+		_v -= _d1;
+	}
+	
+	return _d1;
 }
 
 
