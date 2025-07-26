@@ -54,7 +54,7 @@ struct Can_Bit : virtual public _Canonical
 
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
-{									\
+{													\
 	repl_char(_ch_ptr, '1', _reps);					\
 }
 
@@ -86,6 +86,8 @@ constexpr int64_t i16Mask = 65535;
 constexpr int64_t i32Mask = 0xFFFFFFFF;
 
 const int64_t extract_byte(int64_t&);
+constexpr int64_t set_low_bit(const int64_t&);
+constexpr int64_t range_bit_set(const int64_t&, const int64_t&);
 
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int&);
@@ -171,6 +173,16 @@ constexpr int64_t DWORD_PTR_LO(const int64_t rax_)
 }
 
 
+const int64_t BYTE_PTR_X(const int64_t _rcx)
+{
+	const int64_t _rdi = len_bit(_rcx);
+	const int64_t _rsi = _rdi - (int64_t)8;
+
+	const int64_t _rgx = range_bit_set(_rsi, _rdi);
+	return _rcx & _rgx;
+}
+
+
 /* generates number of set bits on the LSB of a data unit. (little - endian)
    NB: bit indices are specified based on average user habitual convention style. */
 constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
@@ -193,7 +205,7 @@ constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
 constexpr int64_t range_bit_set(const int64_t& _Min, const int64_t& _Max)
 {
 	double _Sum = 0;
-	const double _start_bit = (double)(_Min - 1), _end_bit = (double)(_Max - 1);
+	const double _start_bit = (double)(_Min), _end_bit = (double)(_Max - 1);
 
 	for (double _bi = _start_bit; _bi <= _end_bit; _bi++)
 	{
@@ -685,14 +697,13 @@ static inline const size_t save_cni_bit(const std::string& _File, int64_t& cni_b
 
 	while ((bit_cni = byte_of(cni_bit)) > 0)
 	{
-		while ((bit_size = len_bit(bit_cni)) > 16)
-			bit_cni >>= 16;
+		while ((bit_size = len_bit(bit_cni)) > 8)
+			bit_cni >>= 8;
 
 
-		std::fputc((int)(BYTE_PTR_HI(bit_cni) >> 8), _FCni);
-		std::fputc((int)(BYTE_PTR_LO(bit_cni)), _FCni);
+		std::fputc((int)bit_cni, _FCni);
 
-		saved_size += 2;
+		++saved_size;
 	}
 
 	if (_FCni) std::fclose(_FCni);
@@ -767,57 +778,27 @@ inline static const unsigned proper_bits(const int64_t& _n)
 }
 
 
-inline static const int64_t LoPart(const int64_t _v)
+inline static const int64_t LoPart(const int64_t& _v)
 {
-	int64_t _Result = 0b0;
-	
-	MAX_BIT = proper_bits(_v);
+	const int64_t bit_width = len_bit(_v);
+	const int64_t half_bit = bit_width / 2;
+	const int64_t bit_order_difft = bit_width - half_bit;
+	const int64_t low_mask = set_low_bit(bit_order_difft);
+	const int64_t low_order_value = low_mask & _v;
 
-	switch (MAX_BIT)
-	{
-		case 8:
-			_Result = (i4Mask & _v);
-			break;
-
-		case 16:
-			_Result = (i8Mask & _v);
-			break;
-
-		case 32:
-			_Result = (i16Mask & _v);
-			break;
-
-		default:
-			break;
-	}
-
-	return _Result;
-
+	return low_order_value;
 }
 
 
-inline static const int64_t HiPart(const int64_t _v)
+inline static const int64_t HiPart(const int64_t& _v)
 {
-	int64_t _ResX = 0b0;
-
-	MAX_BIT = proper_bits(_v);
-
-	switch (MAX_BIT)
-	{
-	case 8:
-		_ResX = (i4Mask << 4) & _v;
-		break;
-
-	case 16:
-		_ResX = (i8Mask << 8) & _v;
-		break;
-
-	case 32:
-		_ResX = (i16Mask << 16) & _v;
-		break;
-	}
-
-	return _ResX;
+	const int64_t bit_wide = len_bit(_v);
+	const int64_t bit_half = bit_wide / 2;
+	const int64_t bit_difft = bit_wide - bit_half;
+	const int64_t bit_high_mask = range_bit_set(bit_half, bit_wide);
+	const int64_t high_order_value = bit_high_mask & _v;
+	
+	return high_order_value;
 }
 
 
@@ -828,10 +809,9 @@ inline static void parseByte(int64_t& _rdx, std::vector<int64_t>& _Bytes)
 	while ((_rbx = byte_of(_rdx)) > 0)
 	{
 		while ( (_rcx = len_bit(_rbx)) > 16 )
-				_rbx >>= 16;
+				_rbx >>= 8;
 
-		_Bytes.push_back(BYTE_PTR_HI(_rbx) >> 8);
-		_Bytes.push_back(BYTE_PTR_LO(_rbx));
+		_Bytes.push_back(_rbx);
 	}
 }
 
@@ -854,31 +834,22 @@ inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
 */
 int64_t const extract_byte(int64_t& _v)
 {
-	int64_t _d1 = -1;
+	int64_t _d1 = -1, bit_width = 0;
 
-	MAX_BIT = proper_bits(_v);
+	bit_width = len_bit(_v);
 
-	if (MAX_BIT <= BYTE)
+	if (bit_width <= 8)
 	{
 		_d1 = (_v > 0)? (int64_t)255 & _v : -1;
 		_v -= _d1;
 
 	}
-	else if (MAX_BIT > BYTE && MAX_BIT <= WORD)
+	else if (bit_width > 8 )
 	{
-		_d1 = (_v > 0)? BYTE_PTR_HI(_v) : -1;
+		_d1 = (_v > 0)? BYTE_PTR_X(_v) : -1;
 		_v -= _d1;
 	}
-	else if (MAX_BIT > WORD && MAX_BIT <= DWORD)
-	{
-		_d1 = WORD_PTR_HI(_v);
-		_v -= _d1;
-	}
-	else if (MAX_BIT > DWORD && MAX_BIT <= QWORD)
-	{
-		_d1 = DWORD_PTR_HI(_v);
-		_v -= _d1;
-	}
+	
 	
 	return _d1;
 }
