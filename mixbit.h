@@ -54,7 +54,7 @@ struct Can_Bit : virtual public _Canonical
 
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
-{													\
+{									\
 	repl_char(_ch_ptr, '1', _reps);					\
 }
 
@@ -417,7 +417,7 @@ inline static const int64_t LoPart(const int64_t&);
 inline static const int64_t HiPart(const int64_t&);
 
 // extract specific portion of each data with [BYTE PTR] attribute and store it to the Vector
-inline static void parseByte(int64_t&, std::vector<int>&);
+inline static void parseByte(int64_t&, std::vector<int64_t>&);
 
 // merge the MSB and LSB portions together to form a single unit of data
 inline static const int64_t MergeBits(const int64_t&, const int64_t&);
