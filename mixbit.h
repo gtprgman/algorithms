@@ -52,6 +52,21 @@ struct Can_Bit : virtual public _Canonical
 #define int_bit(_x_) _Int_from_Bit_Str(_x_)
 #define len_bit(_x_) _Get_Num_of_Bits(_x_)
 
+// calculate how many of bit '1' in the data
+static inline const int64_t count_bit_set(int64_t& _x)
+{
+	int64_t _rcx = 0;
+
+	while (_x > 0)
+	{
+		if (_x % 2) ++_rcx;
+		_x /= 2;
+	}
+
+	return _rcx;
+}
+
+
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
 {									\
