@@ -437,6 +437,9 @@ inline static void parseInt(int64_t&, std::vector<int64_t>&);
 // parses each integer of a vector into its 8 bit composing binary form.
 inline static void parseByte(std::vector<int>&, const std::vector<int64_t>&);
 
+// recollecting integers in the source vector by pairing each 4 bit fraction of the integer to one another
+inline static void hexa_byte_collect(std::vector<int64_t>&, const std::vector<int64_t>&);
+
 // merge the MSB and LSB portions together to form a single unit of data
 inline static const int64_t MergeBits(const int64_t&, const int64_t&);
 
@@ -822,7 +825,6 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
-
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -874,6 +876,33 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 	}
 }
 
+
+inline static void hexa_byte_collect(std::vector<int64_t>& iData, const std::vector<int64_t>& series)
+{
+	int64_t max = 0;
+	int64_t _rax = 0, _rbx = 0, _rcx = 0, _rdx = 0, _rex = 0;
+	size_t szi = 0;
+	const size_t sz = series.size();
+
+	while (szi < sz)
+	{
+		_rax = series[szi]; _rbx = LO_HEX(_rax);
+		_rex = HI_HEX(series[szi + 1]) >> 4;
+		_rcx = len_bit(_rex);
+		_rdx = (len_bit(_rbx) <= _rcx) ? (_rbx << 4) | _rex : _rbx | _rex;
+
+		_rax = _rdx; // movq %rax, %rdx
+		_rbx = LO_HEX(_rax);
+		_rex = LO_HEX(series[szi + 1]);
+		_rcx = len_bit(_rex);
+		_rdx = (len_bit(_rbx) <= _rcx) ? (_rax << 4) | _rex : _rax | _rex;
+		max = _rdx;
+		iData.push_back(max);
+
+		szi += 2;
+		_rdx = 0; _rax = 0; _rbx = 0; _rex = 0; _rcx = 0; max = 0;
+	}
+}
 
 
 inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
@@ -1691,5 +1720,6 @@ inline static const char* inttostr(const int nVal)
 	
 	return _ss;
 }
+
 
 
