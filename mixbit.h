@@ -69,7 +69,7 @@ static inline const int64_t count_bit_set(int64_t& _x)
 
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
-{									\
+{													\
 	repl_char(_ch_ptr, '1', _reps);					\
 }
 
@@ -125,6 +125,9 @@ static const int64_t Ints_Of(int64_t& _ebx)
 	return extract_Ints(_ebx);
 }
 
+// integrates number of integers in the vector into a single 64 bit integer
+static const int64_t nums_integral_constant(const std::vector<int64_t>&);
+
 // generate encoding information table based on Huffman Canonical Method
 static void _Gen_Canonical_Info(std::vector<int64_t>&, const std::vector<int64_t>&);
 
@@ -135,7 +138,7 @@ static void cni_enforce_unique(std::vector<_Canonical>&);
 static const std::string cni_bits_pack(const std::vector<int64_t>&);
 
 // saves a packed canonical bit to one specified file
-static const size_t save_cni_bit(const std::string&, std::vector<int64_t>&);
+static const size_t save_cni_bit(const std::string&, int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
@@ -191,10 +194,19 @@ constexpr int64_t DWORD_PTR_LO(const int64_t rax_)
 const int64_t BYTE_PTR_X(const int64_t _rcx)
 {
 	const int64_t _rdi = len_bit(_rcx);
-	const int64_t _rsi = _rdi - (int64_t)8;
+	const int64_t _rsi = _rdi - (int64_t)7;
 
 	const int64_t _rgx = range_bit_set(_rsi, _rdi);
 	return _rcx & _rgx;
+}
+
+
+const int64_t HEX_PTR(const int64_t _rex)
+{
+	const int64_t _rbx = len_bit(_rex);
+	const int64_t _rax = _rbx - (int64_t)3;
+	const int64_t _rfx = range_bit_set(_rax, _rbx);
+	return _rex & _rfx;
 }
 
 
@@ -522,8 +534,8 @@ struct to_binary
 		for (value_type i = 0; i < _bsz && _value > 0; i++)
 		{
 			_q = _value % 2;
-			_bs[i] = (_q)? '1' : '0';
-			_value = (_value > 1)? _value /= 2 : 0;
+			_bs[i] = (_q) ? '1' : '0';
+			_value = (_value > 1) ? _value /= 2 : 0;
 		}
 
 		_value = 0;
@@ -561,11 +573,11 @@ struct bin_to_dec
 
 		for (std::size_t i = _maxBit; i > 0; i--)
 		{
-			b = (_strBits[i] == 49)? 1 : 0;
+			b = (_strBits[i] == 49) ? 1 : 0;
 			_Dec += b * (value_type)std::pow(2, k++);
 		}
 
-		b = (_strBits[0] == 49)? 1 : 0;
+		b = (_strBits[0] == 49) ? 1 : 0;
 		_Dec += b * (value_type)std::pow(2, _maxBit);
 
 		return _Dec;
@@ -584,7 +596,7 @@ static inline const int64_t _Get_Num_of_Bits(const int64_t& _ax)
 {
 	if (!_ax) return 1;
 	else
-	  return num_of_bits<int64_t>::eval(_ax);
+		return num_of_bits<int64_t>::eval(_ax);
 }
 
 
@@ -595,7 +607,7 @@ static inline const std::string _Get_Binary_Str(const int64_t& _Dx)
 
 	if (!_Abs || _Abs < 0) return "0";
 	else
-	  bit_str = to_binary<int64_t>::eval(_Abs).data();
+		bit_str = to_binary<int64_t>::eval(_Abs).data();
 
 	return bit_str;
 }
@@ -607,6 +619,73 @@ static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
 	return bin_to_dec<int64_t>::eval(Bit_Str.data());
 }
 
+
+static inline const int64_t nums_integral_constant(const std::vector<int64_t>& v_Ints)
+{
+	size_t szi = 0;
+	bool prtyfull = false;
+	const size_t szv = v_Ints.size();
+	int64_t _rax = 0, _rbx = 0, _rdx = 0, _r4a = 0, _r4b = 0;
+	int64_t d1 = 0, d2 = 0, d2i = 0, dMax = 0,  n1 = 0, n2 = 0;
+
+	while (szi < szv)
+	{
+		_rax = v_Ints[szi]; 
+		_rbx = ((szv - szi) >= 2)? v_Ints[szi + 1] : 0;
+		_r4a = (HI_HEX(_rbx))? HI_HEX(_rbx) >> 4 : 0;
+		_r4b = (LO_HEX(_rbx))? _rbx : 0;
+
+		_rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
+		 
+		if (_r4a)
+			_rax |= _r4a;
+		else
+		{
+			_rax |= _r4b;
+			prtyfull = true;
+		}
+
+		if (_r4b && !prtyfull)
+		{
+			_rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
+			_rax |= _r4b;
+		}
+
+		if (!_rdx) _rdx |= _rax;
+		else
+		{
+			dMax = _rax;
+			
+			while (dMax > 0)
+			{
+				d1 = LO_HEX(_rdx);
+				n1 = len_bit(d1);
+				n2 = len_bit(dMax);
+				d2 = d2i = HEX_PTR(dMax); 
+				while (len_bit(d2) > 4) d2 >>= 4;
+
+				if ( (len_bit(d1) - len_bit(d2)) >= 3 ) // ** VERY CRITICAL DETERMININING POINT HERE !! (BIT SHIFTING RULE) **
+					_rdx |= d2;
+				else
+				{
+					_rdx <<= 4;
+					_rdx |= d2;
+				}
+				dMax -= d2i;
+			}
+		}
+
+		// clear registers & flags:
+		_rax = 0; _rbx = 0; _r4a = 0; _r4b = 0;
+		prtyfull = false;
+		szi += 2;
+		if ((szv - szi) < 2) szi = szv - 1;
+	}
+
+	
+
+	return _rdx;
+}
 
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
@@ -689,7 +768,7 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
+static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVec)
 {
 	int64_t _x = 0;
 	std::string _xBitStr;
@@ -708,13 +787,40 @@ static inline const std::string cni_bits_pack(const std::vector<int>& _canVec)
 }
 
 
-static inline const size_t save_cni_bit(const std::string& _File, std::vector<int64_t>& v_bit)
+static inline const size_t save_cni_bit(const std::string& _File, int64_t& v_bit)
 {
 	size_t saved_size = 0;
+	int i8_bit = 0,hi8_bit = 0, lo8_bit = 0;
 	int64_t bit_cni = 0, bit_size = 0;
 	std::FILE* _FCni = std::fopen(_File.data(), "wb");
 
-	
+	while (v_bit > 0)
+	{
+		bit_cni = BYTE_PTR_X(v_bit);
+		v_bit -= bit_cni;
+
+		while (len_bit(bit_cni) > 16) bit_cni >>= 8;
+
+		if (len_bit(bit_cni) > 8)
+		{
+			if (!(LO_HEX(bit_cni) & 0xf)) bit_cni >>= 4;
+		}
+
+		i8_bit = (int16_t)bit_cni;
+
+		if ( (len_bit(i8_bit) < 8) && (i8_bit > 0) ) {
+			std::fputc(i8_bit, _FCni); ++saved_size;
+		}
+		else {
+			hi8_bit = (int16_t)( BYTE_PTR_HI(i8_bit) >> 8 );
+			lo8_bit = (int16_t)(BYTE_PTR_LO(i8_bit));
+			if (!(LO_HEX(lo8_bit) & 0xf)) lo8_bit >>= 4;
+
+			if (hi8_bit > 0 ) std::fputc(hi8_bit, _FCni);
+			if (lo8_bit > 0 ) std::fputc(lo8_bit, _FCni);
+			saved_size += 2;
+		}
+	}
 
 	if (_FCni) std::fclose(_FCni);
 	return saved_size;
@@ -825,6 +931,7 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
+
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -900,6 +1007,8 @@ inline static void hexa_byte_collect(std::vector<int64_t>& iData, const std::vec
 		iData.push_back(max);
 
 		szi += 2;
+
+		if ((sz - szi) < 2) break;
 		_rdx = 0; _rax = 0; _rbx = 0; _rex = 0; _rcx = 0; max = 0;
 	}
 }
@@ -1309,8 +1418,6 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
-
-
 
 
 // bit status information
