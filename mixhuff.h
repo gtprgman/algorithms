@@ -26,8 +26,8 @@ constexpr int ROOT = -1;
 
 struct node {
 	node();
-	node(const int);
-	node(const char, const int); // for data & frequency
+	node(const int64_t);
+	node(const char, const int64_t); // for data & frequency
 
 	node(const node&); // overloaded copy
 	node(node&&);	// move
@@ -36,14 +36,14 @@ struct node {
 	node&& operator= (node&&) noexcept;
 	~node();
 
-	void setData(const int);
-	void setFrequencyData(const int);
+	void setData(const int64_t);
+	void setFrequencyData(const int64_t);
 	
-	const int Value() const;
+	const int64_t Value() const;
 	const char dataValue() const;
-	const int FrequencyData() const;
-	const int Count() const;
-	const int Code() const;
+	const int64_t FrequencyData() const;
+	const int64_t Count() const;
+	const int64_t Code() const;
 
 	const node Release() const;
 	
@@ -54,7 +54,7 @@ struct node {
 	void Print() const;
 	
 private:
-	int _fdata;
+	int64_t _fdata;
 	char _data;
 	
 };
@@ -101,7 +101,7 @@ private:
 	static inline void schema_Iter(const std::vector<node>&, const double);
 
 	// directly create a huffman encoding table from the std::vector<node> without actually prebuilt the tree
-	static inline void create_encoding(const int, const int, int, const std::vector<node>&);
+	static inline void create_encoding(const int64_t&, const int64_t&, int64_t&, const std::vector<node>&);
 
 	static std::vector<BPAIR> _vPair;
 };
@@ -139,7 +139,7 @@ struct fqLess
 
 struct bitLess
 {
-	const bool operator()(const int& _bp1st, const int& _bp2nd)
+	const bool operator()(const int64_t& _bp1st, const int64_t& _bp2nd)
 	{
 		return (_bp1st < _bp2nd );
 	}
@@ -172,13 +172,13 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	node::node(const int _Val): _data(_Val), _fdata(0)
+	node::node(const int64_t _Val): _data((int)_Val), _fdata(0)
 	{
 		
 	}
 
 	
-	node::node(const char _c, const int _fv) : _data(_c), _fdata(_fv)
+	node::node(const char _c, const int64_t _fv) : _data(_c), _fdata(_fv)
 	{
 		
 	}
@@ -227,28 +227,28 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	void node::setData(const int uc) {
-		this->_data = uc;
+	void node::setData(const int64_t uc) {
+		this->_data = (int)uc;
 	}
 
 
-	void node::setFrequencyData(const int fc) {
+	void node::setFrequencyData(const int64_t fc) {
 		this->_fdata = fc;
 	}
 
 
 	// Get Accessor Methods..
-	const int node::Value() const {
+	const int64_t node::Value() const {
 		return this->_data;
 	}
 
 
 	const char node::dataValue() const {
-		return this->_data;
+		return (int)this->_data;
 	}
 
 
-	const int node::FrequencyData() const {
+	const int64_t node::FrequencyData() const {
 		return this->_fdata;
 	}
 
@@ -281,5 +281,7 @@ inline void _TREE::plot_tree(const std::vector<node>& _fpNods, const double& _co
 {
 	schema_Iter(_fpNods, _compRate);
 }
+
+
 
 
