@@ -12,12 +12,13 @@ static std::string _SystemFile = "\0";
 
 
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
-				     in the command line */
+									 in the command line */
 
 
 // ReSync the integers of *.sqz
 static inline const std::size_t ReSync_Int(std::vector<int64_t>& _vecSqz, std::vector<char>& ReSynced_Data,
-					   const std::vector<int64_t>& Bits_Len,  const int64_t& IntSqz, const std::vector<Can_Bit>& _CniInfo)
+											const std::vector<int64_t>& Bits_Len,  const int64_t& IntSqz, 
+											const std::vector<Can_Bit>& _CniInfo)
 {
 	int64_t w = 0, bx = 0;
 	size_t synced_size = 0;
@@ -48,7 +49,7 @@ static inline const std::size_t ReSync_Int(std::vector<int64_t>& _vecSqz, std::v
 	for (size_t q = 0; q < SqzSize; q++)
 	{
 		if (mix::generic::vector_search(CNF.begin(), CNF.end(), (int)_vecSqz[q],
-							mix::generic::NLess<int>(), CBT))
+											mix::generic::NLess<int>(), CBT))
 		{
 			ReSynced_Data.push_back(CBT->_xData); ++synced_size;
 		}
@@ -64,7 +65,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 {
 	std::size_t _Cnt = 0;
 	node _nod = 0;
-	int _fqr = 0;
+	int64_t _fqr = 0;
 
 
 	while (!_Pqueue.empty())
@@ -101,18 +102,18 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 
 
 
-inline void _TREE::create_encoding(const int _From, 
-				   const int _To,
-				   int _bt,
-				   const std::vector<node>& _Vn)
+inline void _TREE::create_encoding(const int64_t& _From, 
+								   const int64_t& _To,
+								   int64_t& _bt,
+								   const std::vector<node>& _Vn)
 {
 	node _e = '0';
-	int _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
-	static int _fq = 100;
+	int64_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
+	static int64_t _fq = 100;
 	std::vector<BPAIR>::iterator _iGet;
 
 	// Processing the Encoding from vector data
-	for (int i = _From; i < _To; i++)
+	for (int64_t i = _From; i < _To; i++)
 	{
 		 _e = _Vn.at(i);
 
@@ -150,7 +151,7 @@ inline void _TREE::create_encoding(const int _From,
 			//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
 			_sameVal = _iGet->_val;
-			_sameVal += (int)((_iGet - _vPair.begin()) / 2);
+			_sameVal += ((_iGet - _vPair.begin()) / 2);
 			_bt = _sameVal;
 			_prevX = _sameVal;
 		}
@@ -167,19 +168,19 @@ inline void _TREE::create_encoding(const int _From,
 
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _cmpRate = 0)
 {
-	const int _TreeSizes = (int)_fpNods.size();
+	const int64_t _TreeSizes = (int64_t)_fpNods.size();
 
 	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-						std::floor(COMP_RATE*_TreeSizes);
+										std::floor(COMP_RATE*_TreeSizes);
 
 	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
-	int _DivSize = (int)_fCompRate;
-	int _msk = 0, _BT = 2, _Dir = L;
+	int64_t _DivSize = (int64_t)_fCompRate;
+	int64_t _msk = 0, _BT = 2, _Dir = L;
 	
 
 	if (!_vPair.empty()) _vPair.clear();
 
-	for (int t = 0; t < _TreeSizes; t += _DivSize)
+	for (int64_t t = 0; t < _TreeSizes; t += _DivSize)
 	{
 		if ( (_TreeSizes - t) < _DivSize ) _DivSize = 1;
 		create_encoding(t, (t + _DivSize), _msk, _fpNods);
@@ -204,10 +205,10 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 
 inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 {
-	int _Addend = 0;
-	int _MaxSz = (int)_bPairs.size();
+	int64_t _Addend = 0;
+	int64_t _MaxSz = (int64_t)_bPairs.size();
 
-	for (int n = 0, m = 0; m < _MaxSz; m++)
+	for (int64_t n = 0, m = 0; m < _MaxSz; m++)
 	{
 		_Addend = m;
 		_bPairs[m]._val += (_Addend + 1);
@@ -219,15 +220,15 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 
 // Save the encoded's information data table into a file.
 static inline const std::size_t writePackInfo(const std::string& _fiName, std::vector<_Canonical>& CniSrc, 
-						const std::vector<int>& _CodWords)
+												const std::vector<int64_t>& _CodWords)
 {
-	int _b = 0;
+	int64_t _b = 0;
 	size_t _writtenSize = 0;
 	const size_t _CodSize = _CodWords.size();
-	int* wordsLen = new int[_CodSize];
+	int64_t* wordsLen = new int64_t[_CodSize];
 
 	std::FILE* _FPck = std::fopen(_fiName.data(), "wb");
-	std::vector<int>& _vCods = (std::vector<int>&)_CodWords;
+	std::vector<int64_t>& _vCods = (std::vector<int64_t>&)_CodWords;
 	std::vector<node> _vNods;
 
 	if (!_FPck)
@@ -284,7 +285,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	// writing codewords length..
 	for (size_t d = 0; d < _InfoSize; d++)
 	{
-		std::fputc(_vNods[d].Value(), _FPck);
+		std::fputc((int)_vNods[d].Value(), _FPck);
 		++_writtenSize;
 	}
 
@@ -292,7 +293,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	for (size_t f = 0; f < _InfoSize; f++)
 	{
 		_b = _vNods[f].FrequencyData();
-		std::fputc(_b, _FPck);
+		std::fputc((int)_b, _FPck);
 		++_writtenSize;
 	}
  
@@ -334,7 +335,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	// writing rle info for each source bit length ..
 	for (size_t r = 0; r < CndSize; r++)
 	{
-		std::fputc(CniSrc[r]._rle_bit_len, _FPck);
+		std::fputc((int)CniSrc[r]._rle_bit_len, _FPck);
 		++_writtenSize;
 	}
 
@@ -342,7 +343,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	for (size_t cx = 0; cx < CndSize; cx++)
 	{
 		if (CniSrc[cx]._rle_bit_len > 0) {
-			std::fputc(CniSrc[cx]._bitLen, _FPck);
+			std::fputc((int)CniSrc[cx]._bitLen, _FPck);
 			++_writtenSize;
 		}
 	}
@@ -397,7 +398,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	}
 
 
-	// Picking up canonical header size ..
+	// Picking up a canonical header size ..
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
 		std::cerr << "\n Error read header info data.";
@@ -520,7 +521,8 @@ EndRead:
 
 // generates huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vector<BPAIR>& CodInfo, 
-					      std::vector<_Canonical>& Cni_Dat, std::vector<int>& PacInts, const double& cmp_rate)
+										  std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
+										  const double& cmp_rate)
 {
 	int64_t SqzInt = 0;
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq;
@@ -636,7 +638,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	const char* _sExt = "\0";
 
 	std::vector<char> _srcData = {};
-	std::vector<int> _pacInts = {};
+	std::vector<int64_t> _pacInts = {};
 
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<_Canonical> _CanSrc = {}, vnb = {};
@@ -743,8 +745,7 @@ finishedDone:
 
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
-	int64_t cmb_bit = 0;
-	int _bi = 0, _x = 0;
+	int64_t cmb_bit = 0, _bi = 0, _x = 0;
 	Can_Bit cnbi = {};
 	
 	std::vector<char> RawDat = {};
@@ -769,17 +770,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		return 0;
 	}
 	
-	for (const int64_t& q : _SqzInts) RPRINTC(q);
-
-	RET;
-
-	merge_cni_bit(_SqzInts, cmb_bit);
-
-	PRINT(cmb_bit);
-
-	RET;
-
-	return 0;
+	
 	const size_t CnSize = _Canine.size();
 
 	// RLE method brings back the bit length info in _Canine..
@@ -789,7 +780,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		_x = _Canine[z]._bitLen;
 		_bi = _Canine[z]._rle_bit_len; // number of repeated bit length
 
-		for (int r = 0; r < _bi && y < CnSize; r++)
+		for (int64_t r = 0; r < _bi && y < CnSize; r++)
 			_Canine[y++]._bitLen = _x;
 	}
 
@@ -807,7 +798,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	}
 
 	PRINT("\n sorting integers of symbols.. ");
-	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<int>());
+	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<int64_t>());
 
 	/*
 	for (const auto& cdi : vCnbi)
@@ -826,7 +817,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		_bi = _Canonic[f]._bitLen;
 		_x = _Canonic[f]._rle_bit_len;
 
-		for (int t = 0; t < _x; t++)
+		for (int64_t t = 0; t < _x; t++)
 			cniBitLen.push_back(_bi);
 	} 
 
@@ -843,6 +834,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		std::cerr << "\n Error writing uncompressed data format.";
 	}
 
+
 	vectorClean(_Canonic);
 	vectorClean(_Canine);
 	vectorClean(_CanDat);
@@ -854,4 +846,6 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	return _UnSquezzed;
 }
+
+
 
