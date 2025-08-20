@@ -126,7 +126,7 @@ static const int64_t Ints_Of(int64_t& _ebx)
 }
 
 // integrates number of integers in the vector into a single 64 bit integer
-static const int64_t nums_integral_constant(const std::vector<int64_t>&);
+static const int64_t mix_integral_constant(const std::vector<int64_t>&);
 
 // generate encoding information table based on Huffman Canonical Method
 static void _Gen_Canonical_Info(std::vector<int64_t>&, const std::vector<int64_t>&);
@@ -142,9 +142,6 @@ static const size_t save_cni_bit(const std::string&, int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
-
-// merges the read integers into one single packed canonical bit again
-static const size_t merge_cni_bit(const std::vector<int>&, int64_t&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -201,7 +198,7 @@ const int64_t BYTE_PTR_X(const int64_t _rcx)
 }
 
 
-const int64_t HEX_PTR(const int64_t _rex)
+const int64_t HEX_PTR_X(const int64_t _rex)
 {
 	const int64_t _rbx = len_bit(_rex);
 	const int64_t _rax = _rbx - (int64_t)3;
@@ -232,7 +229,7 @@ constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
 constexpr int64_t range_bit_set(const int64_t& _Min, const int64_t& _Max)
 {
 	double _Sum = 0;
-	const double _start_bit = (double)(_Min), _end_bit = (double)(_Max - 1);
+	const double _start_bit = (double)(_Min - 1), _end_bit = (double)(_Max - 1);
 
 	for (double _bi = _start_bit; _bi <= _end_bit; _bi++)
 	{
@@ -449,9 +446,6 @@ inline static void parseInt(int64_t&, std::vector<int64_t>&);
 // parses each integer of a vector into its 8 bit composing binary form.
 inline static void parseByte(std::vector<int>&, const std::vector<int64_t>&);
 
-// recollecting integers in the source vector by pairing each 4 bit fraction of the integer to one another
-inline static void hexa_byte_collect(std::vector<int64_t>&, const std::vector<int64_t>&);
-
 // merge the MSB and LSB portions together to form a single unit of data
 inline static const int64_t MergeBits(const int64_t&, const int64_t&);
 
@@ -620,51 +614,51 @@ static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
 }
 
 
-static inline const int64_t nums_integral_constant(const std::vector<int64_t>& v_Ints)
+static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_Ints)
 {
 	size_t szi = 0;
-	bool prtyfull = false;
 	const size_t szv = v_Ints.size();
-	int64_t _rax = 0, _rbx = 0, _rdx = 0, _r4a = 0, _r4b = 0;
-	int64_t d1 = 0, d2 = 0, d2i = 0, dMax = 0,  n1 = 0, n2 = 0;
+	int64_t _rax = 0, _rbx = 0, _rcx = 0, _rdx = 0, _r4a = 0, _r4b = 0;
+	int64_t d1 = 0, d2 = 0, d2i = 0, dMax = 0, n2i = 0;
 
 	while (szi < szv)
 	{
 		_rax = v_Ints[szi]; 
 		_rbx = ((szv - szi) >= 2)? v_Ints[szi + 1] : 0;
 		_r4a = (HI_HEX(_rbx))? HI_HEX(_rbx) >> 4 : 0;
-		_r4b = (LO_HEX(_rbx))? _rbx : 0;
+		_r4b = (LO_HEX(_rbx))? LO_HEX(_rbx) : 0;
 
-		_rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
+		if ((szv - szi) >= 2) _rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
+		else goto Merging;
+
+		_rax = (_r4a)? _rax |= _r4a : _rax |= _r4b;
 		 
-		if (_r4a)
-			_rax |= _r4a;
-		else
+		if ( (LO_HEX(_rax) & 0xf) == _r4a )
 		{
+			_rax <<= 4;
 			_rax |= _r4b;
-			prtyfull = true;
 		}
+		// else it means _r4a = '0000'
 
-		if (_r4b && !prtyfull)
-		{
-			_rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
-			_rax |= _r4b;
-		}
+	Merging: 
 
 		if (!_rdx) _rdx |= _rax;
-		else
+		else // these codes may proceed in the next loop..
 		{
 			dMax = _rax;
 			
 			while (dMax > 0)
 			{
 				d1 = LO_HEX(_rdx);
-				n1 = len_bit(d1);
-				n2 = len_bit(dMax);
-				d2 = d2i = HEX_PTR(dMax); 
+				_rcx = len_bit(dMax);
+				n2i = _rcx - (int64_t)8;
+
+				if (n2i > 8 || _rcx > 8 || n2i < 0 ) d2 = d2i = get_n_of_msb(dMax, std::abs(n2i));
+				else d2 = d2i = HEX_PTR_X(dMax); 
+
 				while (len_bit(d2) > 4) d2 >>= 4;
 
-				if ( (len_bit(d1) - len_bit(d2)) >= 3 ) // ** VERY CRITICAL DETERMININING POINT HERE !! (BIT SHIFTING RULE) **
+				if ( !(get_n_of_lsb(d1,2)) )
 					_rdx |= d2;
 				else
 				{
@@ -675,17 +669,16 @@ static inline const int64_t nums_integral_constant(const std::vector<int64_t>& v
 			}
 		}
 
-		// clear registers & flags:
+		// clear registers:
 		_rax = 0; _rbx = 0; _r4a = 0; _r4b = 0;
-		prtyfull = false;
 		szi += 2;
-		if ((szv - szi) < 2) szi = szv - 1;
+		if (szi >= szv) break;
+		else if ((szv - szi) < 2) szi = szv - 1;
 	}
-
-	
 
 	return _rdx;
 }
+
 
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
@@ -787,17 +780,17 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 }
 
 
-static inline const size_t save_cni_bit(const std::string& _File, int64_t& v_bit)
+static inline const size_t save_cni_bit(const std::string& _File, const int64_t& v_bit)
 {
 	size_t saved_size = 0;
 	int i8_bit = 0,hi8_bit = 0, lo8_bit = 0;
-	int64_t bit_cni = 0, bit_size = 0;
+	int64_t bit_cni = 0, bit_size = 0, x_bit = v_bit;
 	std::FILE* _FCni = std::fopen(_File.data(), "wb");
 
-	while (v_bit > 0)
+	while (x_bit > 0)
 	{
-		bit_cni = BYTE_PTR_X(v_bit);
-		v_bit -= bit_cni;
+		bit_cni = BYTE_PTR_X(x_bit);
+		x_bit -= bit_cni;
 
 		while (len_bit(bit_cni) > 16) bit_cni >>= 8;
 
@@ -843,44 +836,6 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int64
 	if (_FBit) std::fclose(_FBit);
 
 	return read_size;
-}
-
-
-static inline const size_t merge_cni_bit(const std::vector<int64_t>& v_bit, int64_t& bit_cni)
-{
-	size_t merged_size = 0;
-	const size_t vbnSize = v_bit.size(), bit_size = vbnSize * 8;
-
-	if (bit_size <= 8) bit_cni = v_bit[0];
-
-	else if (bit_size > 8 && bit_size <= 16 )
-	{
-		bit_cni |= v_bit[0] << 8;
-		bit_cni |= v_bit[1];
-		merged_size += 2;
-	}
-	else if (bit_size > 16 && bit_size <= 32)
-	{
-		bit_cni |= v_bit[0] << 24;
-		bit_cni |= v_bit[1] << 16;
-		bit_cni |= v_bit[2] << 8;
-		bit_cni |= v_bit[3];
-		merged_size += 4;
-	}
-	else if (bit_size > 32 && bit_size <= 64)
-	{
-		bit_cni |= v_bit[0] << 56;
-		bit_cni |= v_bit[1] << 48;
-		bit_cni |= v_bit[2] << 40;
-		bit_cni |= v_bit[3] << 32;
-		bit_cni |= v_bit[4] << 24;
-		bit_cni |= v_bit[5] << 16;
-		bit_cni |= v_bit[6] << 8;
-		bit_cni |= v_bit[7];
-		merged_size += 8;
-	}
-
-	return merged_size;
 }
 
 
@@ -931,7 +886,6 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
-
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -980,38 +934,12 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 			_iBytes.push_back(_ah); _iBytes.push_back(_al);
 			_iBytes.push_back(_dh); _iBytes.push_back(_dl);
 		}
+
 	}
 }
 
 
-inline static void hexa_byte_collect(std::vector<int64_t>& iData, const std::vector<int64_t>& series)
-{
-	int64_t max = 0;
-	int64_t _rax = 0, _rbx = 0, _rcx = 0, _rdx = 0, _rex = 0;
-	size_t szi = 0;
-	const size_t sz = series.size();
 
-	while (szi < sz)
-	{
-		_rax = series[szi]; _rbx = LO_HEX(_rax);
-		_rex = HI_HEX(series[szi + 1]) >> 4;
-		_rcx = len_bit(_rex);
-		_rdx = (len_bit(_rbx) <= _rcx) ? (_rbx << 4) | _rex : _rbx | _rex;
-
-		_rax = _rdx; // movq %rax, %rdx
-		_rbx = LO_HEX(_rax);
-		_rex = LO_HEX(series[szi + 1]);
-		_rcx = len_bit(_rex);
-		_rdx = (len_bit(_rbx) <= _rcx) ? (_rax << 4) | _rex : _rax | _rex;
-		max = _rdx;
-		iData.push_back(max);
-
-		szi += 2;
-
-		if ((sz - szi) < 2) break;
-		_rdx = 0; _rax = 0; _rbx = 0; _rex = 0; _rcx = 0; max = 0;
-	}
-}
 
 
 inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
@@ -1420,6 +1348,8 @@ inline static const char* rtrim(const char* _string)
 }
 
 
+
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1505,17 +1435,17 @@ struct BPAIR
 	BPAIR() :_data('0'), _val(0), bit_len(0) {};
 	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(const int _v) : _val(_v), _data('0'), bit_len(_Get_Num_of_Bits(_v))
+	BPAIR(const int64_t _v) : _val(_v), _data('0'), bit_len(_Get_Num_of_Bits(_v))
 	{
 	
 	};
 
-	BPAIR(const char _a, const int _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
+	BPAIR(const char _a, const int64_t _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
 	{
 	
 	};
 
-	BPAIR(const int _v, const char _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
+	BPAIR(const int64_t _v, const char _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(_v) ) 
 	{
 		
 	};
