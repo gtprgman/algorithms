@@ -886,6 +886,7 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
+
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -937,9 +938,6 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 
 	}
 }
-
-
-
 
 
 inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
@@ -1349,7 +1347,6 @@ inline static const char* rtrim(const char* _string)
 
 
 
-
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1377,56 +1374,6 @@ struct bitInfo
 	char _Alpha;
 	BitSZ numBits;
 };
-
-
-// a data structure of a packed data information
-struct packed_info
-{
-	packed_info() :
-		_BITLEN(0), _PACKED(0), L_BIT(0), R_BIT(0), _Reg{ _Int_Bits() }
-	{ };
-
-	packed_info(packed_info const& _rPif)
-	{
-		if (this == &_rPif) return;
-		*this = _rPif;
-	}
-
-	packed_info const& operator= (packed_info const& _rPif)
-	{
-		if (this == &_rPif) return *this;
-
-		this->_BITLEN = _rPif._BITLEN;
-		this->_PACKED = _rPif._PACKED;
-		this->L_BIT = _rPif.L_BIT;
-		this->R_BIT = _rPif.R_BIT;
-		this->_Reg = _rPif._Reg;
-
-		return *this;
-	}
-
-
-	~packed_info()
-	{
-
-	}
-
-	// the total bit length of a packed integer value.
-	int _BITLEN;
-
-	// the first & second char packed into one integer value.
-	int _PACKED;
-
-	// the number of encoded bits on the MSB part of the _PACKED.
-	int L_BIT;  
-	
-	// the number of encoded bits on the LSB part of the _PACKED.
-	int R_BIT;
-
-	// a member for represent the complete bits of _PACKED.
-	_Int_Bits _Reg;
-};
-
 
 
 // a data structure of a Pair of Bit and Byte
@@ -1498,53 +1445,6 @@ struct BPAIR
 	char _data; // byte
 	int64_t _val /* bit */, bit_len;
 };
-
-
-
-// pack the entire bits of the vector into a 'BPAIR' vector
-template < typename T >
-static inline void bitsPack(std::vector<BPAIR>& _packed, const std::vector<bitInfo<T>>& _vb)
-{
-	int _bx = 0b0, _Ax = 0b0;
-	const std::size_t _vcSz = _vb.size(), _nIter = 1;
-	const std::size_t _bpSz = _packed.size();
-
-	std::size_t _loopn = 0;
-
-	T _n = 0;
-
-	if (_bpSz < _vcSz)
-		_packed.resize(_bpSz + (_vcSz - _bpSz));
-	
-
-	for (std::size_t i = 0; i < _vcSz; i++)
-	{
-		_bx = _vb[i].X;
-		_n = _vb[i].numBits;
-
-		_Ax <<= _n;
-		_Ax |= _bx;
-
-		_loopn++;
-
-		if ((_loopn > _nIter) || ((i + 1) >= _vcSz))
-		{
-			_Ax = 0b0;
-			_loopn = 0;
-		}
-	}
-}
-
-
-inline static const int64_t unPack(const int64_t& _Packed, int64_t const& _leftBits, int64_t const& _rightBits)
-{
-	MAX_BIT = proper_bits(_Packed);
-	const int64_t bit_count = MAX_BIT - _rightBits;
-	const int64_t _hiMsk = range_bit_set(_rightBits, _rightBits + bit_count);
-	const int64_t _LeftUnPacked = (_hiMsk & _Packed) >> _rightBits;
-
-	return _LeftUnPacked;
-}
 
 
 
@@ -1757,6 +1657,8 @@ inline static const char* inttostr(const int nVal)
 	
 	return _ss;
 }
+
+
 
 
 
