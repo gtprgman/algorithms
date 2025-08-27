@@ -48,8 +48,8 @@ static inline const std::size_t ReSync_Int(std::vector<int64_t>& _vecSqz, std::v
 
 	for (size_t q = 0; q < SqzSize; q++)
 	{
-		if (mix::generic::vector_search(CNF.begin(), CNF.end(), (int)_vecSqz[q],
-											mix::generic::NLess<int>(), CBT))
+		if (mix::generic::vector_search(CNF.begin(), CNF.end(), _vecSqz[q],
+											mix::generic::NLess<int64_t>(), CBT))
 		{
 			ReSynced_Data.push_back(CBT->_xData); ++synced_size;
 		}
@@ -285,19 +285,26 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	// writing codewords length..
 	for (size_t d = 0; d < _InfoSize; d++)
 	{
-		std::fputc((int)_vNods[d].Value(), _FPck);
-		++_writtenSize;
+		_b = _vNods[d].Value();
+
+		if (_b > 0)
+		{
+			std::fputc((int)_b, _FPck);
+			++_writtenSize;
+		}
 	}
 
 	// writing RLE info for each codeword length ..
 	for (size_t f = 0; f < _InfoSize; f++)
 	{
 		_b = _vNods[f].FrequencyData();
-		std::fputc((int)_b, _FPck);
-		++_writtenSize;
+		if (_b > 0)
+		{
+			std::fputc((int)_b, _FPck);
+			++_writtenSize;
+		}
 	}
  
-	
 	const size_t CndSize = CniSrc.size();
 
 	// set up the RLE Info for each bit length of the source canonical..
@@ -316,7 +323,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 		}
 	}
 
-
+	
 	if (!std::fwrite(&CndSize, sizeof(CndSize), 1, _FPck))
 	{
 		std::cerr << "\n Error writing header info data.";
@@ -335,17 +342,28 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 	// writing rle info for each source bit length ..
 	for (size_t r = 0; r < CndSize; r++)
 	{
-		std::fputc((int)CniSrc[r]._rle_bit_len, _FPck);
-		++_writtenSize;
+		_b = CniSrc[r]._rle_bit_len;
+
+		if (_b > 0) {
+			std::fputc((int)_b, _FPck);
+			++_writtenSize;
+		}
+		else continue;
 	}
+
+	// write 0 to mark the end of rle data sequences..
+	std::fputc(0, _FPck);
 
 	// writing bit length info ..
 	for (size_t cx = 0; cx < CndSize; cx++)
 	{
-		if (CniSrc[cx]._rle_bit_len > 0) {
-			std::fputc((int)CniSrc[cx]._bitLen, _FPck);
+		_b = CniSrc[cx]._bitLen;
+		if (_b > 0)
+		{
+			std::fputc((int)_b, _FPck);
 			++_writtenSize;
 		}
+		else continue;
 	}
 
 	if (_FPck) std::fclose(_FPck);
@@ -361,6 +379,7 @@ static inline const std::size_t writePackInfo(const std::string& _fiName, std::v
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<_Canonical>& Canie ,std::vector<_Canonical>& CnSrc)
 {
+	int64_t _x = 0;
 	Can_Bit cbi = {};
 	size_t _readSize = 0, infSize = 0;
 	std::FILE* _Fr = std::fopen(_inFile.data(), "rb");
@@ -385,18 +404,23 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	for (size_t f = 0; f < header_size; f++)
 	{
 		cbi._bitLen = std::fgetc(_Fr);
-		Canie.push_back(cbi);
+		if (cbi._bitLen > 0)
+		{
+			Canie.push_back(cbi); ++_readSize;
+		}
 		cbi = {};
-		++_readSize;
 	}
 
 	// picking up RLE Info for each codeword length ..
 	for (size_t r = 0; r < header_size; r++)
 	{
-		Canie[r]._rle_bit_len = std::fgetc(_Fr);
-		++_readSize;
+		_x = std::fgetc(_Fr);
+		if (_x > 0)
+		{
+			Canie[r]._rle_bit_len = _x;
+			++_readSize;
+		}
 	}
-
 
 	// Picking up a canonical header size ..
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
@@ -410,26 +434,35 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 	cbi = {};
 
-	// encoded data ..
+	// picking up encoded data ..
 	for (size_t j = 0; j < cni_header_size; j++)
 	{
 		cbi._xData = std::fgetc(_Fr);
-		CnSrc.push_back(cbi);
+		CnSrc.push_back(cbi); ++_readSize;
 		cbi = {};
 	}
 
 	// rle of bit lengths ..
 	for (size_t k = 0; k < cni_header_size; k++)
-		CnSrc[k]._rle_bit_len = std::fgetc(_Fr);
+	{
+		_x = std::fgetc(_Fr); 
+		if (_x > 0) {
+			CnSrc[k]._rle_bit_len = _x;
+			++_readSize;
+		}
+		else break;
+	}
 
 	// bit length
 	for (size_t i = 0; i < cni_header_size; i++)
 	{
-		if (CnSrc[i]._rle_bit_len > 0)
-			CnSrc[i]._bitLen = std::fgetc(_Fr);
-		else CnSrc[i]._bitLen = 0;
+		_x = std::fgetc(_Fr); 
+		if (_x > 0) {
+			CnSrc[i]._bitLen = _x;
+			++_readSize;
+		}
+		else CnSrc[i]._bitLen = 0;;
 	}
-	
 
 	if (_Fr) std::fclose(_Fr);
 	return _readSize;
@@ -579,7 +612,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 		_Canoe = {};
 	}
 
-	_Gen_Canonical_Info(Cni_Info, Cni_Dat);
+	
+	_Gen_Canonical_Info(Cni_Info, Cni_Dat); // obtaining codewords based on bit length info ..
 
 	cni_enforce_unique(Cni_Info); // codewords data updated
 
@@ -641,7 +675,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	std::vector<int64_t> _pacInts = {};
 
 	std::vector<BPAIR> _CodeMap = {};
-	std::vector<_Canonical> _CanSrc = {}, vnb = {};
+	std::vector<_Canonical> _CanSrc = {};
 	
 	std::FILE* _FO = std::fopen(_srcF.data(), "rb");
 	std::size_t F_SIZE = 0;
@@ -706,7 +740,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	
 	
 	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
-	PRINT(_sqzNum);
 	
 	// writing encoding information table ..
 	if (!writePackInfo(_SystemFile.data(), _CanSrc, _pacInts))
@@ -770,24 +803,12 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		return 0;
 	}
 	
-	
-	const size_t CnSize = _Canine.size();
+	cmb_bit = mix_integral_constant(_SqzInts);
 
-	// RLE method brings back the bit length info in _Canine..
-	for (size_t y = 0, z = 0; z < CnSize; z++)
-	{
-		y = z;
-		_x = _Canine[z]._bitLen;
-		_bi = _Canine[z]._rle_bit_len; // number of repeated bit length
-
-		for (int64_t r = 0; r < _bi && y < CnSize; r++)
-			_Canine[y++]._bitLen = _x;
-	}
-
-	
 	_Gen_Canonical_Info(_CanDat, _Canine);
 	cni_enforce_unique(_CanDat);
 
+	
 	// filling up the most important data needed in 'ReSync_Int() ' calls..
 	for (const _Canonical& cnd : _CanDat)
 	{
@@ -800,17 +821,10 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	PRINT("\n sorting integers of symbols.. ");
 	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<int64_t>());
 
-	/*
-	for (const auto& cdi : vCnbi)
-	{
-		RPRINTC(cdi._xData); RPRINTC(cdi._codeWord); RET;
-	}
-	
-	return 0;
-	*/
 
 	const size_t cnfSize = _Canonic.size();
 
+	
 	// RLE method unravels each bit length info of a packed integer..
 	for (size_t g = 0,f = 0; f < cnfSize; f++)
 	{
@@ -821,10 +835,12 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 			cniBitLen.push_back(_bi);
 	} 
 
+	
 	PRINT("\n rematching integers with data .. ");
 
 	ReckonSize = ReSync_Int(_SqzInts, RawDat, cniBitLen, cmb_bit, vCnbi);
 
+	
 	if (!ReckonSize)
 		std::perror("\n\n it seems like something error has happened .. \n\n");
 
@@ -833,6 +849,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	{
 		std::cerr << "\n Error writing uncompressed data format.";
 	}
+
 
 
 	vectorClean(_Canonic);
@@ -846,6 +863,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	return _UnSquezzed;
 }
+
 
 
 
