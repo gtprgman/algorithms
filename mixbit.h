@@ -207,36 +207,50 @@ const int64_t HEX_PTR_X(const int64_t _rex)
 }
 
 
-/* generates number of set bits on the LSB of a data unit. (little - endian)
-   NB: bit indices are specified based on average user habitual convention style. */
+/*  
+ 	generates number of set bits on the LSB of a data unit. (little - endian).
+  	 NB: {
+	 bit indices are zer0-based oriented. Eg. to specify the first 8 bits or
+	 any n-bits are set, the rule is: set_low_bit( (n-1) ), so the first 8 bits
+     would be: set_low_bit(7). The first 4 bit hex number would be: set_low_bit(3)
+     The first 16 bits number (65535) would be: set_low_bit(15). }
+*/
 constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
 {
 	int64_t _TotSum = 0;
-	const double _hi = (double)(_Max_to_Zero - 1);
+	const int64_t _hi = _Max;
 
-	for (double _bi = _hi; _bi >= 0;  _bi--)
+	for (int64_t _bi = _hi; _bi >= 0;  _bi--)
 	{
 		_TotSum += (int64_t)( 1 * std::pow(2, _bi) );
 	}
-
 	return _TotSum;
 }
 
 
 
-/* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
-   The indices of bit are specified using average user habitual convention style. (little-endian) */
+/*  
+	generates a range of set bits from the initial bit position to a determined bit position of a data unit.
+   The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
+   Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
+       as the min and 7 as the max argument.
+*/
 constexpr int64_t range_bit_set(const int64_t& _Min, const int64_t& _Max)
 {
-	double _Sum = 0;
-	const double _start_bit = (double)(_Min - 1), _end_bit = (double)(_Max - 1);
+	int64_t _Sum = 0;
+	const int64_t _start_bit = _Min, _end_bit = _Max;
 
-	for (double _bi = _start_bit; _bi <= _end_bit; _bi++)
-	{
-		_Sum += (double)(1 * (int64_t)std::pow(2, _bi) );
+	if (_start_bit < 0 || _end_bit < 0) {
+		std::cerr << " \n the specified ranges yield to negative bit indices ..\n";
+		return 0;
 	}
 
-	return (int64_t)_Sum;
+	for (int64_t _bi = _start_bit; _bi <= _end_bit; _bi++)
+	{
+		_Sum += (int64_t)(1 * (int64_t)std::pow(2, _bi) );
+	}
+
+	return _Sum;
 }
 
 
