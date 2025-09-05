@@ -137,8 +137,8 @@ static void cni_enforce_unique(std::vector<_Canonical>&);
 // packing a series of canonical bits into one integer and return the result as a bits string.
 static const std::string cni_bits_pack(const std::vector<int64_t>&);
 
-// saves a packed canonical bit to one specified file
-static const size_t save_cni_bit(const std::string&, int64_t&);
+// saves a packed canonical bit to a one specified file
+static const size_t save_cni_bit(const std::string&, const int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
@@ -147,75 +147,88 @@ static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
 unsigned int MAX_BIT = 0;
 
 
-constexpr int64_t HI_HEX(const int64_t _rbx)
+constexpr int64_t HI_HEX(const int64_t& _rbx)
 {
 	return (i4Mask << 4) & _rbx;
 }
 
-constexpr int64_t LO_HEX(const int64_t _rbx)
+constexpr int64_t LO_HEX(const int64_t& _rbx)
 {
 	return (i4Mask & _rbx);
 }
 
-constexpr int64_t BYTE_PTR_HI(const int64_t _rbx)
+constexpr int64_t BYTE_PTR_HI(const int64_t& _rbx)
 {
 	return (i8Mask << 8) & _rbx;
 }
 
-constexpr int64_t BYTE_PTR_LO(const int64_t rbx_)
+constexpr int64_t BYTE_PTR_LO(const int64_t& rbx_)
 {
 	return 0xFF & rbx_;
 }
 
-constexpr int64_t WORD_PTR_HI(const int64_t _rdx)
+constexpr int64_t WORD_PTR_HI(const int64_t& _rdx)
 {
 	return (i16Mask << 16) & _rdx;
 }
 
-constexpr int64_t WORD_PTR_LO(const int64_t rdx_)
+constexpr int64_t WORD_PTR_LO(const int64_t& rdx_)
 {
 	return i16Mask & rdx_;
 }
 
-constexpr int64_t DWORD_PTR_HI(const int64_t _rax)
+constexpr int64_t DWORD_PTR_HI(const int64_t& _rax)
 {
 	return (i32Mask << 32) & _rax;
 }
 
-constexpr int64_t DWORD_PTR_LO(const int64_t rax_)
+constexpr int64_t DWORD_PTR_LO(const int64_t& rax_)
 {
 	return i32Mask & rax_;
 }
 
-
-const int64_t BYTE_PTR_X(const int64_t _rcx)
+// pulls off a byte from the MSB of a specified integer '_rcx'
+const int64_t BYTE_PTR_X(const int64_t& _rcx)
 {
 	const int64_t _rdi = len_bit(_rcx);
-	const int64_t _rsi = _rdi - (int64_t)7;
+	const int64_t _rsi = _rdi - 7;
 
 	const int64_t _rgx = range_bit_set(_rsi, _rdi);
 	return _rcx & _rgx;
 }
 
 
-const int64_t HEX_PTR_X(const int64_t _rex)
+ // pulls off a hex number from the MSB of a specified integer '_rex'
+const int64_t HEX_PTR_X(const int64_t& _rex)
 {
 	const int64_t _rbx = len_bit(_rex);
-	const int64_t _rax = _rbx - (int64_t)3;
+	const int64_t _rax = _rbx - 3;
 	const int64_t _rfx = range_bit_set(_rax, _rbx);
 	return _rex & _rfx;
 }
 
+/* pulls off a series of bit from a specfied integer '_rax', starting from a specified bit position
+   to a definite end bit position */
+const int64_t ANY_PTR_X(const int64_t& _rax, const int64_t& _startBit, const int64_t& _endBit)
+{
+	const int64_t _rbx = len_bit(_rax);
+	const int64_t& _rdi = _endBit;
+	const int64_t& _rsi = _startBit;
 
-/*  
- 	generates number of set bits on the LSB of a data unit. (little - endian).
-  	 NB: {
+	const int64_t _rfx = range_bit_set(_rsi, _rdi);
+	return _rax & _rfx;
+}
+
+
+/* generates number of set bits on the LSB of a data unit. (little - endian).
+   NB: {
 	 bit indices are zer0-based oriented. Eg. to specify the first 8 bits or
 	 any n-bits are set, the rule is: set_low_bit( (n-1) ), so the first 8 bits
      would be: set_low_bit(7). The first 4 bit hex number would be: set_low_bit(3)
-     The first 16 bits number (65535) would be: set_low_bit(15). }
-*/
-constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
+     The first 16 bits number (65535) would be: set_low_bit(15).
+   }
+ */
+constexpr int64_t set_low_bit(const int64_t& _Max)
 {
 	int64_t _TotSum = 0;
 	const int64_t _hi = _Max;
@@ -224,16 +237,17 @@ constexpr int64_t set_low_bit(const int64_t& _Max_to_Zero)
 	{
 		_TotSum += (int64_t)( 1 * std::pow(2, _bi) );
 	}
+
 	return _TotSum;
 }
 
 
 
-/*  
-	generates a range of set bits from the initial bit position to a determined bit position of a data unit.
+/* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
    The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
    Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
        as the min and 7 as the max argument.
+   
 */
 constexpr int64_t range_bit_set(const int64_t& _Min, const int64_t& _Max)
 {
@@ -441,9 +455,9 @@ inline static const char* ltrimx(const char*, const int, const char _padCh);
 inline static const char* rstr(const char*, const std::size_t);
 
 // Convert alphanumeric string '0,1,2..9' to integer
-inline static const int strtoint(std::string&&);
+inline static const int64_t strtoint(std::string&&);
 
-inline static const char* inttostr(const int);
+inline static const char* inttostr(const int64_t&);
 
 // return the exact number of bits that composing a value '_n'
 inline static const unsigned proper_bits(const int64_t&);
@@ -470,8 +484,6 @@ inline static const char* reverse_str(const char*);
 // replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
 inline static const char* repl_char(char*&, char&&, const int&);
 
-// decomposes a given packed int into its original bit form
-inline static const int64_t unPack(const int64_t&, int64_t const&, int64_t const&);
 
 
 inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repSize)
@@ -630,67 +642,18 @@ static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
 
 static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_Ints)
 {
-	size_t szi = 0;
-	const size_t szv = v_Ints.size();
-	int64_t _rax = 0, _rbx = 0, _rcx = 0, _rdx = 0, _r4a = 0, _r4b = 0;
-	int64_t d1 = 0, d2 = 0, d2i = 0, dMax = 0, n2i = 0;
+	int64_t rbx = 0, nShift = 0, bitsz = 0;
+	const size_t v_size = v_Ints.size();
 
-	while (szi < szv)
+	for (size_t vi = 0; vi < v_size; vi++)
 	{
-		_rax = v_Ints[szi]; 
-		_rbx = ((szv - szi) >= 2)? v_Ints[szi + 1] : 0;
-		_r4a = (HI_HEX(_rbx))? HI_HEX(_rbx) >> 4 : 0;
-		_r4b = (LO_HEX(_rbx))? LO_HEX(_rbx) : 0;
+		bitsz = len_bit(v_Ints[vi]);
+		nShift = (bitsz <= 4)? 4 : bitsz;
 
-		if ((szv - szi) >= 2) _rax = (LO_HEX(_rax) & 0xf)? _rax << 4 : _rax;
-		else goto Merging;
-
-		_rax = (_r4a)? _rax |= _r4a : _rax |= _r4b;
-		 
-		if ( (LO_HEX(_rax) & 0xf) == _r4a )
-		{
-			_rax <<= 4;
-			_rax |= _r4b;
-		}
-		// else it means _r4a = '0000'
-
-	Merging: 
-
-		if (!_rdx) _rdx |= _rax;
-		else // these codes may proceed in the next loop..
-		{
-			dMax = _rax;
-			
-			while (dMax > 0)
-			{
-				d1 = LO_HEX(_rdx);
-				_rcx = len_bit(dMax);
-				n2i = _rcx - (int64_t)8;
-
-				if (n2i > 8 || _rcx > 8 || n2i < 0 ) d2 = d2i = get_n_of_msb(dMax, std::abs(n2i));
-				else d2 = d2i = HEX_PTR_X(dMax); 
-
-				while (len_bit(d2) > 4) d2 >>= 4;
-
-				if ( !(get_n_of_lsb(d1,2)) )
-					_rdx |= d2;
-				else
-				{
-					_rdx <<= 4;
-					_rdx |= d2;
-				}
-				dMax -= d2i;
-			}
-		}
-
-		// clear registers:
-		_rax = 0; _rbx = 0; _r4a = 0; _r4b = 0;
-		szi += 2;
-		if (szi >= szv) break;
-		else if ((szv - szi) < 2) szi = szv - 1;
+		rbx = (rbx)? (rbx << nShift) | v_Ints[vi] : rbx | v_Ints[vi];
 	}
 
-	return _rdx;
+	return rbx;
 }
 
 
@@ -798,36 +761,35 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 {
 	size_t saved_size = 0;
 	int i8_bit = 0,hi8_bit = 0, lo8_bit = 0;
-	int64_t bit_cni = 0, bit_size = 0, x_bit = v_bit;
+	int64_t bit_cni = 0, b0Pos = 0, b1Pos = 0,biz_diff = 0, x_bit = v_bit;
 	std::FILE* _FCni = std::fopen(_File.data(), "wb");
 
-	while (x_bit > 0)
+	const int64_t bit_size = len_bit(v_bit);	
+	
+	b0Pos = bit_size - 7; b1Pos = bit_size;
+
+	const int64_t byte_size = (const int64_t)bit_size / 8;
+
+	for (int64_t t = 0; t < byte_size; t++)
 	{
-		bit_cni = BYTE_PTR_X(x_bit);
-		x_bit -= bit_cni;
+		bit_cni = ANY_PTR_X(x_bit, b0Pos, b1Pos); x_bit -= bit_cni;
 
 		while (len_bit(bit_cni) > 16) bit_cni >>= 8;
 
-		if (len_bit(bit_cni) > 8)
-		{
-			if (!(LO_HEX(bit_cni) & 0xf)) bit_cni >>= 4;
-		}
+		if (len_bit(bit_cni) > 8) bit_cni >>= 4;
 
-		i8_bit = (int16_t)bit_cni;
+		std::fputc((int)bit_cni, _FCni); ++saved_size;
 
-		if ( (len_bit(i8_bit) < 8) && (i8_bit > 0) ) {
-			std::fputc(i8_bit, _FCni); ++saved_size;
-		}
-		else {
-			hi8_bit = (int16_t)( BYTE_PTR_HI(i8_bit) >> 8 );
-			lo8_bit = (int16_t)(BYTE_PTR_LO(i8_bit));
-			if (!(LO_HEX(lo8_bit) & 0xf)) lo8_bit >>= 4;
-
-			if (hi8_bit > 0 ) std::fputc(hi8_bit, _FCni);
-			if (lo8_bit > 0 ) std::fputc(lo8_bit, _FCni);
-			saved_size += 2;
-		}
+		b1Pos = --b0Pos; // back-skip the last position of bit series in the LSB
+		b0Pos = b1Pos - 7;
 	}
+
+	bit_cni = x_bit;
+
+	if (len_bit(bit_cni) <= 8) {
+		std::fputc((int)bit_cni, _FCni); ++saved_size;
+	}
+	
 
 	if (_FCni) std::fclose(_FCni);
 	return saved_size;
@@ -900,7 +862,6 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
-
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -952,6 +913,9 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 
 	}
 }
+
+
+
 
 
 inline static const int64_t MergeBits(const int64_t& _Hi, const int64_t& _Lo)
@@ -1361,6 +1325,7 @@ inline static const char* rtrim(const char* _string)
 
 
 
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1583,18 +1548,18 @@ inline static const int64_t num_of_dec(const int64_t& _v)
 }
 
 
-inline static const int strtoint(std::string&& _sNum)
+inline static const int64_t strtoint(std::string&& _sNum)
 {
 	const std::size_t _len = _sNum.size();
 	char* _sf = new char[_len];
 	std::string _sfs;
-	int _bv = 0;
+	int64_t _bv = 0;
 
 	std::memset(_sf, 0, _len);
 	std::strncpy(_sf, _sNum.data(), _len);
 
-	int _iNum = strPos(_sNum.data(),"-"),
-		_maxPos = (int)(_len - 1), 
+	int64_t _iNum = strPos(_sNum.data(),"-"),
+		_maxPos = (int64_t)(_len - 1), 
 		_c = 0, _result = 0,
 		_Exp = 0;
 
@@ -1605,10 +1570,10 @@ inline static const int strtoint(std::string&& _sNum)
 		--_maxPos;
 	}
 
-		for (int i = _maxPos; i >= 0; i--)
+		for (int64_t i = _maxPos; i >= 0; i--)
 		{
 			_c = _sf[i] ^ 0b00110000;
-			_bv = _bv + _c * (int)std::pow(10, _Exp++);
+			_bv = _bv + _c * (int64_t)std::pow(10, _Exp++);
 		};
 
 	
@@ -1620,16 +1585,16 @@ inline static const int strtoint(std::string&& _sNum)
 }
 
 
-inline static const char* inttostr(const int nVal)
+inline static const char* inttostr(const int64_t& nVal)
 {
 	// max. spaces for negative integer
-	const int nDigits = oneAdder( (UINT)num_of_dec((int64_t)std::abs(nVal))); 
+	const int64_t nDigits = oneAdder( (UINT)num_of_dec((int64_t)std::abs(nVal))); 
 
 	// max. spaces for positive integer.
-	const int nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
+	const int64_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
 
 	char _ch;  char* _ss = nullptr;
-	int nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
+	int64_t nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
 
 
 	// if value is 0 (zero)
@@ -1671,7 +1636,6 @@ inline static const char* inttostr(const int nVal)
 	
 	return _ss;
 }
-
 
 
 
