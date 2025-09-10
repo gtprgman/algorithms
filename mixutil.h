@@ -899,6 +899,29 @@ namespace mix {
 		}
 
 
+		// reverses the contents of any STL-like container
+		template < class _Ty, class _STL = _Ty, class _FwdItr = typename _STL::iterator,
+				   class _BackItr = typename _STL::reverse_iterator, class _iType = typename _FwdItr::value_type >
+		static inline void STL_Content_Reverse(const _Ty& _Conty)
+		{
+			const size_t max_elems = _Conty.size();
+			_iType* _pType = new _iType[max_elems];
+			size_t _x = 0;
+
+			for (_BackItr& rItr = (_BackItr&)_Conty.rbegin(); rItr != (_BackItr&)_Conty.rend(); rItr++)
+				if (_x < max_elems) _pType[_x++] = *rItr;
+			
+			_x = 0;
+
+			for ( _FwdItr& rFwd = (_FwdItr&)_Conty.begin(); rFwd != (_FwdItr&)_Conty.end(); rFwd++)
+				*rFwd = _pType[_x++];
+
+
+			delete[] _pType;
+			_pType = mix::nullType();
+		}
+
+
 		// prints out the content of any buffer
 		template <typename _T, class _FnPrint>
 		static inline void BUFF_Print(_T* _xBuffer, const std::size_t _maxBuf, const _FnPrint& _printFn)
@@ -1036,6 +1059,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
