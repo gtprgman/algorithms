@@ -13,7 +13,38 @@
 
 #endif
 
+// a symbolical list of constants in hexa digit ( A .. F )
+enum class C_HEX : std::int8_t
+{
+	A = 10, B= 11, C = 12, D= 13, E = 14, F = 15
+};
 
+
+// a list of constants in hexa digit { A .. F }
+const std::initializer_list<const int64_t> HxC = { (int64_t)C_HEX::A, (int64_t)C_HEX::B, (int64_t)C_HEX::C, 
+												   	(int64_t)C_HEX::D, (int64_t)C_HEX::E, (int64_t)C_HEX::F 
+												 };
+
+
+// a character selector for any constant in hexa digit { A .. F }
+constexpr char HEX_CHR(const int64_t& _i64)
+{
+	int64_t _hc = 0;
+
+	_hc = (mix::isRange(_i64, HxC))? _i64 : 0;
+
+	switch (_hc)
+	{
+			case 10: return 'A';
+			case 11: return 'B';
+			case 12: return 'C';
+			case 13: return 'D';
+			case 14: return 'E';
+			case 15: return 'F';
+		default: break;
+	}
+	return '0';
+}
 
 // a header data structure for storing encoding information of huffman method
 struct _Canonical
@@ -612,6 +643,53 @@ T bin_to_dec<T>::_Dec = 0;
 
 
 
+template < class T, bool _Val = std::is_integral_v<T>,
+            class _Ty = std::conditional_t<_Val, int64_t, mix::nullType> >
+
+struct To_HexF {
+	using val_type = _Ty;
+
+	static inline const val_type& eval(const int64_t& val_i64)
+	{
+		static int64_t _x16 = 0, _tmp = val_i64;
+		static std::string h_xs = "\0";
+		_vfx = 0;
+
+		if (!val_i64) return _vfx;
+
+		while (_tmp > 0)
+		{
+			_x16 = _tmp % 16;
+			_x16c.push_back(_x16);
+			_tmp /= 16;
+		}
+
+		mix::generic::STL_Content_Reverse(_x16c);
+
+		for (const auto& _hx : _x16c)
+			h_xs = concat_str( (char*)h_xs.data(), inttostr(_hx) );
+
+
+		_vfx = strtoint(h_xs.data());
+		vectorClean(_x16c);
+
+		return _vfx;
+	}
+
+private:
+	static val_type _vfx;
+	static std::vector<int64_t> _x16c;
+};
+
+// static member initialization ..
+template <class T, bool _v, class _Ty>
+_Ty To_HexF<T, _v, _Ty>::_vfx = 0;
+
+template <class T, bool _v, class _Ty>
+std::vector<int64_t> To_HexF<T, _v, _Ty>::_x16c = {};
+
+
+
 static inline const int64_t _Get_Num_of_Bits(const int64_t& _ax)
 {
 	if (!_ax) return 1;
@@ -786,7 +864,7 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 
 	bit_cni = x_bit;
 
-	if (len_bit(bit_cni) <= 8) {
+	if (len_bit(bit_cni) <= 8 && bit_cni > 0 ) {
 		std::fputc((int)bit_cni, _FCni); ++saved_size;
 	}
 	
@@ -862,6 +940,8 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
+
+
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -913,8 +993,6 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 
 	}
 }
-
-
 
 
 
@@ -1636,6 +1714,7 @@ inline static const char* inttostr(const int64_t& nVal)
 	
 	return _ss;
 }
+
 
 
 
