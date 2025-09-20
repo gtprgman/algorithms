@@ -13,17 +13,18 @@
 
 #endif
 
-// a symbolical list of constants in hexa digit ( A .. F )
-enum class C_HEX : std::int8_t
+// an integer representation of a hex constant ( A .. F )
+enum class INT_HEX : std::int8_t
 {
 	A = 10, B= 11, C = 12, D= 13, E = 14, F = 15
 };
 
 
+
 // a list of constants in hexa digit { A .. F }
-const std::initializer_list<const int64_t> HxC = { (int64_t)C_HEX::A, (int64_t)C_HEX::B, (int64_t)C_HEX::C, 
-												   	(int64_t)C_HEX::D, (int64_t)C_HEX::E, (int64_t)C_HEX::F 
-												 };
+constexpr std::initializer_list<const int64_t> HxC = { (int64_t)INT_HEX::A, (int64_t)INT_HEX::B, (int64_t)INT_HEX::C, 
+												   		(int64_t)INT_HEX::D, (int64_t)INT_HEX::E, (int64_t)INT_HEX::F 
+													 };
 
 
 // a character selector for any constant in hexa digit { A .. F }
@@ -47,8 +48,6 @@ constexpr char HEX_CHR(const int64_t& _i64)
 }
 
 
-
-
 // a header data structure for storing encoding information of huffman method
 struct _Canonical
 {
@@ -65,7 +64,6 @@ struct _Canonical
 		return this->_xData;
 	}
 };
-
 
 
 // a data structure representing a subset of _Canonical
@@ -284,7 +282,6 @@ constexpr int64_t set_low_bit(const int64_t& _Max)
 }
 
 
-
 /* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
    The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
    Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
@@ -339,7 +336,6 @@ static inline const int64_t get_n_of_msb(const int64_t& _Vx, const int64_t& N_Bi
 }
 
 
-
 // returns a specific named token which evaluates to a max. number of bits.
 constexpr unsigned BIT_TOKEN(const int64_t& nBits)
 {
@@ -351,13 +347,6 @@ constexpr unsigned BIT_TOKEN(const int64_t& nBits)
 	else MAX_BIT = MULTIWORDS;
 
 	return MAX_BIT;
-}
-
-
-// returns a binary representation of a numeric character
-std::string&& alphaNum2Bin(const char& _Chx)
-{
-	return bit_str(0);
 }
 
 
@@ -452,6 +441,19 @@ inline static const bool* bits_from_str(const std::string& _cBits)
 
 	return _pb;
 }
+
+
+// returns a char representation of an ascii integer
+inline static const char to_char(const int&);
+
+// returns a boolean indicating whether a specified char is an alphanumeric or not
+inline static const bool is_alpha_num(const char&);
+
+// returns a real integer of an alphanumeric character
+inline static const int chartoint(const char&);
+
+// returns a binary representation of an alphanumeric character
+inline static std::string&& alphaNum2Bin(const char&);
 
 
 // uppercase the specified char
@@ -551,7 +553,6 @@ inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repS
 }
 
 
-
 static inline const std::string zero_bits(const int64_t& n_Bits)
 {
 	char* _Ch = new char[n_Bits];
@@ -559,7 +560,6 @@ static inline const std::string zero_bits(const int64_t& n_Bits)
 
 	return _ci;
 }
-
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
@@ -584,7 +584,6 @@ struct num_of_bits
 };
 
 
-
 // convert a specified decimal constant to its binary form
 template < typename T >
 struct to_binary
@@ -596,6 +595,11 @@ struct to_binary
 		value_type _q = 0;
 		value_type _bsz = num_of_bits<value_type>::eval(_dec);
 		_value = _dec;
+
+		if (!_value) {
+			_bs = "0";
+			return std::move(_bs);
+		}
 
 		if (_bsz > 0)
 			_bs = new char[_bsz]; 
@@ -624,7 +628,6 @@ T to_binary<T>::_value = 0;
 
 template <class T>
 std::string to_binary<T>::_bs = "\0";
-
 
 
 template <class T >
@@ -704,6 +707,7 @@ struct To_HexF {
 			C_hx = "\0";
 		}
 
+		
 		vectorClean(_x16c);
 		return std::move(_hxs);
 	}
@@ -733,9 +737,6 @@ static inline const int64_t _Get_Num_of_Bits(const int64_t& _ax)
 static inline std::string&& _Get_Binary_Str(const int64_t& _Dx)
 {
 	const int64_t& _Abs = _Dx;
-
-	if (!_Abs || _Abs < 0) return std::move("\0");
-
 	return to_binary<int64_t>::eval(_Abs);
 }
 
@@ -745,7 +746,6 @@ static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
 {
 	return bin_to_dec<int64_t>::eval(Bit_Str.data());
 }
-
 
 
 static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_Ints)
@@ -818,7 +818,6 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 }
 
 
-
 static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 {
 	int64_t cw = cniDat[0]._codeWord, dw = 0, n_diff = 0;
@@ -847,7 +846,6 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-
 static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVec)
 {
 	int64_t _x = 0;
@@ -865,7 +863,6 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 	
 	return _xBitStr;
 }
-
 
 
 static inline const size_t save_cni_bit(const std::string& _File, const int64_t& v_bit)
@@ -907,7 +904,6 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 }
 
 
-
 static inline const int read_cni_bit(const std::string& _File, std::vector<int64_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
@@ -927,7 +923,6 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int64
 }
 
 
-
 inline static const unsigned proper_bits(const int64_t& _n)
 {
 	const int64_t _nBits = num_of_bits<int64_t>::eval(_n);
@@ -935,7 +930,6 @@ inline static const unsigned proper_bits(const int64_t& _n)
 
 	return _maxBits;
 }
-
 
 
 inline static const int64_t LoPart(const int64_t& _v)
@@ -950,7 +944,6 @@ inline static const int64_t LoPart(const int64_t& _v)
 }
 
 
-
 inline static const int64_t HiPart(const int64_t& _v)
 {
 	const int64_t bit_wide = len_bit(_v);
@@ -961,7 +954,6 @@ inline static const int64_t HiPart(const int64_t& _v)
 	
 	return high_order_value;
 }
-
 
 
 inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
@@ -976,7 +968,6 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 		_Ints.push_back(_rbx);
 	}
 }
-
 
 
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
@@ -1104,7 +1095,8 @@ private:
 
 
 
-inline static const char to_char(int const _c)
+
+inline static const char to_char(const int& _c)
 {
 	char _ch = 0;
 	const int _nc = _c;
@@ -1122,24 +1114,29 @@ inline static const char to_char(int const _c)
 
 
 
-inline static const int Char2Ascii(char const& _ch)
-{
-	return _ch;
-}
-
-
-
-inline static const char Ascii2Char(const int& _ascn)
-{
-	return _ascn;
-}
-
-
 inline static const bool is_alpha_num(const char& _chx)
 {
-	
-	
-	return 0;
+	if (_chx >= '0' && _chx <= '9') return _BOOLC(1);
+	else return _BOOLC(0);
+}
+
+
+
+inline static const int chartoint(const char& _ch)
+{
+	if (is_alpha_num(_ch))
+		return _ch ^ 48;
+	else return -1;
+}
+
+
+
+inline static std::string&& alphaNum2Bin(const char& _hxc)
+{
+	if (is_alpha_num(_hxc))
+		return bit_str(_hxc ^ 48);
+	else
+		return bit_str( 0 );
 }
 
 
@@ -1159,7 +1156,6 @@ inline static const char upCase(const int& _c)
 }
 
 
-
 inline static const char downCase(const int& _cAlpha)
 {
 	if (_cAlpha <= 0) return _cAlpha;
@@ -1172,7 +1168,6 @@ inline static const char downCase(const int& _cAlpha)
 
 	return _cLow;
 }
-
 
 
 inline static const int strPos(const char* _aStr, const char* _cStr)
@@ -1234,7 +1229,6 @@ inline static const char* scanStr(const char* _Str0, const char* _searchStr)
 
 	return _SF;
 }
-
 
 
 inline static const char* concat_str(char* _target, const char* _str)
@@ -1488,7 +1482,6 @@ struct bitInfo
 };
 
 
-
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
@@ -1664,7 +1657,6 @@ fixN<BITS>::operator int() const
 
 }
 
-
 // return how much number of decimal digits which appeared in a constant integer '_v'.
 inline static const int64_t num_of_dec(const int64_t& _v)
 {
@@ -1681,7 +1673,6 @@ inline static const int64_t num_of_dec(const int64_t& _v)
 
 	return _count;
 }
-
 
 
 inline static const int64_t strtoint(std::string&& _sNum)
