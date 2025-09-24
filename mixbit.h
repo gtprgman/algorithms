@@ -27,24 +27,48 @@ constexpr std::initializer_list<const int64_t> HxC = { (int64_t)INT_HEX::A, (int
 													 };
 
 
+
 // a character selector for any constant in hexa digit { A .. F }
-constexpr char HEX_CHR(const int64_t& _i64)
+static inline char&& HEX_CHR(const int64_t& _i64)
 {
+	static char _cfx = '0';
 	int64_t _hc = 0;
 
 	_hc = (mix::isRange(_i64, HxC))? _i64 : 0;
 
+	_cfx = '0';
+
 	switch (_hc)
 	{
-			case 10: return 'A';
-			case 11: return 'B';
-			case 12: return 'C';
-			case 13: return 'D';
-			case 14: return 'E';
-			case 15: return 'F';
+			case 10: _cfx =  'A'; break;
+			case 11: _cfx =  'B'; break;
+			case 12: _cfx =  'C'; break;
+			case 13: _cfx =  'D'; break;
+			case 14: _cfx =  'E'; break;
+			case 15: _cfx =  'F'; break;
 		default: break;
 	}
-	return '0';
+	return std::move(_cfx);
+}
+
+
+
+// an integer selector for any constant in hexa digit { A .. F }
+constexpr int8_t HEX_INT(const char& _chxf)
+{
+	int8_t xCh = 0;
+
+	switch (_chxf)
+	{
+			case 'A': xCh = (int8_t)INT_HEX::A; break;
+			case 'B': xCh = (int8_t)INT_HEX::B; break;
+			case 'C': xCh = (int8_t)INT_HEX::C; break;
+			case 'D': xCh = (int8_t)INT_HEX::D; break;
+			case 'E': xCh = (int8_t)INT_HEX::E; break;
+			case 'F': xCh = (int8_t)INT_HEX::F; break;
+			default: break;
+	}
+	return xCh;
 }
 
 
@@ -64,6 +88,7 @@ struct _Canonical
 		return this->_xData;
 	}
 };
+
 
 
 // a data structure representing a subset of _Canonical
@@ -147,17 +172,33 @@ constexpr int64_t range_bit_set(const int64_t&, const int64_t&);
 // generates bit '0' a number of n_Bits
 static const std::string zero_bits(const int64_t&);
 
+// returns a char representation of an ascii integer
+inline static char&& to_char(const int&);
+
+// returns a boolean indicating whether a specified char is an alphanumeric or not
+inline static const bool is_alpha_num(const char&);
+
+// returns a real integer of an alphanumeric character
+inline static const int chartoint(const char&);
+
+// returns a binary representation of an alphanumeric character
+inline static std::string&& alphaNum2Bin(const char&);
+
+// convert a hex string evaluated by 'To_HexF' to its binary representation
+static std::string&& HxFs_To_Bin(std::string&&);
+
+
 // forward declaration prototype of repl_char() function
 static const char* repl_char(char*&, char&&, const int&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
-static const int64_t _Get_Num_of_Bits(const int64_t&);
+static int64_t&& _Get_Num_of_Bits(const int64_t&);
 
 // Invoker macro for 'to_binary<T>::eval()'
 static std::string&& _Get_Binary_Str(const int64_t&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
-static const int64_t _Int_from_Bit_Str(const std::string&);
+static int64_t&& _Int_from_Bit_Str(std::string&&);
 
 // Invoker macro for extract_Ints
 static const int64_t Ints_Of(int64_t& _ebx)
@@ -282,6 +323,7 @@ constexpr int64_t set_low_bit(const int64_t& _Max)
 }
 
 
+
 /* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
    The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
    Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
@@ -322,18 +364,21 @@ constexpr int64_t get_n_of_lsb(const int64_t& _valX, const int64_t& _n_Bits)
 
 
 // get 'N_Bits' from the MSB of a specified integer '_Vx'.
-static inline const int64_t get_n_of_msb(const int64_t& _Vx, const int64_t& N_Bits)
+static inline int64_t&& get_n_of_msb(const int64_t& _Vx, const int64_t& N_Bits)
 {
 	const int64_t _tot_Bits = (int64_t)_Get_Num_of_Bits(_Vx) - 1;
 	const int64_t _rbx = (int64_t)0b1 << _tot_Bits;
-	int64_t _rdx = _rbx;
+	static int64_t _rdx = 0;
+
+	_rdx = _rbx;
 
 	for (int64_t _n = 0; _n < N_Bits; _n++)
 	{
 		_rdx |= _Vx & (_rbx >> _n);
 	}
-	return _rdx;
+	return std::move(_rdx);
 }
+
 
 
 // returns a specific named token which evaluates to a max. number of bits.
@@ -348,6 +393,7 @@ constexpr unsigned BIT_TOKEN(const int64_t& nBits)
 
 	return MAX_BIT;
 }
+
 
 
 /* a data structure for storing every byte portion of an integer value.
@@ -442,18 +488,6 @@ inline static const bool* bits_from_str(const std::string& _cBits)
 	return _pb;
 }
 
-
-// returns a char representation of an ascii integer
-inline static const char to_char(const int&);
-
-// returns a boolean indicating whether a specified char is an alphanumeric or not
-inline static const bool is_alpha_num(const char&);
-
-// returns a real integer of an alphanumeric character
-inline static const int chartoint(const char&);
-
-// returns a binary representation of an alphanumeric character
-inline static std::string&& alphaNum2Bin(const char&);
 
 
 // uppercase the specified char
@@ -553,6 +587,7 @@ inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repS
 }
 
 
+
 static inline const std::string zero_bits(const int64_t& n_Bits)
 {
 	char* _Ch = new char[n_Bits];
@@ -562,16 +597,19 @@ static inline const std::string zero_bits(const int64_t& n_Bits)
 }
 
 
+
 // evaluate to how much number of bits that made up a constant value '_v'
 template < class T >
 struct num_of_bits
 {
 	using type = typename T;
 
-	static const type eval(const type _v)
+	static type&& eval(const type& _v)
 	{
-		type cnt = 0;
+		static type cnt = 0;
 		type _val = _v;
+
+		cnt = 0;
 
 		while (_val > 0)
 		{
@@ -579,9 +617,10 @@ struct num_of_bits
 			++cnt;
 		}
 
-		return cnt;
+		return std::move(cnt);
 	}
 };
+
 
 
 // convert a specified decimal constant to its binary form
@@ -630,13 +669,14 @@ template <class T>
 std::string to_binary<T>::_bs = "\0";
 
 
+
 template <class T >
 struct bin_to_dec
 {
 	using value_type = typename T;
 
 	// the bit string is assumed to be in little-endian order.
-	static inline const value_type eval(const std::string&& _strBits)
+	static inline value_type&& eval(std::string&& _strBits)
 	{
 		std::size_t lenMax = _strBits.size();
 		std::size_t _maxBit = lenMax - 1;
@@ -646,14 +686,14 @@ struct bin_to_dec
 
 		for (std::size_t i = _maxBit; i > 0; i--)
 		{
-			b = (_strBits[i] == 49) ? 1 : 0;
+			b = (_strBits[i] == 49)? 1 : 0;
 			_Dec += b * (value_type)std::pow(2, k++);
 		}
 
 		b = (_strBits[0] == 49) ? 1 : 0;
 		_Dec += b * (value_type)std::pow(2, _maxBit);
 
-		return _Dec;
+		return std::move(_Dec);
 	}
 
 private:
@@ -726,23 +766,27 @@ std::vector<_Ty> To_HexF<T, _v, _Ty>::_x16c = {};
 
 
 
-static inline const int64_t _Get_Num_of_Bits(const int64_t& _ax)
+static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
-	if (!_ax) return 1;
-	else
-		return num_of_bits<int64_t>::eval(_ax);
+	
 }
+
+
+static inline int64_t&& _Get_Num_of_Bits(const int64_t& _ax)
+{
+	return num_of_bits<int64_t>::eval(_ax);
+}
+
 
 
 static inline std::string&& _Get_Binary_Str(const int64_t& _Dx)
 {
-	const int64_t& _Abs = _Dx;
-	return to_binary<int64_t>::eval(_Abs);
+	return to_binary<int64_t>::eval(_Dx);
 }
 
 
 
-static inline const int64_t _Int_from_Bit_Str(const std::string& Bit_Str)
+static inline int64_t&& _Int_from_Bit_Str(std::string&& Bit_Str)
 {
 	return bin_to_dec<int64_t>::eval(Bit_Str.data());
 }
@@ -923,6 +967,7 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int64
 }
 
 
+
 inline static const unsigned proper_bits(const int64_t& _n)
 {
 	const int64_t _nBits = num_of_bits<int64_t>::eval(_n);
@@ -968,7 +1013,6 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 		_Ints.push_back(_rbx);
 	}
 }
-
 
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
@@ -1095,11 +1139,12 @@ private:
 
 
 
-
-inline static const char to_char(const int& _c)
+inline static char&& to_char(const int& _c)
 {
-	char _ch = 0;
+	static char _ch = 0;
 	const int _nc = _c;
+
+	_ch = 0;
 
 	if (_c >= 65 && _c <= 90)
 		_ch = 90 - (90 - _nc);
@@ -1109,7 +1154,7 @@ inline static const char to_char(const int& _c)
 		_ch = _nc;
 
 
-	return _ch;
+	return std::move(_ch);
 }
 
 
@@ -1452,7 +1497,6 @@ inline static const char* rtrim(const char* _string)
 
 
 
-
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1763,8 +1807,6 @@ inline static const char* inttostr(const int64_t& nVal)
 	
 	return _ss;
 }
-
-
 
 
 
