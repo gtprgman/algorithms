@@ -29,7 +29,7 @@ constexpr std::initializer_list<const int64_t> HxC = { (int64_t)INT_HEX::A, (int
 
 
 // a character selector for any constant in hexa digit { A .. F }
-static inline char&& HEX_CHR(const int64_t& _i64)
+static inline char&& HEX_CHR(int64_t&& _i64)
 {
 	static char _cfx = '0';
 	int64_t _hc = 0;
@@ -54,7 +54,7 @@ static inline char&& HEX_CHR(const int64_t& _i64)
 
 
 // an integer selector for any constant in hexa digit { A .. F }
-constexpr int8_t HEX_INT(const char& _chxf)
+constexpr int8_t HEX_INT(char&& _chxf)
 {
 	int8_t xCh = 0;
 
@@ -170,7 +170,7 @@ constexpr int64_t set_low_bit(const int64_t&);
 constexpr int64_t range_bit_set(const int64_t&, const int64_t&);
 
 // generates bit '0' a number of n_Bits
-static const std::string zero_bits(const int64_t&);
+static std::string&& zero_bits(const int64_t&);
 
 // returns a char representation of an ascii integer
 inline static char&& to_char(const int&);
@@ -182,20 +182,20 @@ inline static const bool is_alpha_num(const char&);
 inline static const int chartoint(const char&);
 
 // returns a binary representation of an alphanumeric character
-inline static std::string&& alphaNum2Bin(const char&);
+inline static std::string&& alphaNum2Bin(char&&);
 
 // convert a hex string evaluated by 'To_HexF' to its binary representation
 static std::string&& HxFs_To_Bin(std::string&&);
 
 
 // forward declaration prototype of repl_char() function
-static const char* repl_char(char*&, char&&, const int&);
+static const char* repl_char(char*&, char&&, const int64_t&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static int64_t&& _Get_Num_of_Bits(const int64_t&);
 
 // Invoker macro for 'to_binary<T>::eval()'
-static std::string&& _Get_Binary_Str(const int64_t&);
+static std::string&& _Get_Binary_Str(int64_t&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
 static int64_t&& _Int_from_Bit_Str(std::string&&);
@@ -540,7 +540,7 @@ inline static const char* ltrimx(const char*, const int, const char _padCh);
 inline static const char* rstr(const char*, const std::size_t);
 
 // Convert alphanumeric string '0,1,2..9' to integer
-inline static const int64_t strtoint(std::string&&);
+inline static int64_t&& strtoint(std::string&&);
 
 inline static const char* inttostr(const int64_t&);
 
@@ -567,16 +567,18 @@ inline static const char* rtrim(const char*);
 inline static const char* reverse_str(const char*);
 
 // replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
-inline static const char* repl_char(char*&, char&&, const int&);
+inline static const char* repl_char(char*&, char&&, const int64_t&);
 
 
 
-inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repSize)
+inline static const char* repl_char(char*& _dest, char&& aChar, const int64_t& _repSize)
 {
+	if (!_repSize|| _repSize < 0 ) return nullptr;
+
 	if (_dest == nullptr) _dest = new char[_repSize];
 	char* _tmp = _dest;
 
-	for (int i = 0; i < _repSize; i++)
+	for (int64_t i = 0; i < _repSize; i++)
 		*_tmp++ = aChar;
 
 
@@ -588,12 +590,12 @@ inline static const char* repl_char(char*& _dest, char&& aChar, const int& _repS
 
 
 
-static inline const std::string zero_bits(const int64_t& n_Bits)
+static inline std::string&& zero_bits(const int64_t& n_Bits)
 {
 	char* _Ch = new char[n_Bits];
-	std::string _ci = repl_char(_Ch, '0', (int)n_Bits);
+	static std::string _ci = repl_char(_Ch, '0', n_Bits);
 
-	return _ci;
+	return std::move(_ci);
 }
 
 
@@ -710,11 +712,12 @@ template < class T, bool _Val = std::is_integral_v<T>,
 struct To_HexF {
 	using val_type = _Ty;
 
-	static inline std::string&& eval(const int64_t& val_i64)
+	static inline std::string&& eval(val_type&& val_i64)
 	{
 		static int64_t _x16 = 0, _tmp = val_i64;
 		static std::string C_hx = "\0";
 		static char* _px = mix::nullType();
+		char _chx = '0';
 
 		_hxs = "\0";
 
@@ -729,25 +732,20 @@ struct To_HexF {
 
 		mix::generic::STL_Content_Reverse(_x16c);
 
-		for (const auto& _hx : _x16c)
-			_hxs = concat_str( (char*)_hxs.data(), inttostr(_hx) );
-
-		// searches for a hex constant { A .. F } embedded in _hxs
-		for (const auto& _Cxh : HxC)
+		for (const val_type& _hx : _x16c)
 		{
-			C_hx = inttostr(_Cxh);
-			_px = (char*)scanStr(_hxs.data(), C_hx.data());
+			_chx = HEX_CHR(_Ty(_hx));
 
-			if (_px)
-			{
-				*_px++ = HEX_CHR(_Cxh);
-				*_px = '\0';
-				break;
-			}
-			C_hx = "\0";
+			if (_chx != '0')
+				_hxs = concat_str((char*)_hxs.data(), new char[2] {_chx, '\0'});
+				else
+					_hxs = concat_str((char*)_hxs.data(), inttostr(_hx));
+
+			
+			_hxs = LRTrim(_hxs.data());
 		}
+			
 
-		
 		vectorClean(_x16c);
 		return std::move(_hxs);
 	}
@@ -768,7 +766,21 @@ std::vector<_Ty> To_HexF<T, _v, _Ty>::_x16c = {};
 
 static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
-	
+	int _xBin = 0;
+	static std::string _hxsBin = "\0";
+
+	for (const auto& _xc : _xhFs)
+	{
+		_xBin = HEX_INT(char(_xc) );
+
+		if (_xBin)
+			_hxsBin = concat_str((char*)_hxsBin.data(), bit_str(_xBin).data());
+		else
+			_hxsBin = concat_str((char*)_hxsBin.data(), alphaNum2Bin(char(_xc)).data());
+
+
+	}
+	return std::move(_hxsBin);
 }
 
 
@@ -779,9 +791,17 @@ static inline int64_t&& _Get_Num_of_Bits(const int64_t& _ax)
 
 
 
-static inline std::string&& _Get_Binary_Str(const int64_t& _Dx)
+static inline std::string&& _Get_Binary_Str(int64_t&& _Dx)
 {
-	return to_binary<int64_t>::eval(_Dx);
+	const char* _s0 = zero_bits(1).data();
+	const std::size_t _LenDX = to_binary<int64_t>::eval(_Dx).size();
+	static std::string _bitStr = "\0";
+
+	_bitStr = concat_str((char*)_bitStr.data(), (_LenDX >= 4)? to_binary<int64_t>::eval(_Dx).data() :
+					concat_str((char*)_s0, to_binary<int64_t>::eval(_Dx).data()));
+				
+
+	return std::move(_bitStr);
 }
 
 
@@ -903,7 +923,7 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 		}
 		
 
-	_xBitStr = bit_str(_x);
+	_xBitStr = bit_str(int64_t(_x) );
 	
 	return _xBitStr;
 }
@@ -1013,6 +1033,7 @@ inline static void parseInt(int64_t& _rdx, std::vector<int64_t>& _Ints)
 		_Ints.push_back(_rbx);
 	}
 }
+
 
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
@@ -1139,6 +1160,7 @@ private:
 
 
 
+
 inline static char&& to_char(const int& _c)
 {
 	static char _ch = 0;
@@ -1176,12 +1198,14 @@ inline static const int chartoint(const char& _ch)
 
 
 
-inline static std::string&& alphaNum2Bin(const char& _hxc)
+inline static std::string&& alphaNum2Bin(char&& _hxc)
 {
-	if (is_alpha_num(_hxc))
-		return bit_str(_hxc ^ 48);
-	else
-		return bit_str( 0 );
+	int _x = chartoint(_hxc);
+	static std::string _hxfs = "\0";
+
+	_hxfs = (_x > 0)? bit_str(_x) : inttostr(0);
+		
+	return std::move(_hxfs);
 }
 
 
@@ -1497,6 +1521,7 @@ inline static const char* rtrim(const char* _string)
 
 
 
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1719,20 +1744,20 @@ inline static const int64_t num_of_dec(const int64_t& _v)
 }
 
 
-inline static const int64_t strtoint(std::string&& _sNum)
+inline static int64_t&& strtoint(std::string&& _sNum)
 {
 	const std::size_t _len = _sNum.size();
 	char* _sf = new char[_len];
 	std::string _sfs;
 	int64_t _bv = 0;
+	static int64_t _result = 0;
 
 	std::memset(_sf, 0, _len);
 	std::strncpy(_sf, _sNum.data(), _len);
 
 	int64_t _iNum = strPos(_sNum.data(),"-"),
 		_maxPos = (int64_t)(_len - 1), 
-		_c = 0, _result = 0,
-		_Exp = 0;
+		_c = 0, _Exp = 0;
 
 	if (_iNum >= 0)
 	{
@@ -1752,7 +1777,7 @@ inline static const int64_t strtoint(std::string&& _sNum)
 	
 	_sfs.clear();
 	std::memset(_sf, 0, _len);
-	return _result;
+	return std::move(_result);
 }
 
 
@@ -1807,6 +1832,7 @@ inline static const char* inttostr(const int64_t& nVal)
 	
 	return _ss;
 }
+
 
 
 
