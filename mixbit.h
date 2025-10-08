@@ -508,18 +508,20 @@ inline static const char* scanStr(const char*, const char*);
 inline static const char* concat_str(char* , const char*);
 
 // take the n number of characters from the left end of the string
-inline static const char* lstr(const char*, const std::size_t);
+inline static std::string&& lstr(const char*, const std::size_t&);
 
-/* get a number of characters from a string starting from a position specified
-   by '_start', then take n characters specified by '_nChars'. The position is
-   zero-based array indexes.
+/* get a number of characters from a string, starting from a position specified
+   by '_Start', then take the number of characters specified by '_End'. The position is
+   numbered from [0] to [n - 1], but the number of characters snapped is based on common
+   sense of counting.
 */
-inline static const char* snapStr(const char*, const int, const int);
+inline static std::string&& snapStr(const char*, const size_t&, const size_t&);
 
-/* replace number of characters of a string with a character specified by '_tpChr' ,
-   the position in the string is zero-based array indexes.
+/* replaces 'x' number of characters of a string with a character specified by '_tpChr' ,
+   the offset of the string is starting from 0 to [n - 1]. The 'x' number of characters
+   is specified using common counting principle.
 */
-inline static const char* tapStr(const char*, const char, const int, const int);
+inline static std::string&& tapStr(const char*, const char&, const size_t&, const size_t&);
 
 /* supersede part of a string with a specified substring at a specified position in the target string.
    Zero-based index array accesses is assumed */
@@ -537,7 +539,7 @@ inline static const char* LRTrim(const char*);
 inline static const char* ltrimx(const char*, const int, const char _padCh);
 
 // take the n number of characters from the right end of the string
-inline static const char* rstr(const char*, const std::size_t);
+inline static std::string&& rstr(const char*, const std::size_t&);
 
 // Convert alphanumeric string '0,1,2..9' to integer
 inline static int64_t&& strtoint(std::string&&);
@@ -714,45 +716,56 @@ struct To_HexF {
 
 	static inline std::string&& eval(val_type&& val_i64)
 	{
-		static val_type _x16 = 0, _tmp = val_i64;
-		static std::string C_hx = "\0";
-		static char* _px = mix::nullType();
+		_hxs = hex_str(val_type(val_i64) );
 		char _chx = '0';
+		int iHex = 0;
+		const size_t _hxSize = _hxs.size();
 
-		_hxs = "\0";
-
-		if (!val_i64) return std::move(C_hx);
-
-		while (_tmp > 0)
+		for (size_t i = 0; i < _hxSize; i++)
 		{
-			_x16 = _tmp % 16;
-			_x16c.push_back(_x16);
-			_tmp /= 16;
-		}
-
-		mix::generic::STL_Content_Reverse(_x16c);
-
-		for (const val_type& _hx : _x16c)
-		{
-			_chx = HEX_CHR(val_type(_hx));
+			iHex = chartoint(_hxs.at(i) );
+			_chx = HEX_CHR(int(iHex));
 
 			if (_chx != '0')
-				_hxs = concat_str((char*)_hxs.data(), new char[2] {_chx, '\0'});
-				else
-					_hxs = concat_str((char*)_hxs.data(), inttostr(_hx));
-
-			
-			_hxs = LRTrim(_hxs.data());
+			{
+				
+			}
 		}
-			
+		
 
-		vectorClean(_x16c);
 		return std::move(_hxs);
 	}
 
 private:
 	static std::string _hxs;
 	static std::vector<val_type> _x16c;
+
+	static inline std::string&& hex_str(val_type&& _i64)
+	{
+		val_type _m64 = 0;
+		static std::string _hxf = "\0";
+
+		vectorClean(_x16c);
+
+		if (_i64 <= 0) return std::move(_hxf);
+
+		while (_i64 > 0)
+		{
+			_m64 = _i64 % 16;
+			_x16c.push_back(_m64);
+			_i64 /= 16;
+		}
+
+		mix::generic::STL_Content_Reverse(_x16c);
+
+		for (const val_type& _ix : _x16c)
+		{
+			_hxf = concat_str((char*)_hxf.data(), inttostr(_ix));
+		}
+
+		vectorClean(_x16c);
+		return std::move(_hxf);
+	}
 };
 
 // static member initialization ..
@@ -801,7 +814,7 @@ static inline std::string&& _Get_Binary_Str(int64_t&& _Dx)
 	static std::string _bitStr = "\0";
 
 	_bitStr = concat_str((char*)_bitStr.data(), (_LenDX >= 4) ? to_binary<int64_t>::eval(_Dx).data() :
-				concat_str((char*)_s0, to_binary<int64_t>::eval(_Dx).data()));
+				concat_str((char*)_s0, to_binary<int64_t>::eval(_Dx).data()) );
 				
 
 	return std::move(_bitStr);
@@ -1016,7 +1029,6 @@ inline static void parseInt(int64_t&& _rdx, std::vector<int64_t>& _Ints)
 	}
 }
 
-
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
 	int64_t _rdx = 0, _rcx = 0,
@@ -1142,6 +1154,7 @@ private:
 
 
 
+
 inline static char&& to_char(const int& _c)
 {
 	static char _ch = 0;
@@ -1226,8 +1239,8 @@ static inline int&& strPos(const char* _aStr, const char* _cStr)
 	int _Pos = 0;
 	bool _bFound = false;
 
-	if (!_Sz1 || !_Sz2) return 0;
-	if (_Sz2 > _Sz1) return -1;
+	if (!_Sz1 || !_Sz2) return std::move(0);
+	if (_Sz2 > _Sz1) return std::move(-1);
 
 	for (std::size_t gf = 0; gf < _Sz1; gf++, _Pos++)
 	{
@@ -1237,7 +1250,7 @@ static inline int&& strPos(const char* _aStr, const char* _cStr)
 			break;
 		}
 	}
-	return (_bFound)? int(_Pos): int(- 1);
+	return (_bFound)? std::move(_Pos): std::move(- 1);
 }
 
 
@@ -1312,71 +1325,67 @@ inline static const char* reverse_str(const char* _str)
 
 
 // take the n number of characters from the left end of the string
-inline static const char* lstr(const char* _srcStr, const std::size_t _nGrab)
+inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
 {
-	char* _ps = nullptr;
-	const std::size_t lenX = std::strlen(_srcStr);
+	static std::string _str;
+	const size_t lenMax = std::strlen(_srcStr);
 
-	if (_nGrab > lenX) return nullptr;
+	if (_nGrab > lenMax || _nGrab <= 0) return std::move(_str);
 
-	_ps = new char[_nGrab];
+	_str = std::string(std::strncpy(_str.data(), _srcStr, _nGrab));
 
-	for (std::size_t i = 0; i < _nGrab; i++)
-		_ps[i] = _srcStr[i];
-
-
-	_ps[_nGrab] = 0;
-
-	return _ps;
+	_str[_nGrab] = 0;
+	return std::move(_str);
 }
 
 
-/* get a number of characters from a string starting at a position specified
-   by '_start', then take n characters specified by '_nChars'. The position is
-   zero-based array indexes.
-*/
-inline static const char* snapStr(const char* _srcStr, const int _start, const int _nChars)
+
+inline static std::string&& snapStr(const char* _srcStr, const size_t& _Start, const size_t& _End)
 {
-	char* _snp = nullptr;
-	const unsigned int _ssz = (unsigned int)std::strlen(_srcStr);
-	const unsigned int _nGrab = (_start + _nChars) - 1; 
+	static std::string _snpStr;
 
-	if (_nGrab > _ssz) return nullptr;
+	if (!_srcStr) return std::move(_snpStr);
 
-	_snp = new char[_nGrab];
+	int64_t _xBegin = (int64_t)_Start;
 
-	std::memset(_snp, 0, (std::size_t)_nGrab);
+	if (_xBegin < 0 ) return std::move(_snpStr);
 
-	for (int j = 0, i = _start; j < _nChars; i++, j++)
-		_snp[j] = _srcStr[i];
+	const size_t SrcLen = std::strlen(_srcStr);
 
-	_snp[_nGrab] = 0;
+	if (_Start > SrcLen) return std::move(_snpStr);
+	
+	if (_End > SrcLen) return std::move(_snpStr);
 
-	return _snp;
+	const size_t n_Snap = _Start + _End;
+
+	if (n_Snap > SrcLen) return std::move(_snpStr);
+	
+	_snpStr = std::string(std::strncpy(_snpStr.data(), &_srcStr[_Start], _End));
+
+	return std::move(_snpStr);
 }
 
 
-/* replace number of characters of a string with a character specified by '_tpChr' ,
-   the position in the string is zero-based array indexes. 
-*/
-inline static const char* tapStr(const char* _pStr, const char _tpChr, const int _First, const int _Count)
+inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const size_t& _First, const size_t& _Count)
 {
-	char* _tpStr = nullptr;
-	const unsigned int _lenT = (unsigned int)std::strlen(_pStr);
-	const unsigned int _nTap = (_First + _Count) - 1; 
+	static std::string _tpStr;
 
-	if (_nTap > _lenT) return nullptr;
+	if (!_pStr) return std::move(_tpStr);
 
-	_tpStr = new char[_lenT];
+	const size_t _SrcLen = std::strlen(_pStr);
 
-	std::strncpy(_tpStr, _pStr, (std::size_t)_lenT);
+	if ((int64_t)_First < 0 || _First > _SrcLen) return std::move(_tpStr);
 
-	for (unsigned int j = _First; j <= _nTap; j++)
-		_tpStr[j] = _tpChr;
+	const size_t n_Tap = _First + _Count;
 
-	_tpStr[_lenT] = 0;
+	if (n_Tap > _SrcLen) return std::move(_tpStr);
 
-	return _tpStr;
+	_tpStr.assign(_pStr);
+
+	for (size_t i = _First; i < n_Tap; i++) _tpStr[i] = _tpChr;
+
+
+	return std::move(_tpStr);
 }
 
 
@@ -1447,22 +1456,16 @@ inline static const char* ltrimx(const char* _uStr, const int _Count, const char
 
 
 // take the n number of characters from the right end of the string
-inline static const char* rstr(const char* _sStr, const std::size_t _nChars)
+inline static std::string&& rstr(const char* _sStr, const std::size_t& _nChars)
 {
-	const std::size_t lenR = std::strlen(_sStr) - 1;
-	char* _pss = nullptr;
+	static std::string _rStr;
+	const size_t maxLen = std::strlen(_sStr);
 
-	if (_nChars == 0 || _nChars > lenR) return nullptr;
+	if (_nChars > maxLen || _nChars <= 0) return std::move(_rStr);
 
-	_pss = new char[_nChars];
+	_rStr = std::string(std::strncpy(_rStr.data(), &_sStr[maxLen - _nChars], _nChars) );
 
-	for (std::size_t j = 0; j < _nChars; j++)
-		_pss[j] = _sStr[lenR - j];
-
-	
-	_pss[_nChars] = 0;
-
-	return _pss;
+	return std::move(_rStr);
 }
 
 
@@ -1499,6 +1502,8 @@ inline static const char* rtrim(const char* _string)
 	
 	return _bss;
 }
+
+
 
 
 // bit status information
@@ -1811,8 +1816,6 @@ inline static const char* inttostr(const int64_t& nVal)
 	
 	return _ss;
 }
-
-
 
 
 
