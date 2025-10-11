@@ -133,7 +133,7 @@ constexpr int64_t&& count_bit_set(int64_t&& _x)
 // generates a digit '1' a number of '_reps' times
 #define x1_bit(_ch_ptr, _reps)						\
 {													\
-	repl_char(_ch_ptr, '1', _reps);					\
+	repl_char('1', _reps);							\
 }
 
 
@@ -188,8 +188,8 @@ inline static std::string&& alphaNum2Bin(char&&);
 static std::string&& HxFs_To_Bin(std::string&&);
 
 
-// forward declaration prototype of repl_char() function
-static const char* repl_char(char*&, char&&, const int64_t&);
+// multiple the number of a given character with a definite count
+static std::string&& repl_char(char&&, const size_t&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 static int64_t&& _Get_Num_of_Bits(int64_t&&);
@@ -395,7 +395,6 @@ constexpr uint64_t&& BIT_TOKEN(int64_t&& nBits)
 }
 
 
-
 /* a data structure for storing every byte portion of an integer value.
    A little-endian order is being assumed, so the first two elements of _eax
    represent the MSB of a 32-bit integer. */
@@ -525,11 +524,11 @@ inline static std::string&& tapStr(const char*, const char&, const size_t&, cons
 
 /* supersede part of a string with a specified substring at a specified position in the target string.
    Zero-based index array accesses is assumed */
-inline static const char* tapStrBy(const char*, const char*, const int);
+inline static std::string&& tapStrBy(const char*, const char*, const int&);
 
 /* pad the right end of a string with number of unique characters specified by '_padC'.
    the '_Count' argument is based on zero index array accesses. */
-inline static const char* rtrimx(const char*, const int, const char);
+inline static std::string&& rtrimx(const char*, const size_t&, const char&);
 
 // removes extra spaces before and after the specified letter words
 inline static const char* LRTrim(const char*);
@@ -568,34 +567,32 @@ inline static const char* rtrim(const char*);
 
 inline static const char* reverse_str(const char*);
 
-// replicate the given char 'aChar' a number of '_repSize' times and stored it to the memory pointed to by '_dest'
-inline static const char* repl_char(char*&, char&&, const int64_t&);
 
-
-
-inline static const char* repl_char(char*& _dest, char&& aChar, const int64_t& _repSize)
+inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 {
-	if (!_repSize|| _repSize < 0 ) return nullptr;
+	static std::string _repStr = "\0";
 
-	if (_dest == nullptr) _dest = new char[_repSize];
-	char* _tmp = _dest;
+	if (!_Count || (int64_t)_Count < 0) return std::move(_repStr);
 
-	for (int64_t i = 0; i < _repSize; i++)
-		*_tmp++ = aChar;
+	char* _repC = new char[_Count];
+
+	for (size_t i = 0; i < _Count; i++) _repC[i] = char(_aChar);
+
+	
+	_repC[_Count] = 0;
+
+	_repStr = _repStr.assign(_repC);
 
 
-	*_tmp++ = 0;
-	NULLP(_tmp);
-
-	return _dest;
+	NULLP(_repC);
+	return std::move(_repStr);
 }
-
 
 
 static inline std::string&& zero_bits(const int64_t& n_Bits)
 {
 	char* _Ch = new char[n_Bits];
-	static std::string _ci = repl_char(_Ch, '0', n_Bits);
+	static std::string _ci = repl_char('0', n_Bits);
 
 	return std::move(_ci);
 }
@@ -1389,50 +1386,46 @@ inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const 
 }
 
 
-static inline const char* tapStrBy(const char* _aStr, const char* _aSubstitute, const int _startPos)
+static inline std::string&& tapStrBy(const char* _aStr, const char* _aSubstitute, const int& _startPos)
 {
+	static std::string _tappedStr;
+	static std::string::iterator _Start, _End;
 	const std::size_t _maxSz = std::strlen(_aStr),  _Len = std::strlen(_aSubstitute);
-
-	char* _begin = (char*)_aStr, *_end = (char*)((_aStr + _maxSz) - 1);
 	
-	char* _bckup = _begin;
 
-	_bckup += (_startPos + 1);
+	if (!_maxSz || !_Len) return std::move(_tappedStr);
 
-	if (_bckup > _end)
-		_bckup = _begin;
+	_tappedStr.clear();
+	_tappedStr = std::string(std::strncpy(_tappedStr.data(), _aStr, _maxSz));
 
-	std::strncpy(_bckup, _aSubstitute, _Len);
-	*(_end + 1) = 0;
+	_Start = _tappedStr.begin() + _startPos;
+	_End = _tappedStr.begin() + _startPos + _Len;
 
-	NULL2P(_begin, _end);
-	NULLP(_bckup);
-
-	return _aStr;
+	_tappedStr = std::string( _tappedStr.replace(_Start, _End, _aSubstitute) );
+	
+	return std::move(_tappedStr);
 }
 
-/* pad the right end of a string with number of unique characters specified by '_padC'.
-   the '_Count' argument is based on zero index array accesses. */
-inline static const char* rtrimx(const char* _ssStr, const int _Count, const char _padC = ' ')
+
+inline static std::string&& rtrimx(const char* _ssStr, const size_t& _Count, const char& _padC = ' ')
 {
-	char* _rtms = nullptr;
-	const unsigned int _ssLen = (unsigned int)std::strlen(_ssStr);
-	const unsigned int _rStart = _ssLen - 1;
-	int _nPads = (int)(_ssLen - _Count); 
+	static std::string _rtms;
+	char* _Start = nullptr;
 
-	if ((unsigned int)_Count > _ssLen) return nullptr;
+	if (!_ssStr || (int64_t)_Count <= 0) return std::move(_rtms);
 
-	_rtms = new char[_ssLen];
+	const size_t _ssLen = std::strlen(_ssStr);
+	const size_t _nPads = _ssLen - _Count;
+	std::string _padStr = repl_char(char(_padC), _Count);
 
-	std::strncpy(_rtms, _ssStr, (std::size_t)_ssLen);
+	_rtms = std::string(std::strncpy(_rtms.data(), _ssStr, _ssLen));
 
-	for (int r = _rStart; r >= _nPads; r--)
-		_rtms[r] = _padC;
+	_Start = &_rtms[_nPads];
+
+	_Start = std::strncpy(_Start, _padStr.c_str(), _Count);
 
 
-	_rtms[_ssLen] = 0;
-
-	return _rtms;
+	return std::move(_rtms);
 }
 
 
@@ -1816,6 +1809,8 @@ inline static const char* inttostr(const int64_t& nVal)
 	
 	return _ss;
 }
+
+
 
 
 
