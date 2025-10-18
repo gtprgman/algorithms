@@ -20,10 +20,12 @@ enum class INT_HEX : std::int8_t
 };
 
 
+
 // a list of constants in hexa digit { A .. F }
 constexpr std::initializer_list<const int64_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
 												   		(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
 													 };
+
 
 
 // a character selector for any constant in hexa digit { A .. F }
@@ -48,6 +50,7 @@ static inline char&& HEX_CHR(int64_t&& _i64)
 	}
 	return std::move(_cfx);
 }
+
 
 
 // an integer selector for any constant in hexa digit { A .. F }
@@ -124,6 +127,7 @@ constexpr int64_t&& count_bit_set(int64_t&& _x)
 
 	return int64_t(_rcx);
 }
+
 
 
 // generates a digit '1' a number of '_reps' times
@@ -319,6 +323,7 @@ constexpr int64_t&& set_low_bit(int64_t&& _Max)
 }
 
 
+
 /* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
    The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
    Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
@@ -375,6 +380,7 @@ static inline int64_t&& get_n_of_msb(int64_t&& _Vx, int64_t&& N_Bits)
 }
 
 
+
 // returns a specific named token which evaluates to a max. number of bits.
 constexpr uint64_t&& BIT_TOKEN(int64_t&& nBits)
 {
@@ -387,6 +393,7 @@ constexpr uint64_t&& BIT_TOKEN(int64_t&& nBits)
 
 	return MAX_BIT;
 }
+
 
 
 /* a data structure for storing every byte portion of an integer value.
@@ -482,6 +489,7 @@ inline static const bool* bits_from_str(const std::string& _cBits)
 }
 
 
+
 // uppercase the specified char
 constexpr char&& upCase(int&&);
 
@@ -495,7 +503,7 @@ static int&& strPos(const char*, const char*);
 static int&& strNPos(const char*, const int);
 
 // scan a substring within the target string and return the found substring in the target string.
-inline static const char* scanStr(const char*, const char*);
+inline static std::string&& scanStr(const char*, const char*);
 
 inline static const char* concat_str(char* , const char*);
 
@@ -704,31 +712,7 @@ struct To_HexF {
 	static inline std::string&& eval(val_type&& val_i64)
 	{
 		_hxs.assign( hex_str(val_type(val_i64) ) );
-		char _chx = '0';
-		int iHex = 0;
-		const size_t _hxSize = _hxs.size();
-		std::string _tmpHxS;
-		char* _phx = nullptr;
-
-		for (size_t i = 0; i < _hxSize; i++)
-		{
-			for (int8_t _zi = 10; _zi <= 15; _zi++) 
-			{
-				iHex = strPos(_hxs.data(), inttostr(_zi).c_str());
-				_chx = HEX_CHR(int64_t(iHex));
-
-				if (_chx != '0')
-				{
-					_phx = (char*)lstr(_hxs.data(), ++iHex).c_str();
-
-					
-					
-				}
-			}
-
-		}
 		
-
 		return std::move(_hxs);
 	}
 
@@ -756,7 +740,8 @@ private:
 
 		for (const val_type& _ix : _x16c)
 		{
-			_hxf = concat_str((char*)_hxf.data(), inttostr(_ix).data());
+			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(val_type(_ix)) == '0')? inttostr(_ix).c_str() : 
+													new char[2] {HEX_CHR(val_type(_ix)), '\0'} );
 		}
 
 		vectorClean(_x16c);
@@ -839,6 +824,7 @@ static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_
 
 	return rbx;
 }
+
 
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
@@ -1086,6 +1072,7 @@ constexpr int64_t&& MergeBits(int64_t&& _Hi, int64_t&& _Lo)
 	return int64_t(_Bits);
 }
 
+
 /* extract the composing bit factors out of an integer '_v'.
 */
 static inline int64_t&& extract_Ints(int64_t& _v)
@@ -1109,6 +1096,7 @@ static inline int64_t&& extract_Ints(int64_t& _v)
 	
 	return int64_t(_d1);
 }
+
 
 
 // fixed point numeric type
@@ -1170,12 +1158,14 @@ inline static const bool is_alpha_num(const char& _chx)
 }
 
 
+
 inline static const int chartoint(const char& _ch)
 {
 	if (is_alpha_num(_ch))
 		return _ch ^ 48;
 	else return -1;
 }
+
 
 
 inline static std::string&& alphaNum2Bin(char&& _hxc)
@@ -1187,6 +1177,7 @@ inline static std::string&& alphaNum2Bin(char&& _hxc)
 		
 	return std::move(_hxfs);
 }
+
 
 
 constexpr char&& upCase(int&& _c)
@@ -1239,6 +1230,7 @@ static inline int&& strPos(const char* _aStr, const char* _cStr)
 }
 
 
+
 static inline int&& strNPos(const char* _StSrc, const int _chr)
 {
 	static int _iPos = 0;
@@ -1257,23 +1249,26 @@ static inline int&& strNPos(const char* _StSrc, const int _chr)
 }
 
 
-inline static const char* scanStr(const char* _Str0, const char* _searchStr)
+
+inline static std::string&& scanStr(const char* _Str0, const char* _searchStr)
 {
-	const std::size_t _lenZ = std::strlen(_Str0), _lenX = std::strlen(_searchStr);
-	
-	if (!_lenX || !_lenZ) return nullptr;
-	if (_lenX > _lenZ) return nullptr;
+	static std::string _SF = "\0";
+	const size_t _SrcLen = std::strlen(_Str0), _SearchLen = std::strlen(_searchStr);
 
-	char* _SF = nullptr;
+	if (!_Str0 || !_searchStr) return std::move(_SF);
+	if (!_SrcLen || !_SearchLen) return std::move(_SF);
+	if (_SearchLen > _SrcLen) return std::move(_SF);
 
-	for (std::size_t fi = 0; fi < _lenZ; fi++)
+	for (size_t _i = 0; _i < _SrcLen; _i++)
 	{
-		if (std::strncmp(&_Str0[fi], _searchStr, _lenX)) continue;
-		_SF = (char*)&_Str0[fi];
-		break;
+		if (std::strncmp(&_Str0[_i], _searchStr, _SearchLen)) continue;
+		else
+		{
+			_SF = std::string(std::strncpy(_SF.data(), &_Str0[_i], _SearchLen));
+			break;
+		}
 	}
-
-	return _SF;
+	return std::move(_SF);
 }
 
 
@@ -1474,8 +1469,10 @@ inline static std::string&& LRTrim(const char* _Sstr)
 
 
 	_LRTrmStr.assign(_tmpStr);
+
 	return std::move(_LRTrmStr);
 }
+
 
 
 
@@ -1792,6 +1789,7 @@ inline static std::string&& inttostr(const int64_t& nVal)
 	
 	return std::move(_ss);
 }
+
 
 
 
