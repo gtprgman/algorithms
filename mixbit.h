@@ -588,6 +588,8 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 }
 
 
+
+
 static inline std::string&& zero_bits(const int64_t& n_Bits)
 {
 	static std::string _ci = repl_char('0', n_Bits);
@@ -760,25 +762,34 @@ std::vector<_Ty> To_HexF<T, _v, _Ty>::_x16c = {};
 
 static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
-	int _xBin = 0;
-	std::string _bitx = "\0";
-	static std::string _hxsBin = "\0";
+	int _xc = 0;
+	size_t _hxSz = 0;
+	std::vector<std::string> _vcBin;
+	static std::string _hxsBin;
 
-	for (const auto& _xc : _xhFs)
+	_hxsBin = "\0";
+
+	for (std::string::iterator _xItr = _xhFs.begin(); _xItr != _xhFs.end(); _xItr++)
 	{
-		_xBin = HEX_INT(char(_xc) );
+		_xc = HEX_INT(char(*_xItr));
 
-		if (_xBin) {
-			_bitx = bit_str(_xBin);
-			_hxsBin = concat_str((char*)_hxsBin.data(), _bitx.data());
-		}
-		else
-			_hxsBin = concat_str((char*)_hxsBin.data(), alphaNum2Bin(char(_xc)).data());
+		if (_xc) _vcBin.push_back(bit_str(_xc));
+		else _vcBin.push_back(alphaNum2Bin(char(*_xItr)));
 
-		_xBin = 0; _bitx.clear();
+		_xc = 0;
 	}
+	
+	for (const auto& _xb : _vcBin) {
+		_hxSz = _xb.size();
+
+		_hxsBin = concat_str(_hxsBin.data(), (_hxSz == 4)? _xb.c_str() :
+								concat_str(zero_bits(1).data(), _xb.c_str()));
+	}
+
+	vectorClean(_vcBin);
 	return std::move(_hxsBin);
 }
+
 
 
 static inline int64_t&& _Get_Num_of_Bits(int64_t&& _ax)
@@ -790,15 +801,15 @@ static inline int64_t&& _Get_Num_of_Bits(int64_t&& _ax)
 
 static inline std::string&& _Get_Binary_Str(int64_t&& _Dx)
 {
-	const char* _s0 = zero_bits(1).data();
+	const size_t HXZ = 4;
 	const std::size_t _LenDX = to_binary<int64_t>::eval(_Dx).size();
-	static std::string _bitStr = "\0";
+	static std::string _StrBin = "\0";
 
-	_bitStr = concat_str((char*)_bitStr.data(), (_LenDX >= 4) ? to_binary<int64_t>::eval(_Dx).data() :
-				concat_str((char*)_s0, to_binary<int64_t>::eval(_Dx).data()) );
+	_StrBin = concat_str((char*)_StrBin.data(), (_LenDX >= 4)? to_binary<int64_t>::eval(_Dx).data() :
+				concat_str(zero_bits(HXZ - _LenDX).data(), to_binary<int64_t>::eval(_Dx).data()));
 				
 
-	return std::move(_bitStr);
+	return std::move(_StrBin);
 }
 
 
@@ -963,6 +974,7 @@ static inline const int read_cni_bit(const std::string& _File, std::vector<int64
 }
 
 
+
 static inline uint64_t&& proper_bits(int64_t&& _n)
 {
 	const int64_t _nBits = num_of_bits<int64_t>::eval(_n);
@@ -1008,7 +1020,6 @@ inline static void parseInt(int64_t&& _rdx, std::vector<int64_t>& _Ints)
 		_Ints.push_back(_rbx);
 	}
 }
-
 
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
@@ -1063,6 +1074,7 @@ inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_
 }
 
 
+
 constexpr int64_t&& MergeBits(int64_t&& _Hi, int64_t&& _Lo)
 {
 	int64_t _Bits = 0b0;
@@ -1071,6 +1083,7 @@ constexpr int64_t&& MergeBits(int64_t&& _Hi, int64_t&& _Lo)
 
 	return int64_t(_Bits);
 }
+
 
 
 /* extract the composing bit factors out of an integer '_v'.
@@ -1132,6 +1145,8 @@ private:
 };
 
 
+
+
 inline static char&& to_char(const int& _c)
 {
 	static char _ch = 0;
@@ -1149,6 +1164,7 @@ inline static char&& to_char(const int& _c)
 
 	return std::move(_ch);
 }
+
 
 
 inline static const bool is_alpha_num(const char& _chx)
@@ -1171,9 +1187,10 @@ inline static const int chartoint(const char& _ch)
 inline static std::string&& alphaNum2Bin(char&& _hxc)
 {
 	int _x = chartoint(_hxc);
-	static std::string _hxfs = "\0";
-
-	_hxfs = (_x > 0)? bit_str(_x) : inttostr(0);
+	static std::string _hxfs ;
+	
+	_hxfs = "\0";
+	_hxfs = std::string( (_x > 0)? bit_str(_x) : inttostr(0) );
 		
 	return std::move(_hxfs);
 }
