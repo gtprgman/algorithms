@@ -198,7 +198,8 @@ static int64_t&& _Get_Num_of_Bits(int64_t&&);
 static std::string&& _Get_Binary_Str(int64_t&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
-static int64_t&& _Int_from_Bit_Str(std::string&&);
+template <class _T = int>
+static _T&& _Int_from_Bit_Str(std::string&&);
 
 // Invoker macro for extract_Ints
 static inline int64_t&& Ints_Of(int64_t& _ebx)
@@ -813,10 +814,10 @@ static inline std::string&& _Get_Binary_Str(int64_t&& _Dx)
 }
 
 
-
-static inline int64_t&& _Int_from_Bit_Str(std::string&& Bit_Str)
+template <class _T >
+static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
 {
-	return bin_to_dec<int64_t>::eval(Bit_Str.data());
+	return bin_to_dec<_T>::eval(Bit_Str.data());
 }
 
 
@@ -939,26 +940,70 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 
 static inline const size_t save_cni_bit(const std::string& _File, const int64_t& v_bit)
 {
-	// the implementation still undergoing trial & error processes..
-	std::string _hxBit = "\0";
-	std::string _hxfc = To_HexF<int>::eval(int64_t(v_bit));
 	
-	_hxBit = HxFs_To_Bin(_hxfc.data());
+	std::FILE* _fs = std::fopen(_File.c_str(), "wb");
 
-	PRINT(_hxfc);
-	PRINT(_hxBit);
+	if (!_fs) {
+		std::cerr << "\n Can't open file with the specified name. \n";
+		return 0;
+	}
+	
 
-	_hxfc.clear();
-	_hxBit.clear();
+	std::string::iterator _xIt;
+	std::string _tmpS = "\0";
+	std::string _hexF = To_HexF<int64_t>::eval(int64_t(v_bit));
+	std::string _BitStr = HxFs_To_Bin(_hexF.c_str());
+	char* _pStr = nullptr;
 
-	return 0;
+	const size_t _BitSize = _BitStr.size();
+	const size_t _totBytes = (size_t)(_BitSize / 8 );
+	const size_t _totBits = _totBytes * 8;
+	const size_t _BitDifft = (_totBits < _BitSize)? _BitSize - _totBits : _totBits - _BitSize;
+	size_t _bytesWritten = 0;
+
+	int _xRec = 0;
+
+	_xIt = _BitStr.begin();
+	_pStr = (char*)_xIt._Ptr;
+
+	for (size_t z = 0; z < _totBytes; z++)
+	{
+		_tmpS = scanStr(_pStr, lstr(_pStr, 8).c_str());
+
+		if (!_tmpS.empty())
+		{
+			_xRec = int_bit(_tmpS.c_str());
+			if (_xRec) std::fputc(_xRec, _fs);
+			_xRec = 0; _bytesWritten += 8;
+		}
+
+		_xIt += 8;
+		_pStr = (char*)_xIt._Ptr;
+		_tmpS = "\0";
+	}
+
+	if (_BitDifft > 0)
+	{
+		_tmpS = rstr(_BitStr.c_str(), _BitDifft);
+		_xRec = int_bit(_tmpS.c_str());
+		if (_xRec) std::fputc(_xRec, _fs); _bytesWritten += _BitDifft;
+	}
+
+	_hexF.clear();
+	_BitStr.clear();
+
+	NULLP(_pStr);
+
+	if (_fs) std::fclose(_fs);
+
+	return _bytesWritten;
 }
 
 
 static inline const int read_cni_bit(const std::string& _File, std::vector<int64_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
-	std::FILE* _FBit = std::fopen(_File.data(), "rb");
+	std::FILE* _FBit = std::fopen(_File.c_str(), "rb");
 
 	if (!_FBit) return 0;
 
@@ -1020,6 +1065,7 @@ inline static void parseInt(int64_t&& _rdx, std::vector<int64_t>& _Ints)
 		_Ints.push_back(_rbx);
 	}
 }
+
 
 inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
 {
@@ -1806,7 +1852,6 @@ inline static std::string&& inttostr(const int64_t& nVal)
 	
 	return std::move(_ss);
 }
-
 
 
 
