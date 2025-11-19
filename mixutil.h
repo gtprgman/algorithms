@@ -867,7 +867,7 @@ namespace mix {
 		template <>
 		struct NLess<char>
 		{
-			const bool operator()(const char _1st, const char _2nd)
+			const bool operator()(const char& _1st, const char& _2nd)
 			{
 				return (_1st < _2nd);
 			}
@@ -877,7 +877,7 @@ namespace mix {
 		template <>
 		struct NGreat<char>
 		{
-			const bool operator()(const char _1st, const char _2nd)
+			const bool operator()(const char& _1st, const char& _2nd)
 			{
 				return (_1st > _2nd);
 			}
@@ -1059,6 +1059,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
