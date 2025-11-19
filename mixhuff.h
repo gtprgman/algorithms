@@ -101,7 +101,7 @@ private:
 	static inline void schema_Iter(const std::vector<node>&, const double);
 
 	// directly create a huffman encoding table from the std::vector<node> without actually prebuilt the tree
-	static inline const bool create_encoding(const int64_t&, const int64_t&, int64_t&, const std::vector<node>&);
+	static inline const bool create_encoding(const size_t&, const size_t&, int64_t&, const std::vector<node>&);
 
 	static std::vector<BPAIR> _vPair;
 };
@@ -186,13 +186,16 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 
 	node::node(const node& rNod) {
 		if (this == &rNod) return;
-		*this = rNod;
+		this->_data = rNod._data;
+		this->_fdata = rNod._fdata;
 	}
 
 
 	node::node(node&& rvNod) {
 		if (this == &rvNod) return;
-		*this = std::move(rvNod);
+		this->_data = rvNod._data;
+		this->_fdata = rvNod._fdata;
+		rvNod.~node();
 	};
 
 
@@ -259,7 +262,7 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 	node&& node::Release() const {
-		return node(*this);
+		return node(std::move(*this));
 	}
 
 
