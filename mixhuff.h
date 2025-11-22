@@ -26,8 +26,8 @@ constexpr int ROOT = -1;
 
 struct node {
 	node();
-	node(int64_t&&);
-	node(char&&, int64_t&&); // for data & frequency
+	node(unsigned char&&); // data only
+	node(unsigned char&&, int64_t&&); // for data & frequency
 
 	node(const node&); // overloaded copy
 	node(node&&);	// move
@@ -36,11 +36,11 @@ struct node {
 	node&& operator= (node&&) noexcept;
 	~node();
 
-	void setData(int64_t&&);
+	void setData(unsigned char&&);
 	void setFrequencyData(int64_t&&);
 	
-	const int64_t& Value() const;
-	const char& dataValue() const;
+	const int& Value() const;
+	const unsigned char& dataValue() const;
 	const int64_t& FrequencyData() const;
 	const int64_t& Count() const;
 	const int64_t& Code() const;
@@ -55,7 +55,7 @@ struct node {
 	
 private:
 	int64_t _fdata;
-	char _data;
+	unsigned char _data;
 	
 };
 
@@ -172,13 +172,13 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 
-	node::node(int64_t&& _Val): _data((int)_Val), _fdata(0)
+	node::node(unsigned char&& _Val): _data(_Val), _fdata(0)
 	{
 		
 	}
 
 	
-	node::node(char&& _c, int64_t&& _fv) : _data(_c), _fdata(_fv)
+	node::node(unsigned char&& _c, int64_t&& _fv) : _data(_c), _fdata(_fv)
 	{
 		
 	}
@@ -226,12 +226,13 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 
 
 	node::~node() {
-		
+		this->_data = 0;
+		this->_fdata = 0;
 	}
 
 
-	void node::setData(int64_t&& uc) {
-		this->_data = (int)uc;
+	void node::setData(unsigned char&& uc) {
+		this->_data = uc;
 	}
 
 
@@ -241,13 +242,13 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 
 
 	// Get Accessor Methods..
-	const int64_t& node::Value() const {
+	const int& node::Value() const {
 		return this->_data;
 	}
 
 
-	const char& node::dataValue() const {
-		return (int)this->_data;
+	const unsigned char& node::dataValue() const {
+		return this->_data;
 	}
 
 
@@ -262,7 +263,7 @@ inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>
 	}
 
 	node&& node::Release() const {
-		return node(std::move(*this));
+		return node(*this);
 	}
 
 
@@ -282,6 +283,5 @@ inline void _TREE::plot_tree(const std::vector<node>& _fpNods, const double& _co
 {
 	schema_Iter(_fpNods, _compRate);
 }
-
 
 
