@@ -220,10 +220,10 @@ static void cni_enforce_unique(std::vector<_Canonical>&);
 static const std::string cni_bits_pack(const std::vector<int64_t>&);
 
 // saves a packed canonical bit to a one specified file
-static const size_t save_cni_bit(const std::string&, const int64_t&);
+static const size_t save_cni_bit(std::FILE*&, const int64_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
-static const int read_cni_bit(const std::string&, std::vector<int64_t>&);
+static const int read_cni_bit(std::FILE*&, std::vector<int64_t>&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -938,13 +938,10 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 }
 
 
-static inline const size_t save_cni_bit(const std::string& _File, const int64_t& v_bit)
+static inline const size_t save_cni_bit(std::FILE*& _fHandle, const int64_t& v_bit)
 {
-	
-	std::FILE* _fs = std::fopen(_File.c_str(), "wb");
-
-	if (!_fs) {
-		std::cerr << "\n Can't open file with the specified name. \n";
+	if (!_fHandle) {
+		std::cerr << "\n Can't open file with the specified I/O handle. \n";
 		return 0;
 	}
 	
@@ -973,7 +970,7 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 		if (!_tmpS.empty())
 		{
 			_xRec = int_bit(_tmpS.c_str());
-			if (_xRec) std::fputc(_xRec, _fs);
+			if (_xRec) std::fputc(_xRec, _fHandle);
 			_xRec = 0; _bytesWritten += 8;
 		}
 
@@ -986,7 +983,7 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 	{
 		_tmpS = rstr(_BitStr.c_str(), _BitDifft);
 		_xRec = int_bit(_tmpS.c_str());
-		if (_xRec) std::fputc(_xRec, _fs); _bytesWritten += _BitDifft;
+		if (_xRec) std::fputc(_xRec, _fHandle); _bytesWritten += _BitDifft;
 	}
 
 	_hexF.clear();
@@ -994,27 +991,23 @@ static inline const size_t save_cni_bit(const std::string& _File, const int64_t&
 
 	NULLP(_pStr);
 
-	if (_fs) std::fclose(_fs);
-
 	return _bytesWritten;
 }
 
 
-static inline const int read_cni_bit(const std::string& _File, std::vector<int64_t>& Int_Bit)
+static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<int64_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
-	std::FILE* _FBit = std::fopen(_File.c_str(), "rb");
 
-	if (!_FBit) return 0;
+	if (!_fHandle) return 0;
 
-	while ((read_bit = std::fgetc(_FBit)) > -1 )
+	while ((read_bit = std::fgetc(_fHandle)) > -1 )
 	{
 		Int_Bit.push_back(read_bit);
 		++read_size;
 	}
 
-	if (_FBit) std::fclose(_FBit);
-
+	
 	return read_size;
 }
 
@@ -1570,20 +1563,20 @@ struct bitInfo
 // a data structure of a Pair of Bit and Byte
 struct BPAIR
 {
-	BPAIR() :_data('0'), _val(0), bit_len(0) {};
-	BPAIR(const char _a) : _data(_a), _val(0), bit_len(0) {};
+	BPAIR() :_data(0), _val(0), bit_len(0) {};
+	BPAIR(const unsigned char& _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(const int64_t _v) : _val(_v), _data('0'), bit_len(_Get_Num_of_Bits(int64_t(_v)))
+	BPAIR(int64_t&& _v) : _val(_v), _data(0), bit_len(_Get_Num_of_Bits(int64_t(_v)))
 	{
 	
 	};
 
-	BPAIR(const char _a, const int64_t _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
+	BPAIR(const unsigned char& _a, const int64_t& _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
 	{
 	
 	};
 
-	BPAIR(const int64_t _v, const char _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
+	BPAIR(const int64_t& _v, const unsigned char& _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
 	{
 		
 	};
@@ -1593,13 +1586,22 @@ struct BPAIR
 	BPAIR(BPAIR&& _mvBpa)
 	{
 		if (this == &_mvBpa) return;
-		*this = std::move(_mvBpa);
+		this->_data = _mvBpa._data;
+		this->_val = _mvBpa._val;
+		this->bit_len = _mvBpa.bit_len;
+
+		_mvBpa._data = 0;
+		_mvBpa._val = 0;
+		_mvBpa.bit_len = 0;
+
 	}
 
 	BPAIR(const BPAIR& _rBpa)
 	{
 		if (this == &_rBpa) return;
-		*this = _rBpa;
+		this->_data = _rBpa._data;
+		this->_val = _rBpa._val;
+		this->bit_len = _rBpa.bit_len;
 	}
 
 	const BPAIR& operator= (const BPAIR& _bpa)
@@ -1619,12 +1621,14 @@ struct BPAIR
 		this->_val = _rvBpa._val;
 		this->bit_len = _Get_Num_of_Bits(int64_t(_rvBpa._val) );
 
-		_rvBpa.~BPAIR();
+		_rvBpa._data = 0;
+		_rvBpa._val = 0;
+		_rvBpa.bit_len = 0;
 
 		return std::move(*this);
 	}
 
-	operator char() const {
+	operator unsigned char() const {
 		return this->_data;
 	}
 
@@ -1633,7 +1637,7 @@ struct BPAIR
 		return this->_val;
 	}
 
-	char _data; // byte
+	unsigned char _data; // byte
 	int64_t _val /* bit */, bit_len;
 };
 
@@ -1851,8 +1855,5 @@ inline static std::string&& inttostr(const int64_t& nVal)
 	
 	return std::move(_ss);
 }
-
-
-
 
 
