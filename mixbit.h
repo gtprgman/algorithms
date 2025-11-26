@@ -170,7 +170,7 @@ constexpr int64_t&& set_low_bit(int64_t&&);
 constexpr int64_t&& range_bit_set(int64_t&&, int64_t&&);
 
 // generates bit '0' a number of n_Bits
-static std::string&& zero_bits(const int64_t&);
+static std::string&& zero_bits(const size_t&);
 
 // returns a char representation of an ascii integer
 inline static char&& to_char(const int&);
@@ -591,10 +591,13 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 
 
 
-static inline std::string&& zero_bits(const int64_t& n_Bits)
+static inline std::string&& zero_bits(const size_t& n_Bits)
 {
-	static std::string _ci = repl_char('0', n_Bits);
+	size_t xZeros = n_Bits;
+	static std::string _ci = " ";
 
+	if (!xZeros) xZeros = 1; // minimum number of '0' should at least 1
+	_ci = repl_char('0', xZeros);
 	return std::move(_ci);
 }
 
@@ -841,7 +844,6 @@ static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
 {
-	std::string _si;
 	int64_t _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
 	const std::size_t _codeSize = _Codes.size();
 	
@@ -849,7 +851,7 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 
 	_len1 = _Canon._bitLen;
 
-	_si = zero_bits(_len1);
+	std::string&& _si = zero_bits(_len1);
 	_bi = strtoint(_si.data());
 	_Canon._codeWord = _bi;
 
