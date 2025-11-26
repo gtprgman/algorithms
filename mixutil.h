@@ -24,7 +24,7 @@ be implemented in the any time of the future.
 			include any functional headers here..
 		*/
 
-using Bit = unsigned char;
+using UC = unsigned char;
 using UINT = unsigned int;
 using ULONG = unsigned long;
 using LongRange = long long;
@@ -1059,6 +1059,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
