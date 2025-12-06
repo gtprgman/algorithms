@@ -102,8 +102,8 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 
 
 
-inline void _TREE::create_encoding(const int64_t& _From, 
-								   const int64_t& _To,
+inline void _TREE::create_encoding(const size_t& _From, 
+								   const size_t& _To,
 								   int64_t& _bt,
 								   const std::vector<node>& _Vn)
 {
