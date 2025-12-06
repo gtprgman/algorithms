@@ -895,28 +895,14 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 
 static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 {
-	int64_t cw = cniDat[0]._codeWord, dw = 0, n_diff = 0;
+	intmax_t _cw = 0;
 	const size_t cnSize = cniDat.size();
 
-	for (size_t j = 1; j < cnSize; j++)
+	for (size_t _ci = 0; _ci < cnSize; _ci++)
 	{
-		dw = cniDat[j]._codeWord;
-
-		if (cw == dw)
-		{
-			cniDat[j]._codeWord = cniDat[j - 1]._codeWord + 1;
-		}
-		else if (dw > cw)
-		{
-			n_diff = dw - cw;
-			cniDat[j]._codeWord = dw - (n_diff / 2);
-		}
-		else if (dw < cw)
-		{
-			n_diff = cw - dw;
-			cniDat[j]._codeWord = dw + (n_diff / 2);
-		}
-		cw = cniDat[j]._codeWord;
+		_cw = cniDat[_ci]._codeWord;
+		_cw += _ci;
+		cniDat[_ci]._codeWord = _cw;
 	}
 }
 
