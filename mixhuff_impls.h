@@ -107,10 +107,13 @@ inline void _TREE::create_encoding(const int64_t& _From,
 								   int64_t& _bt,
 								   const std::vector<node>& _Vn)
 {
-	node _e = '0';
+	node _e = '0'; bool _bEncodeable = false;
 	int64_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
 	static int64_t _fq = 100;
 	std::vector<BPAIR>::iterator _iGet;
+	const size_t _LowerBound = _From, _UpperBound = _To;
+
+	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
 
 	// Processing the Encoding from vector data
 	for (int64_t i = _From; i < _To; i++)
@@ -141,7 +144,7 @@ inline void _TREE::create_encoding(const int64_t& _From,
 		
 		_bt |=_Dir;
 
-	filterPhase:
+	filterPhase:// "enforce unique mechanism" layer 1
 
 		_sameVal = _bt;
 		_prevX = _sameVal;
@@ -159,8 +162,10 @@ inline void _TREE::create_encoding(const int64_t& _From,
 		_vPair.push_back(BPAIR{ _e.dataValue(), _prevX });
 		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
+		_bEncodeable = true;
 	}
 	_fq = 0;
+	return _bEncodeable;
 }
 
 
@@ -168,22 +173,24 @@ inline void _TREE::create_encoding(const int64_t& _From,
 
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _cmpRate = 0)
 {
-	const int64_t _TreeSizes = (int64_t)_fpNods.size();
+	const size_t _TreeSizes = _fpNods.size();
 
-	const double _CompRate = (_cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-										std::floor(COMP_RATE*_TreeSizes);
+	const double _CompRate = (_TreeSizes > 5 && _cmpRate)? std::floor(_cmpRate*_TreeSizes) :
+							(_TreeSizes > 5)? std::floor(COMP_RATE*_TreeSizes) : 0;
 
-	const double _fCompRate = std::ceil((double)_TreeSizes / _CompRate);
-	int64_t _DivSize = (int64_t)_fCompRate;
+	const double _fCompRate = (_CompRate)? std::ceil((double)_TreeSizes / _CompRate) : 0;
+	size_t _DivSize = (_fCompRate)? (size_t)_fCompRate : 1;
 	int64_t _msk = 0, _BT = 2, _Dir = L;
-	
+	bool _bSucceed = false;
 
-	if (!_vPair.empty()) _vPair.clear();
+	//Clean();
 
-	for (int64_t t = 0; t < _TreeSizes; t += _DivSize)
+	for (size_t t = 0; t <= _TreeSizes; t += _DivSize)
 	{
-		if ( (_TreeSizes - t) < _DivSize ) _DivSize = 1;
-		create_encoding(t, (t + _DivSize), _msk, _fpNods);
+		if ( (_TreeSizes - t) <= _DivSize ) _DivSize = 1;
+		_bSucceed = create_encoding(t, (( t + _DivSize) >= _TreeSizes)? (t + _TreeSizes) : (t + _DivSize), _msk, _fpNods);
+
+		if (!_bSucceed) break;
 
 		_msk ^= _BT--;
 
@@ -197,7 +204,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	}
 
 	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
-	_TREE::enforce_unique(_vPair); 
+	_TREE::enforce_unique(_vPair);
 }
 
 
