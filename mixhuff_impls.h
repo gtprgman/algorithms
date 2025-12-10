@@ -175,23 +175,21 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 {
 	const size_t _TreeSizes = _fpNods.size();
 
-	const double _CompRate = (_TreeSizes > 5 && _cmpRate)? std::floor(_cmpRate*_TreeSizes) :
-							(_TreeSizes > 5)? std::floor(COMP_RATE*_TreeSizes) : 0;
+	const double _CompRate = (_TreeSizes > 5 && _cmpRate)? std::floor(_cmpRate * _TreeSizes) : _TreeSizes;
 
 	const double _fCompRate = (_CompRate)? std::ceil((double)_TreeSizes / _CompRate) : 0;
-	size_t _DivSize = (_fCompRate)? (size_t)_fCompRate : 1;
+	const size_t _DivSize = (_fCompRate)? (size_t)_fCompRate : 1;
+	size_t _divSize = _DivSize;
 	int64_t _msk = 0, _BT = 2, _Dir = L;
 	bool _bSucceed = false;
 
-	//Clean();
-
-	for (size_t t = 0; t <= _TreeSizes; t += _DivSize)
+	for (size_t t = 0; t < _TreeSizes; t += _DivSize)
 	{
-		if ( (_TreeSizes - t) <= _DivSize ) _DivSize = 1;
-		_bSucceed = create_encoding(t, (( t + _DivSize) >= _TreeSizes)? (t + _TreeSizes) : (t + _DivSize), _msk, _fpNods);
+		if ( (_TreeSizes - t) <= _DivSize ) _divSize = 1;
+		_bSucceed = create_encoding(t, (( t + _divSize) >= _TreeSizes)? (t + _TreeSizes) : (t + _divSize), _msk, _fpNods);
 
 		if (!_bSucceed) break;
-
+	
 		_msk ^= _BT--;
 
 		if (_BT < 1) 
@@ -202,6 +200,9 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 		_msk = 0;
 		_msk |= _Dir;
 	}
+
+	// to encode the last left item in '_fpNods' vector
+	create_encoding(_TreeSizes - 1, _TreeSizes, _msk, _fpNods);
 
 	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
 	_TREE::enforce_unique(_vPair);
