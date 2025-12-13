@@ -77,7 +77,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		{
 			_fqr = _nod.FrequencyData();
 			if (!_fqr) ++_fqr;
-			_nod.setFrequencyData(_fqr);
+			_nod.setFrequencyData(int64_t(_fqr) );
 			_target.push_back(_nod);
 			continue;
 		}
@@ -85,14 +85,15 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		if (_target[_Cnt] == _nod)
 		{
 			_fqr = _target[_Cnt].FrequencyData();
-			_target[_Cnt].setFrequencyData(++_fqr);
+			_target[_Cnt].setFrequencyData(int64_t(++_fqr) );
+			continue;
 		}
 		else
 		{
 			if (_nod != 0)
 			{
 				_fqr = 1;
-				_nod.setFrequencyData(_fqr);
+				_nod.setFrequencyData(int64_t(_fqr) );
 				_target.push_back(_nod);
 				_Cnt = _target.size() - 1;
 			}
@@ -102,10 +103,10 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 
 
 
-inline void _TREE::create_encoding(const size_t& _From, 
-								   const size_t& _To,
-								   int64_t& _bt,
-								   const std::vector<node>& _Vn)
+inline const bool _TREE::create_encoding(const size_t& _From, 
+										 const size_t& _To,
+										 int64_t& _bt,
+										 const std::vector<node>& _Vn)
 {
 	node _e = '0'; bool _bEncodeable = false;
 	int64_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
@@ -116,7 +117,7 @@ inline void _TREE::create_encoding(const size_t& _From,
 	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
 
 	// Processing the Encoding from vector data
-	for (int64_t i = _From; i < _To; i++)
+	for (size_t i = _From; i < _To; i++)
 	{
 		 _e = _Vn.at(i);
 
@@ -144,7 +145,7 @@ inline void _TREE::create_encoding(const size_t& _From,
 		
 		_bt |=_Dir;
 
-	filterPhase:// "enforce unique mechanism" layer 1
+	filterPhase: // "enforce unique mechanism" layer 1
 
 		_sameVal = _bt;
 		_prevX = _sameVal;
@@ -165,6 +166,8 @@ inline void _TREE::create_encoding(const size_t& _From,
 		_bEncodeable = true;
 	}
 	_fq = 0;
+
+	
 	return _bEncodeable;
 }
 
@@ -182,6 +185,8 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	size_t _divSize = _DivSize;
 	int64_t _msk = 0, _BT = 2, _Dir = L;
 	bool _bSucceed = false;
+
+	//Clean();
 
 	for (size_t t = 0; t < _TreeSizes; t += _DivSize)
 	{
@@ -205,7 +210,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	create_encoding(_TreeSizes - 1, _TreeSizes, _msk, _fpNods);
 
 	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
-	_TREE::enforce_unique(_vPair);
+	_TREE::enforce_unique(_vPair); 
 }
 
 
@@ -222,6 +227,34 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 		_bPairs[m]._val += (_Addend + 1);
 		_Addend = 0;
 	}
+}
+
+
+
+static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector<unsigned char>& _hDatInfo)
+{
+	size_t f_size = 0;
+
+	if (!_fHandle) {
+		std::cerr << "\n Error saving header information to a File. \n";
+		return 0;
+	}
+
+	const size_t h_size = _hDatInfo.size();
+
+	if (!(f_size = std::fwrite(&h_size, sizeof(h_size), 1, _fHandle))) {
+		std::cerr << "\n Error saving number of records' size to file \n";
+		if (_fHandle) std::fclose(_fHandle);
+		return 0;
+	}
+
+	for (size_t z = 0; z < h_size; z++)
+	{
+		std::fputc((int)_hDatInfo[z], _fHandle);
+		++f_size;
+	}
+
+	return f_size;
 }
 
 
@@ -312,12 +345,23 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 
 // Packed the raw data source and saves it to a file.
-static inline const std::size_t writePack(const std::string& _File, const int64_t& _vPacked)
+static inline const std::size_t writePack(std::FILE*& _fHandle, const int64_t& _vPacked)
 {
 	size_t _writtenSize = 0;
-	
-	_writtenSize = save_cni_bit(_File.data(), _vPacked);
+	size_t _PckSize = len_bit(int64_t(_vPacked)) / 8;
 
+	if (!_fHandle) {
+		std::cerr << "\n Error Open File !! \n";
+		return 0;
+	}
+
+	if (!(_writtenSize = std::fwrite(&_PckSize, sizeof(_PckSize), 1, _fHandle))) {
+		std::cerr << "\n Error saving number of total bytes' size \n";
+		if (_fHandle) std::fclose(_fHandle);
+		return 0;
+	}
+
+	_writtenSize += save_cni_bit(_fHandle, _vPacked);
 
 	return _writtenSize;
 }
@@ -325,11 +369,11 @@ static inline const std::size_t writePack(const std::string& _File, const int64_
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(const std::string& _inFile, std::vector<int64_t>& vInts)
+static inline const std::size_t readPack(std::FILE*& _fHandle, std::vector<int64_t>& vInts)
 {
 	std::size_t _readBytes = 0;
 
-	_readBytes = read_cni_bit(_inFile, vInts);
+	_readBytes = read_cni_bit(_fHandle, vInts);
 
 return _readBytes;
 }
@@ -362,8 +406,8 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 
 
 
-// read the source original uncompressed form of a file
-static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<char>& _vecData, char*& _DataSrc)
+// read the original data source from a file and populate the vector with the read data.
+static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<unsigned char>& _vecData, unsigned char*& _DataSrc)
 {
 	std::size_t _wordsRead = 0;
 	
@@ -373,9 +417,9 @@ static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<
 		goto EndRead;
 	}
 
-	if (!_DataSrc) _DataSrc = new char[_ROWSZ];
+	if (!_DataSrc) _DataSrc = new unsigned char[_ROWSZ];
 	
-	while (std::fgets(_DataSrc, _ROWSZ, _fHandle))
+	while (std::fgets((char*)_DataSrc, _ROWSZ, _fHandle))
 	{
 		for (size_t c = 0; c < _ROWSZ; c++) {
 			if (_DataSrc[c] > 0) {
@@ -393,22 +437,22 @@ EndRead:
 }
 
 
-// generates huffman encoding information ..
-static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vector<BPAIR>& CodInfo, 
-										  std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
-										  const double& cmp_rate)
+// generates a huffman encoding information ..
+static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, std::vector<BPAIR>& CodInfo, 
+										  	  std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
+										  	  const double& cmp_rate, const char _cCode = 'u')
 {
 	int64_t SqzInt = 0;
-	std::priority_queue<node, std::vector<node>, std::less<node>> _pq;
-	std::priority_queue<node, std::vector<node>, fqLess> _fpq;
-	std::vector<node> PNodes;
+	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
+	std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
+	std::vector<node> PNodes = {};
 
 	_Canonical _Canoe = {};
 	Can_Bit cbi = {};
 
-	std::vector<_Canonical> Cni_Info;
-	std::vector<Can_Bit> CniBits;
-	std::vector<Can_Bit>::iterator CBiT;
+	std::vector<_Canonical> Cni_Info = {};
+	std::vector<Can_Bit> CniBits = {};
+	std::vector<Can_Bit>::iterator CBiT = {};
 
 	std::string xs_bit;
 
@@ -416,8 +460,14 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 
 	for (size_t t = 0; t < T_SIZE; t++)
 	{
-		PNodes.push_back(_Src[t]);
+		PNodes.push_back(node(UC(_Src[t])));
 	}
+
+	if (_cCode == 'D') {
+		PRINT("Nodes data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+	}
+	RET;
 
 	for (const node& e : PNodes)
 	{
@@ -427,6 +477,13 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 	PNodes.clear();
 
 	filter_pq_nodes(PNodes, _pq);
+
+	if (_cCode == 'D')
+	{
+		PRINT("Filtered Nodes Data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		RET;
+	}
 
 	for (const node& nod : PNodes)
 	{
@@ -441,9 +498,26 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 		PNodes.push_back(e);
 	}
 
+	if (_cCode == 'D')
+	{
+		PRINT("Frequency nodes data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		RET;
+	}
+
+	
 	_TREE::plot_tree(PNodes, cmp_rate);
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
+
+	if (_cCode == 'D')
+	{
+		PRINT("Generated Huffman Encoding Information.");
+		for (const auto& bp : CodInfo)
+		{
+			RPRINTC(bp._data); RPRINTC(bp._val); RET;
+		}
+	}
 
 	for (const BPAIR& bp : CodInfo)
 	{
@@ -453,10 +527,26 @@ static inline const int64_t Gen_Encoding_Info(std::vector<char>& _Src, std::vect
 		_Canoe = {};
 	}
 
+	if (_cCode == 'D') {
+		PRINT("Raw Canonical Data Obtained from the Generated BPAIR.");
+		for (const auto& ce : Cni_Dat)
+		{
+			RPRINTC(ce._xData); RPRINTC(ce._bitLen); RET;
+		}
+	}
 	
 	_Gen_Canonical_Info(Cni_Info, Cni_Dat); // obtaining codewords based on bit length info ..
 
 	cni_enforce_unique(Cni_Info); // codewords data updated
+
+	if (_cCode == 'D') {
+		for (const auto& ci : Cni_Info)
+		{
+			PRINT("Canonical Huffman Encoding Information Generated !");
+			RPRINTC(ci._xData); RPRINTC(ci._bitLen);
+			RET;
+		}
+	}
 
 	for (const _Canonical& cni : Cni_Info)
 	{
@@ -503,7 +593,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 	std::vector<int64_t>& _vCods = (std::vector<int64_t>&)_CodWords;
 	std::vector<node> _vNods;
-	node _e;
+	node _e = 0;
 
 	_Canonical cni_head0 = {}, cni_head1 = {};
 
@@ -531,18 +621,18 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 		if (_b == _vNods[_vi - 1].Value())
 		{
 			_b = _vNods[_vi - 1].FrequencyData();
-			_vNods[_vi- 1].setFrequencyData(++_b);
+			_vNods[_vi- 1].setFrequencyData(int64_t(++_b) );
 			continue;
 		}
 		
 	addNode:
-		_e = _b;
+		_e = node(UC(_b));
 		_e.setFrequencyData(_e.FrequencyData() + 1);
 		_vNods.push_back(_e);
 	}
 
 
-	// the required information is gathered
+	// the required information (_bitLen & _rle_bit_len) is gathered.
 
 	const size_t _InfoSize = _vNods.size();
 
@@ -556,6 +646,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 		header0_info.push_back(cni_head0);
 		++header0_size;
+		cni_head0 = {};
 	}
 
 	// writing RLE info for each codeword length ..
@@ -574,12 +665,14 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 	vectorClean(header1_info);
 
+	// acquiring encoded character & the bit length for each encoded character..
 	// writing encoded data ..
 	for (size_t d = 0; d < CndSize; d++)
 	{
-		cni_head1._xData = CniSrc[d]._xData;
+		cni_head1._xData = CniSrc[d]._xData; // encoded character
 		header1_info.push_back(cni_head1);
 		++header1_size;
+		cni_head1 = {};
 	}
 
 
@@ -599,11 +692,120 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 }
 
 
-// Compresses header info data
-static const size_t Compress_Header(const std::vector<_Canonical>& hdr0, const std::vector<_Canonical>& hdr1)
+// Compresses the header info data to a file.
+static inline const size_t Compress_Header(	const std::string& _sqzFile,
+											std::FILE*& _fHandleRef,
+											const std::vector<_Canonical>& canon_header 
+										   )
 {
+	 _fHandleRef = std::fopen(_sqzFile.c_str(), "wb");
 
+	if (!_fHandleRef)
+	{
+		std::cerr << "\n Error Open Write-Access To File. \n";
+		return 0;
+	}
+	
+	std::size_t _fSize = 0 , i_Size = 0;
+	std::vector<BPAIR> _bpt = {};
+	std::vector<_Canonical> _vCan = {};
+	std::vector<int64_t> _iCodes = {};
+	std::vector<unsigned char> _bit_length_info = {}, _codew_info = {};
+	int _uc = 0;
+
+	for (const auto& _hd0 : canon_header) {
+		_uc = (int)_hd0._bitLen;
+		_bit_length_info.push_back( _uc ); // codes-lengths of the previous generated huffman codes-lengths.
+
+	}
+
+	for (const auto& _hd1 : canon_header)
+		_codew_info.push_back(_hd1._xData); // previous generated huffman codes-lengths info.
+
+	// generate a huffman encoding about the generated huffman codes-lengths.
+	const int64_t _BitInt = Gen_Encoding_Info(_bit_length_info, _bpt, _vCan, _iCodes, COMP_RATE);
+
+	// saving the generated huffman codes-lengths info..
+	if ( !(i_Size = writePackInfo(_fHandleRef, _bit_length_info)) ) {
+		std::cerr << "\n Error Writing Header-0 Data to File. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+	
+	_fSize += i_Size;
+	_bit_length_info.clear();
+	_bit_length_info = {};
+
+	
+	for (const auto& _bpi : _bpt)
+		_bit_length_info.push_back((int)_bpi._val); // encoded huffman code-length.
+
+	// saving the encoding information of huffman code-length..
+	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info)))
+	{
+		std::cerr << "\n Error Writing Header-1 Data to File. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	_fSize += i_Size; 
+	vectorClean(_bpt); vectorClean(_vCan); vectorClean(_iCodes);
+
+	// generate a huffman encoding about the previous generated huffman codes-lengths.
+	const int64_t _CodInt = Gen_Encoding_Info(_codew_info, _bpt, _vCan, _iCodes, COMP_RATE);
+
+	// saving the data of previous generated huffman codes-lengths..
+	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info)) ) {
+		std::cerr << "\n Error Writing Header-2 Data to File. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	_fSize += i_Size;
+	_codew_info.clear();
+	_codew_info = {};
+
+
+	for (const auto& _bpc : _bpt)
+		_codew_info.push_back((int)_bpc._val); // the encoded of previous huffman codes-lengths.
+	
+	// saving the encoding of previous huffman codes-lengths..
+	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
+		std::cerr << "\n Error Writing Header-3 Data to File. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	// saving packed integer of encoded bit-length..
+	if (!(i_Size = writePack(_fHandleRef, _BitInt)) )
+	{
+		std::cerr << "\n Error saving a compressed header outline to file. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	_fSize += i_Size;
+
+	
+	// saving packed integer of encoded bit-length's codewords..
+	if (!(i_Size = writePack(_fHandleRef, _CodInt)) )
+	{
+		std::cerr << "\n Error saving a compressed header core data to file. \n";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	_fSize += i_Size;
+
+	vectorClean(_bpt);
+	vectorClean(_vCan);
+	vectorClean(_iCodes);
+	vectorClean(_bit_length_info);
+	vectorClean(_codew_info);
+
+	return _fSize;
 }
+
 
 // extracting a saved encoding data into 'CnBit' and 'CnRaw' vectors
 static inline const int extract_encoding_info(const std::string& xFile,std::vector<_Canonical>& CnBit, std::vector<_Canonical>& CnRaw)
@@ -619,21 +821,21 @@ static inline const int extract_encoding_info(const std::string& xFile,std::vect
 
 
 
-static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, char* _cBuff)
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, unsigned char* _cBuff)
 {
 	bool _bDone = 0;
 	int _cF = 0, _CountStr = 0;
 	char* _copyOne = nullptr;
 	const char* _sExt = "\0";
 
-	std::vector<char> _srcData = {};
+	std::vector<unsigned char> _srcData = {};
 	std::vector<int64_t> _pacInts = {};
 
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {};
 	
-	std::FILE* _FO = std::fopen(_srcF.data(), "rb");
-	std::size_t F_SIZE = 0, HCN_SIZE = 0;
+	std::FILE* _FO = std::fopen(_srcF.data(), "rb"), *_FHandleRef = nullptr;
+	std::size_t F_SIZE = 0, HCN_SIZE = 0, PACKED_HEADER_SIZE = 0;
 	int64_t _sqzNum = 0;
 
 	if (!_FO)
@@ -693,13 +895,47 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 	
 	
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE,'D');
+	// _srcData is fully filled with correct data
+
+	for (const auto& _bc : _CodeMap)
+	{
+		RPRINTC(_bc._data); RPRINTC(_bc._val); RET;
+	}
+
+
+	/* PROBLEM STILL ENMESHED IN 'GEN_ENCODING_INFO()'
+		the 'schema_Iter()' function may rise an unexpected undefined erroneous state to the program.
+	*/
+	
+	goto finishedDone;
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc,_pacInts);
 
+	// Raw Canonical Data
+	
+
+
+	for (const auto& _ce : CniHead0)
+	{
+		RPRINTC(_ce._bitLen); RPRINTC(_ce._rle_bit_len); RET;
+	}
+
+	RET;
+
+	for (const auto& _ci : CniHead1)
+	{
+		RPRINTC(_ci._xData); RPRINTC(_ci._bitLen); RET;
+	}
+	RET;
+
+	
+	//PACKED_HEADER_SIZE = Compress_Header(_destF.c_str(), _FHandleRef, CniHead0, CniHead1);
+
+	goto finishedDone;
 
 	// writing packed data source into a file ( *.sqz ).
-	if ( !(_bDone = writePack(_destF, _sqzNum)) )
+	if ( !(_bDone = writePack(_FHandleRef, _sqzNum)))
 	{
 		RET;
 		std::cerr << "\n Error writing compressed file !  \n\n";
@@ -712,10 +948,14 @@ finishedDone:
 	vectorClean(_pacInts);
 	vectorClean(_CodeMap);
 	vectorClean(_CanSrc);
+	vectorClean(CniHead0);
+	vectorClean(CniHead1);
 
+	
 	NULLP(_copyOne);
 	if (!_SystemFile.empty()) _SystemFile.clear();
 	if (_FO) std::fclose(_FO);
+	if (_FHandleRef) std::fclose(_FHandleRef);
 
 	_TREE::Clean();
 	F_SIZE = 0;
@@ -745,13 +985,13 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	extract_encoding_info(_SystemFile, _Canonic, _Canine);
 
-
+	/*
 	if (!readPack(_packedFile, _SqzInts))
 	{
 		std::cerr << "\n Error read compressed file. ";
 		return 0;
 	}
-	
+	*/
 	
 	cmb_bit = mix_integral_constant(_SqzInts);
 
@@ -814,8 +1054,5 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	return _UnSquezzed;
 }
-
-
-
 
 
