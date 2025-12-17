@@ -622,6 +622,7 @@ struct num_of_bits
 			++cnt;
 		}
 
+		if ( !_val ) cnt = 1;
 		return std::move(cnt);
 	}
 };
@@ -846,7 +847,7 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 {
 	int64_t _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
 	const std::size_t _codeSize = _Codes.size();
-	
+	std::vector<_Canonical> _CnTemp = {};
 	_Canonical _Canon = _Codes[0];
 
 	_len1 = _Canon._bitLen;
@@ -855,12 +856,12 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 	_bi = strtoint(_si.data());
 	_Canon._codeWord = _bi;
 
-	_cBit.push_back(_Canon); _Canon = {};
+	_CnTemp.push_back(_Canon); _Canon = {};
 
 	for (size_t z = 1; z < _codeSize; z++)
 	{
-		_Canon = _cBit[z - 1];
-		_len1 = _Get_Num_of_Bits(int64_t(_Canon._codeWord));
+		_Canon = _Codes[z - 1];
+		_len1 = len_bit(int64_t(_Canon._codeWord));
 		_len2 = _Codes[z]._bitLen;
 
 		if (_len2 > _len1)
@@ -887,9 +888,13 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 		_Canon = _Codes[z];
 		_Canon._codeWord = _bi;
 
-		_cBit.push_back(_Canon );
+		_CnTemp.push_back(_Canon );
 		_Canon = {};
 	}
+
+	for (std::vector<_Canonical>::iterator _CiT = _CnTemp.begin(); _CiT != _CnTemp.end(); _CiT++)
+		_cBit.push_back(*_CiT);
+
 }
 
 
