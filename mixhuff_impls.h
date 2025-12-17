@@ -440,14 +440,13 @@ EndRead:
 // generates a huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, std::vector<BPAIR>& CodInfo, 
 										  	  std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
-										  	  const double& cmp_rate, const char _cCode = 'u')
+										  	  const double& cmp_rate, const char& _cCode = 'u')
 {
 	int64_t SqzInt = 0;
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
 	std::vector<node> PNodes = {};
 
-	_Canonical _Canoe = {};
 	Can_Bit cbi = {};
 
 	std::vector<_Canonical> Cni_Info = {};
@@ -521,10 +520,10 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	for (const BPAIR& bp : CodInfo)
 	{
-		_Canoe._xData = bp._data;
-		_Canoe._bitLen = bp.bit_len;
-		Cni_Dat.push_back(_Canoe);
-		_Canoe = {};
+		cbi._xData = bp._data;
+		cbi._bitLen = bp.bit_len;
+		Cni_Dat.push_back(cbi);
+		cbi = {};
 	}
 
 	if (_cCode == 'D') {
@@ -535,6 +534,9 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 		}
 	}
 	
+	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<char>());
+	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<int64_t>());
+
 	_Gen_Canonical_Info(Cni_Info, Cni_Dat); // obtaining codewords based on bit length info ..
 
 	cni_enforce_unique(Cni_Info); // codewords data updated
@@ -574,7 +576,6 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	xs_bit = cni_bits_pack(PacInts);
 	SqzInt = int_bit(xs_bit.data());
-	
 	
 	return SqzInt;
 }
