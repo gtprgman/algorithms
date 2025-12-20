@@ -31,6 +31,7 @@ hash_main.cpp : a test unit for mixhash.h.
 mixbit.h :  a library for bit operations and manipulations utility.
 bitops.cpp : a unit test for mixbith.h
 
+'fTest9.c' : This project shows the short form Demo of mixhuff_impls.h
 
 
 
