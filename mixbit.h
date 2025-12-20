@@ -217,7 +217,7 @@ static void _Gen_Canonical_Info(std::vector<int64_t>&, const std::vector<int64_t
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
 // packing a series of canonical bits into one integer and return the result as a bits string.
-static const std::string cni_bits_pack(const std::vector<int64_t>&);
+static const intmax_t cni_bits_pack(const std::vector<int64_t>&);
 
 // saves a packed canonical bit to a one specified file
 static const size_t save_cni_bit(std::FILE*&, const int64_t&);
@@ -912,10 +912,9 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVec)
+static inline const intmax_t cni_bits_pack(const std::vector<int64_t>& _canVec)
 {
 	int64_t _x = 0;
-	std::string _xBitStr;
 	const size_t canSz = _canVec.size();
 
 		for (size_t t = 0; t < canSz; t++)
@@ -924,10 +923,7 @@ static inline const std::string cni_bits_pack(const std::vector<int64_t>& _canVe
 			_x |= _canVec[t];
 		}
 		
-
-	_xBitStr = bit_str(int64_t(_x) );
-	
-	return _xBitStr;
+	return _x;
 }
 
 
