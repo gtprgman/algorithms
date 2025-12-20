@@ -574,8 +574,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 		}
 	}
 
-	xs_bit = cni_bits_pack(PacInts);
-	SqzInt = int_bit(xs_bit.data());
+	SqzInt = cni_bits_pack(PacInts);
 	
 	return SqzInt;
 }
@@ -696,7 +695,9 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 // Compresses the header info data to a file.
 static inline const size_t Compress_Header(	const std::string& _sqzFile,
 											std::FILE*& _fHandleRef,
-											const std::vector<_Canonical>& canon_header 
+											const std::vector<_Canonical>& cn_head1, 
+											const std::vector<_Canonical>& cn_head2,
+											char&& _xDebug = 'u'
 										   )
 {
 	 _fHandleRef = std::fopen(_sqzFile.c_str(), "wb");
@@ -714,34 +715,36 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	std::vector<unsigned char> _bit_length_info = {}, _codew_info = {};
 	int _uc = 0;
 
-	for (const auto& _hd0 : canon_header) {
+	for (const auto& _hd0 : cn_head1) {
 		_uc = (int)_hd0._bitLen;
-		_bit_length_info.push_back( _uc ); // codes-lengths of the previous generated huffman codes-lengths.
+		_bit_length_info.push_back( _uc ); // bit length of the previous generated huffman codes.
 
 	}
 
-	for (const auto& _hd1 : canon_header)
-		_codew_info.push_back(_hd1._xData); // previous generated huffman codes-lengths info.
+	for (const auto& _hd1 : cn_head2)
+		_codew_info.push_back(_hd1._xData); // previous generated huffman codes.
 
-	// generate a huffman encoding about the generated huffman codes-lengths.
+	// generate a huffman encoding about the bit-length.
 	const int64_t _BitInt = Gen_Encoding_Info(_bit_length_info, _bpt, _vCan, _iCodes, COMP_RATE);
 
-	// saving the generated huffman codes-lengths info..
-	if ( !(i_Size = writePackInfo(_fHandleRef, _bit_length_info)) ) {
-		std::cerr << "\n Error Writing Header-0 Data to File. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
+	if (_xDebug == 'D')
+	{
+		for (const auto& _bp : _bpt)
+		{
+			RPRINTC((int)_bp._data); RPRINTC(_bp._val); RET;
+		}
+		RET;
 	}
 	
-	_fSize += i_Size;
+	
 	_bit_length_info.clear();
 	_bit_length_info = {};
 
 	
 	for (const auto& _bpi : _bpt)
-		_bit_length_info.push_back((int)_bpi._val); // encoded huffman code-length.
+		_bit_length_info.push_back((UC)_bpi._val); // encoded bit-length.
 
-	// saving the encoding information of huffman code-length..
+	// saving the encoding information of the bit-length..
 	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info)))
 	{
 		std::cerr << "\n Error Writing Header-1 Data to File. \n";
@@ -752,32 +755,32 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	_fSize += i_Size; 
 	vectorClean(_bpt); vectorClean(_vCan); vectorClean(_iCodes);
 
-	// generate a huffman encoding about the previous generated huffman codes-lengths.
+	// generate a huffman encoding about the previous generated huffman codes.
 	const int64_t _CodInt = Gen_Encoding_Info(_codew_info, _bpt, _vCan, _iCodes, COMP_RATE);
 
-	// saving the data of previous generated huffman codes-lengths..
-	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info)) ) {
-		std::cerr << "\n Error Writing Header-2 Data to File. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
+	if (_xDebug == 'D') {
+		for (const auto& _bp : _bpt)
+		{
+			RPRINTC((int)_bp._data); RPRINTC(_bp._val); RET;
+		}
+		RET;
 	}
 
-	_fSize += i_Size;
 	_codew_info.clear();
 	_codew_info = {};
 
 
 	for (const auto& _bpc : _bpt)
-		_codew_info.push_back((int)_bpc._val); // the encoded of previous huffman codes-lengths.
+		_codew_info.push_back((int)_bpc._val); // the encoded of the previous huffman codes.
 	
-	// saving the encoding of previous huffman codes-lengths..
+	// saving the encoding of the previous huffman codes..
 	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
-		std::cerr << "\n Error Writing Header-3 Data to File. \n";
+		std::cerr << "\n Error Writing Header-2 Data to File. \n";
 		if (_fHandleRef) std::fclose(_fHandleRef);
 		return 0;
 	}
 
-	// saving packed integer of encoded bit-length..
+	// saving packed integer of the encoded bit-length..
 	if (!(i_Size = writePack(_fHandleRef, _BitInt)) )
 	{
 		std::cerr << "\n Error saving a compressed header outline to file. \n";
@@ -788,7 +791,7 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	_fSize += i_Size;
 
 	
-	// saving packed integer of encoded bit-length's codewords..
+	// saving packed integer of the encoded huffman codes..
 	if (!(i_Size = writePack(_fHandleRef, _CodInt)) )
 	{
 		std::cerr << "\n Error saving a compressed header core data to file. \n";
