@@ -73,7 +73,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		_nod = _Pqueue.top();
 		_Pqueue.pop();
 
-		if (_target.empty() && _nod() != 0)
+		if (_target.empty())
 		{
 			_fqr = _nod.FrequencyData();
 			if (!_fqr) ++_fqr;
@@ -90,13 +90,10 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		}
 		else
 		{
-			if (_nod != 0)
-			{
-				_fqr = 1;
-				_nod.setFrequencyData(int64_t(_fqr) );
-				_target.push_back(_nod);
-				_Cnt = _target.size() - 1;
-			}
+			_fqr = 1;
+			_nod.setFrequencyData(int64_t(_fqr) );
+			_target.push_back(_nod);
+			_Cnt = _target.size() - 1;
 		}
 	}
 }
@@ -160,7 +157,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 			_prevX = _sameVal;
 		}
 
-		_vPair.push_back(BPAIR{ _e.dataValue(), _prevX });
+		_vPair.push_back(BPAIR{ UC(_e.dataValue()), int64_t(_prevX) });
 		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 		_bEncodeable = true;
@@ -439,8 +436,8 @@ EndRead:
 
 // generates a huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, std::vector<BPAIR>& CodInfo, 
-										  	  std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
-										  	  const double& cmp_rate, const char& _cCode = 'u')
+										      std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
+										      const double& cmp_rate, const char& _cCode = 'u')
 {
 	int64_t SqzInt = 0;
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
@@ -595,7 +592,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	std::vector<node> _vNods;
 	node _e = 0;
 
-	_Canonical cni_head0 = {}, cni_head1 = {};
+	Can_Bit cni_head0 = {}, cni_head1 = {}; 
 
 	for (size_t w = 0; w < _CodSize; w++)
 	{
@@ -626,11 +623,13 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 		}
 		
 	addNode:
-		_e = node(UC(_b));
-		_e.setFrequencyData(_e.FrequencyData() + 1);
-		_vNods.push_back(_e);
+		if (w < _CodSize)
+		{
+			_e = node(UC(_b));
+			_e.setFrequencyData(_e.FrequencyData() + 1);
+			_vNods.push_back(_e);
+		}
 	}
-
 
 	// the required information (_bitLen & _rle_bit_len) is gathered.
 
@@ -665,7 +664,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 	vectorClean(header1_info);
 
-	// acquiring encoded character & the bit length for each encoded character..
+	// acquiring the encoded character & the bit length for each encoded character..
 	// writing encoded data ..
 	for (size_t d = 0; d < CndSize; d++)
 	{
@@ -680,12 +679,8 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	for (size_t cx = 0; cx < CndSize; cx++)
 	{
 		_b = CniSrc[cx]._bitLen;
-
-		if (_b > 0)
-		{
-			header1_info[cx]._bitLen = _b;
-			++header1_size;
-		}
+		header1_info[cx]._bitLen = _b;
+		++header1_size;
 	}
 
 	return header0_size + header1_size;
@@ -695,10 +690,9 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 // Compresses the header info data to a file.
 static inline const size_t Compress_Header(	const std::string& _sqzFile,
 											std::FILE*& _fHandleRef,
-											const std::vector<_Canonical>& cn_head1, 
-											const std::vector<_Canonical>& cn_head2,
-											char&& _xDebug = 'u'
-										   )
+											const std::vector<_Canonical>& cn_head1 ,
+											const std::vector<_Canonical>& cn_head2 ,
+										    char&& _xDebug = 'u')
 {
 	 _fHandleRef = std::fopen(_sqzFile.c_str(), "wb");
 
@@ -918,7 +912,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	// Raw Canonical Data
 	
-
 
 	for (const auto& _ce : CniHead0)
 	{
