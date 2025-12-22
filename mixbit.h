@@ -192,7 +192,8 @@ static std::string&& HxFs_To_Bin(std::string&&);
 static std::string&& repl_char(char&&, const size_t&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
-static int64_t&& _Get_Num_of_Bits(int64_t&&);
+template <typename _Ty >
+static _Ty&& _Get_Num_of_Bits(_Ty&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
 static std::string&& _Get_Binary_Str(int64_t&&);
@@ -597,6 +598,7 @@ static inline std::string&& zero_bits(const size_t& n_Bits)
 	static std::string _ci = " ";
 
 	if (!xZeros) xZeros = 1; // minimum number of '0' should at least 1
+
 	_ci = repl_char('0', xZeros);
 	return std::move(_ci);
 }
@@ -609,12 +611,15 @@ struct num_of_bits
 {
 	using type = typename T;
 
-	static type&& eval(const type& _v)
+	static type&& eval(type&& _v)
 	{
-		static type cnt = 0;
-		type _val = _v;
+		static type&& cnt = 0;
+		type&& _val = type(_v);
 
-		cnt = 0;
+		if (!_val) {
+			cnt = 1;
+			return std::move(cnt);
+		}
 
 		while (_val > 0)
 		{
@@ -622,7 +627,6 @@ struct num_of_bits
 			++cnt;
 		}
 
-		if ( !_val ) cnt = 1;
 		return std::move(cnt);
 	}
 };
@@ -638,7 +642,7 @@ struct to_binary
 	static inline std::string&& eval(const value_type& _dec)
 	{
 		value_type _q = 0;
-		value_type _bsz = num_of_bits<value_type>::eval(_dec);
+		value_type _bsz = num_of_bits<value_type>::eval(int64_t(_dec) );
 		_value = _dec;
 
 		if (!_value) {
@@ -796,10 +800,10 @@ static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 }
 
 
-
-static inline int64_t&& _Get_Num_of_Bits(int64_t&& _ax)
+template <typename _Ty>
+static inline _Ty&& _Get_Num_of_Bits(_Ty&& _ax)
 {
-	return num_of_bits<int64_t>::eval(_ax);
+	return num_of_bits<_Ty>::eval(_Ty(_ax) );
 }
 
 
@@ -909,6 +913,7 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 		_cw += _ci;
 		cniDat[_ci]._codeWord = _cw;
 	}
+	
 }
 
 
@@ -923,7 +928,7 @@ static inline const intmax_t cni_bits_pack(const std::vector<int64_t>& _canVec)
 			_x |= _canVec[t];
 		}
 		
-	return _x;
+		return _x;
 }
 
 
@@ -1004,7 +1009,7 @@ static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<int64_t>&
 
 static inline uint64_t&& proper_bits(int64_t&& _n)
 {
-	const int64_t _nBits = num_of_bits<int64_t>::eval(_n);
+	const int64_t _nBits = num_of_bits<int64_t>::eval(int64_t(_n) );
 	const int64_t _maxBits = BIT_TOKEN(int64_t(_nBits) );
 
 	return _maxBits;
@@ -1553,26 +1558,23 @@ struct bitInfo
 struct BPAIR
 {
 	BPAIR() :_data(0), _val(0), bit_len(0) {};
-	BPAIR(const unsigned char& _a) : _data(_a), _val(0), bit_len(0) {};
+	BPAIR(unsigned char&& _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(int64_t&& _v) : _val(_v), _data(0), bit_len(_Get_Num_of_Bits(int64_t(_v)))
+	BPAIR(int64_t&& _v): _val(_v), _data(0), bit_len(len_bit(intmax_t(_val)))
 	{
-	
 	};
 
-	BPAIR(const unsigned char& _a, const int64_t& _v) : _data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
+	BPAIR(unsigned char&& _a, int64_t&& _v) : _data(_a), _val(_v), bit_len( len_bit(intmax_t(_val) ) )
 	{
-	
 	};
 
-	BPAIR(const int64_t& _v, const unsigned char& _a) :_data(_a), _val(_v), bit_len(_Get_Num_of_Bits(int64_t(_v)) ) 
+	BPAIR(int64_t&& _v, unsigned char&& _a) :_data(_a), _val(_v), bit_len( len_bit(intmax_t(_val)) )
 	{
-		
 	};
 
 	~BPAIR() = default;
 
-	BPAIR(BPAIR&& _mvBpa)
+	BPAIR(BPAIR&& _mvBpa) noexcept
 	{
 		if (this == &_mvBpa) return;
 		this->_data = _mvBpa._data;
@@ -1598,7 +1600,7 @@ struct BPAIR
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
-		this->bit_len = _Get_Num_of_Bits(int64_t(_bpa._val) );
+		this->bit_len = _bpa.bit_len;
 
 		return *this;
 	}
@@ -1608,7 +1610,7 @@ struct BPAIR
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
-		this->bit_len = _Get_Num_of_Bits(int64_t(_rvBpa._val) );
+		this->bit_len = _rvBpa.bit_len;
 
 		_rvBpa._data = 0;
 		_rvBpa._val = 0;
@@ -1627,7 +1629,7 @@ struct BPAIR
 	}
 
 	unsigned char _data; // byte
-	int64_t _val /* bit */, bit_len;
+	intmax_t _val , bit_len;  // encoded value & bit length
 };
 
 
