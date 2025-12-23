@@ -196,7 +196,8 @@ template <typename _Ty >
 static _Ty&& _Get_Num_of_Bits(_Ty&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
-static std::string&& _Get_Binary_Str(int64_t&&);
+template < typename _Ty = int>
+static std::string&& _Get_Binary_Str(_Ty&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
 template <class _T = int>
@@ -594,10 +595,10 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 
 static inline std::string&& zero_bits(const size_t& n_Bits)
 {
-	size_t xZeros = n_Bits;
+	intmax_t xZeros = n_Bits;
 	static std::string _ci = " ";
 
-	if (!xZeros) xZeros = 1; // minimum number of '0' should at least 1
+	if (!xZeros || xZeros < 0 ) xZeros = 1; // minimum number of '0' should at least 1
 
 	_ci = repl_char('0', xZeros);
 	return std::move(_ci);
@@ -615,6 +616,8 @@ struct num_of_bits
 	{
 		static type&& cnt = 0;
 		type&& _val = type(_v);
+
+		cnt = 0;
 
 		if (!_val) {
 			cnt = 1;
@@ -637,12 +640,12 @@ struct num_of_bits
 template < typename T >
 struct to_binary
 {
-	using value_type = typename T;
+	using value_type = typename std::remove_reference_t<T>;
 
-	static inline std::string&& eval(const value_type& _dec)
+	static inline std::string&& eval(value_type&& _dec)
 	{
 		value_type _q = 0;
-		value_type _bsz = num_of_bits<value_type>::eval(int64_t(_dec) );
+		value_type _bsz = num_of_bits<value_type>::eval(value_type(_dec) );
 		_value = _dec;
 
 		if (!_value) {
@@ -673,7 +676,7 @@ private:
 
 // static members initializer
 template <class T>
-T to_binary<T>::_value = 0;
+typename to_binary<T>::value_type to_binary<T>::_value = 0;
 
 template <class T>
 std::string to_binary<T>::_bs = "\0";
@@ -683,7 +686,7 @@ std::string to_binary<T>::_bs = "\0";
 template <class T >
 struct bin_to_dec
 {
-	using value_type = typename T;
+	using value_type = typename std::remove_reference_t<T>;
 
 	// the bit string is assumed to be in little-endian order.
 	static inline value_type&& eval(std::string&& _strBits)
@@ -711,14 +714,14 @@ private:
 };
 // static member initializer
 template <class T>
-T bin_to_dec<T>::_Dec = 0;
+typename bin_to_dec<T>::value_type bin_to_dec<T>::_Dec = 0;
 
 
 
 template < class T, bool _Val = std::is_integral_v<T>,
-            class _Ty = std::conditional_t<_Val, int64_t, mix::nullType> >
+            class _Ty = std::conditional_t<_Val, intmax_t, mix::nullType> >
 struct To_HexF {
-	using val_type = _Ty;
+	using val_type = typename std::remove_reference_t<_Ty>;
 
 	static inline std::string&& eval(val_type&& val_i64)
 	{
@@ -765,7 +768,7 @@ template <class T, bool _v, class _Ty>
 std::string To_HexF<T, _v, _Ty>::_hxs = "\0";
 
 template <class T, bool _v, class _Ty>
-std::vector<_Ty> To_HexF<T, _v, _Ty>::_x16c = {};
+std::vector<typename To_HexF<T, _v, _Ty>::val_type> To_HexF<T, _v, _Ty>::_x16c = {};
 
 
 
@@ -807,16 +810,22 @@ static inline _Ty&& _Get_Num_of_Bits(_Ty&& _ax)
 }
 
 
-
-static inline std::string&& _Get_Binary_Str(int64_t&& _Dx)
+template < typename _Ty >
+static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
-	const size_t HXZ = 4;
-	const std::size_t _LenDX = to_binary<int64_t>::eval(_Dx).size();
+	using _Type = std::remove_reference_t<_Ty>;
+	
+	const _Type HXZ = 4;
+	const _Type _LenDX = num_of_bits<_Type>::eval(_Type(_Dx));
+	const _Type _DiffT = HXZ - _LenDX;
 	static std::string _StrBin = "\0";
+	char* _zeroBit = (char*)zero_bits(_DiffT).c_str();
 
-	_StrBin = concat_str((char*)_StrBin.data(), (_LenDX >= 4)? to_binary<int64_t>::eval(_Dx).data() :
-				concat_str(zero_bits(HXZ - _LenDX).data(), to_binary<int64_t>::eval(_Dx).data()));
-				
+	_StrBin = (char*)" ";
+
+	_StrBin = concat_str((char*)_StrBin.c_str(), (_DiffT >= 4)? to_binary<_Type>::eval(_Type(_Dx)).c_str() :
+				concat_str(_zeroBit, to_binary<_Type>::eval(_Type(_Dx)).c_str()));
+			
 
 	return std::move(_StrBin);
 }
@@ -1324,7 +1333,7 @@ inline static std::string&& scanStr(const char* _Str0, const char* _searchStr)
 inline static const char* concat_str(char* _target, const char* _str)
 {
 	const std::size_t lenz = std::strlen(_target),
-		lenS = std::strlen(_str);
+	lenS = std::strlen(_str);
 
 	char* _pStr = new char[lenz + lenS];
 
