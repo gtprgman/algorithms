@@ -65,7 +65,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 {
 	std::size_t _Cnt = 0;
 	node _nod = 0;
-	int64_t _fqr = 0;
+	intmax_t _fqr = 0;
 
 
 	while (!_Pqueue.empty())
@@ -77,7 +77,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		{
 			_fqr = _nod.FrequencyData();
 			if (!_fqr) ++_fqr;
-			_nod.setFrequencyData(int64_t(_fqr) );
+			_nod.setFrequencyData(intmax_t(_fqr) );
 			_target.push_back(_nod);
 			continue;
 		}
@@ -85,7 +85,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 		if (_target[_Cnt] == _nod)
 		{
 			_fqr = _target[_Cnt].FrequencyData();
-			_target[_Cnt].setFrequencyData(int64_t(++_fqr) );
+			_target[_Cnt].setFrequencyData(intmax_t(++_fqr) );
 			continue;
 		}
 		else
@@ -107,11 +107,13 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 {
 	node _e = '0'; bool _bEncodeable = false;
 	int64_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
-	static int64_t _fq = 100;
+	static intmax_t _fq = 0;
 	std::vector<BPAIR>::iterator _iGet;
 	const size_t _LowerBound = _From, _UpperBound = _To;
 
 	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
+
+	_fq = 100; // the initial root frequency is 100%
 
 	// Processing the Encoding from vector data
 	for (size_t i = _From; i < _To; i++)
@@ -157,7 +159,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 			_prevX = _sameVal;
 		}
 
-		_vPair.push_back(BPAIR{ UC(_e.dataValue()), int64_t(_prevX) });
+		_vPair.push_back(BPAIR{ UC(_e.dataValue()), intmax_t(_prevX) });
 		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 		_bEncodeable = true;
@@ -436,10 +438,10 @@ EndRead:
 
 // generates a huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, std::vector<BPAIR>& CodInfo, 
-										      std::vector<_Canonical>& Cni_Dat, std::vector<int64_t>& PacInts,
+										      std::vector<_Canonical>& Cni_Dat, std::vector<intmax_t>& PacInts,
 										      const double& cmp_rate, const char& _cCode = 'u')
 {
-	int64_t SqzInt = 0;
+	intmax_t SqzInt = 0;
 	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
 	std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
 	std::vector<node> PNodes = {};
@@ -450,7 +452,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	std::vector<Can_Bit> CniBits = {};
 	std::vector<Can_Bit>::iterator CBiT = {};
 
-	std::string xs_bit;
+	std::string xs_bit = "\0";
 
 	const size_t T_SIZE = _Src.size();
 
@@ -532,17 +534,29 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 	
 	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<char>());
-	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<int64_t>());
+	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<intmax_t>());
+
+	if (_cCode == 'D')
+	{
+		PRINT("Sorted Canonical Encoding Information Data..");
+		for (const auto& _cb : Cni_Dat)
+		{
+			RPRINTC(_cb._xData); RPRINTC(_cb._bitLen); RET;
+		}
+
+		RET;
+	}
 
 	_Gen_Canonical_Info(Cni_Info, Cni_Dat); // obtaining codewords based on bit length info ..
 
 	cni_enforce_unique(Cni_Info); // codewords data updated
 
 	if (_cCode == 'D') {
+		PRINT("Canonical Huffman Encoding Information Generated !");
+
 		for (const auto& ci : Cni_Info)
 		{
-			PRINT("Canonical Huffman Encoding Information Generated !");
-			RPRINTC(ci._xData); RPRINTC(ci._bitLen);
+			RPRINTC(ci._xData); RPRINTC(ci._codeWord); RPRINTC(ci._bitLen);
 			RET;
 		}
 	}
@@ -581,14 +595,14 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info, 
 										std::vector<_Canonical>& header1_info,
 										const std::vector<_Canonical>& CniSrc,
-									    const std::vector<int64_t>& _CodWords)
+									    const std::vector<intmax_t>& _CodWords)
 {
 	size_t header0_size = 0, header1_size = 0, _vi = 0;
-	int64_t _b = 0;
+	intmax_t _b = 0;
 	const size_t _CodSize = _CodWords.size();
-	int64_t* wordsLen = new int64_t[_CodSize];
+	intmax_t* wordsLen = new intmax_t[_CodSize];
 
-	std::vector<int64_t>& _vCods = (std::vector<int64_t>&)_CodWords;
+	std::vector<intmax_t>& _vCods = (std::vector<intmax_t>&)_CodWords;
 	std::vector<node> _vNods;
 	node _e = 0;
 
@@ -596,7 +610,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 	for (size_t w = 0; w < _CodSize; w++)
 	{
-		_b = len_bit(int64_t(_vCods[w]) );
+		_b = len_bit(intmax_t(_vCods[w]) );
 		wordsLen[w] = _b;
 	}
 
@@ -605,7 +619,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	// set up the frequency data for each bit length ..
 	for (size_t w = 0; w < _CodSize; w++)
 	{
-		_b = wordsLen[w];
+		_b = wordsLen[w]; // bit length info
 
 		if (_vNods.empty())
 		{
@@ -618,15 +632,15 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 		if (_b == _vNods[_vi - 1].Value())
 		{
 			_b = _vNods[_vi - 1].FrequencyData();
-			_vNods[_vi- 1].setFrequencyData(int64_t(++_b) );
+			_vNods[_vi- 1].setFrequencyData(intmax_t(++_b) );
 			continue;
 		}
 		
 	addNode:
 		if (w < _CodSize)
 		{
-			_e = node(UC(_b));
-			_e.setFrequencyData(_e.FrequencyData() + 1);
+			_e = node(UC(_b)); // '_e ' is a bit length node
+			_e.setFrequencyData(_e.FrequencyData() + 1);  // frequency of a particular bit length node
 			_vNods.push_back(_e);
 		}
 	}
@@ -640,7 +654,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	// writing codewords length..
 	for (size_t d = 0; d < _InfoSize; d++)
 	{
-		_b = _vNods[d].Value();
+		_b = _vNods[d].Value();   // bit length info
 		cni_head0._bitLen = _b;
 
 		header0_info.push_back(cni_head0);
@@ -705,7 +719,7 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	std::size_t _fSize = 0 , i_Size = 0;
 	std::vector<BPAIR> _bpt = {};
 	std::vector<_Canonical> _vCan = {};
-	std::vector<int64_t> _iCodes = {};
+	std::vector<intmax_t> _iCodes = {};
 	std::vector<unsigned char> _bit_length_info = {}, _codew_info = {};
 	int _uc = 0;
 
@@ -716,7 +730,7 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	}
 
 	for (const auto& _hd1 : cn_head2)
-		_codew_info.push_back(_hd1._xData); // previous generated huffman codes.
+		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded character.
 
 	// generate a huffman encoding about the bit-length.
 	const int64_t _BitInt = Gen_Encoding_Info(_bit_length_info, _bpt, _vCan, _iCodes, COMP_RATE);
