@@ -1273,6 +1273,8 @@ static inline int&& strPos(const char* _aStr, const char* _cStr)
 	static int _Pos = 0;
 	bool _bFound = false;
 
+	_Pos = 0;
+
 	if (!_Sz1 || !_Sz2) return std::move(_Pos);
 	if (_Sz2 > _Sz1) return std::move(_Pos);
 
@@ -1295,6 +1297,8 @@ static inline int&& strNPos(const char* _StSrc, const int _chr)
 	const int _maxSz = (int)std::strlen(_StSrc);
 	bool _cFnd = false;
 
+	_iPos = 0;
+
 	for (_iPos = 0; _iPos < _maxSz; _iPos++)
 	{
 		if (_StSrc[_iPos] == _chr) {
@@ -1312,6 +1316,8 @@ inline static std::string&& scanStr(const char* _Str0, const char* _searchStr)
 {
 	static std::string _SF = "\0";
 	const size_t _SrcLen = std::strlen(_Str0), _SearchLen = std::strlen(_searchStr);
+
+	_SF = "\0";
 
 	if (!_Str0 || !_searchStr) return std::move(_SF);
 	if (!_SrcLen || !_SearchLen) return std::move(_SF);
@@ -1366,6 +1372,8 @@ inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
 	static std::string _str = "\0";
 	const size_t lenMax = std::strlen(_srcStr);
 
+	_str = "\0";
+
 	if (_nGrab > lenMax || _nGrab <= 0) return std::move(_str);
 
 	_str = std::string(std::strncpy(_str.data(), _srcStr, _nGrab));
@@ -1379,6 +1387,8 @@ inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
 inline static std::string&& snapStr(const char* _srcStr, const size_t& _Start, const size_t& _End)
 {
 	static std::string _snpStr = "\0";
+
+	_snpStr = "\0";
 
 	if (!_srcStr) return std::move(_snpStr);
 
@@ -1406,6 +1416,8 @@ inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const 
 {
 	static std::string _tpStr = "\0";
 
+	_tpStr = "\0";
+
 	if (!_pStr) return std::move(_tpStr);
 
 	const size_t _SrcLen = std::strlen(_pStr);
@@ -1431,10 +1443,10 @@ static inline std::string&& tapStrBy(const char* _aStr, const char* _aSubstitute
 	static std::string::iterator _Start, _End;
 	const std::size_t _maxSz = std::strlen(_aStr),  _Len = std::strlen(_aSubstitute);
 	
+	_tappedStr = "\0"; 
 
 	if (!_maxSz || !_Len) return std::move(_tappedStr);
 
-	_tappedStr.clear();
 	_tappedStr = std::string(std::strncpy(_tappedStr.data(), _aStr, _maxSz));
 
 	_Start = _tappedStr.begin() + _startPos;
@@ -1450,6 +1462,8 @@ inline static std::string&& rtrimx(const char* _ssStr, const size_t& _Count, con
 {
 	static std::string _rtms = "\0";
 	char* _Start = nullptr;
+
+	_rtms = "\0";
 
 	if (!_ssStr || (int64_t)_Count <= 0) return std::move(_rtms);
 
@@ -1473,6 +1487,8 @@ inline static std::string&& ltrimx(const char* _uStr, const size_t& _Count, cons
 	static std::string _LStr = "\0";
 	static std::string::iterator _LiBegin, _LiEnd;
 
+	_LStr = "\0";
+
 	if (!_uStr || (int64_t)_Count <= 0) return std::move(_LStr);
 
 	const size_t _uMax = std::strlen(_uStr);
@@ -1488,8 +1504,10 @@ inline static std::string&& ltrimx(const char* _uStr, const size_t& _Count, cons
 // take the n number of characters from the right end of the string
 inline static std::string&& rstr(const char* _sStr, const std::size_t& _nChars)
 {
-	static std::string _rStr;
+	static std::string _rStr = "\0";
 	const size_t maxLen = std::strlen(_sStr);
+
+	_rStr = "\0";
 
 	if (_nChars > maxLen || _nChars <= 0) return std::move(_rStr);
 
@@ -1505,6 +1523,8 @@ inline static std::string&& LRTrim(const char* _Sstr)
 	static std::string::iterator _LRI;
 	const size_t _nMax = std::strlen(_Sstr);
 	size_t _i = 0, _iMax = 0;
+
+	_LRTrmStr = "\0";
 
 	if (!_Sstr || (int64_t)_nMax <= 0) return std::move(_LRTrmStr);
 
@@ -1569,15 +1589,15 @@ struct BPAIR
 	BPAIR() :_data(0), _val(0), bit_len(0) {};
 	BPAIR(unsigned char&& _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(int64_t&& _v): _val(_v), _data(0), bit_len(len_bit(intmax_t(_val)))
+	BPAIR(intmax_t&& _v): _val(_v), _data(0), bit_len(len_bit(intmax_t(_val)))
 	{
 	};
 
-	BPAIR(unsigned char&& _a, int64_t&& _v) : _data(_a), _val(_v), bit_len( len_bit(intmax_t(_val) ) )
+	BPAIR(unsigned char&& _a, intmax_t&& _v) : _data(_a), _val(_v), bit_len( len_bit(intmax_t(_val) ) )
 	{
 	};
 
-	BPAIR(int64_t&& _v, unsigned char&& _a) :_data(_a), _val(_v), bit_len( len_bit(intmax_t(_val)) )
+	BPAIR(intmax_t&& _v, unsigned char&& _a) :_data(_a), _val(_v), bit_len( len_bit(intmax_t(_val)) )
 	{
 	};
 
@@ -1588,7 +1608,7 @@ struct BPAIR
 		if (this == &_mvBpa) return;
 		this->_data = _mvBpa._data;
 		this->_val = _mvBpa._val;
-		this->bit_len = _mvBpa.bit_len;
+		this->bit_len = len_bit(intmax_t(_val));
 
 		_mvBpa._data = 0;
 		_mvBpa._val = 0;
@@ -1601,7 +1621,7 @@ struct BPAIR
 		if (this == &_rBpa) return;
 		this->_data = _rBpa._data;
 		this->_val = _rBpa._val;
-		this->bit_len = _rBpa.bit_len;
+		this->bit_len = len_bit(intmax_t(_val));
 	}
 
 	const BPAIR& operator= (const BPAIR& _bpa)
@@ -1609,7 +1629,7 @@ struct BPAIR
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
-		this->bit_len = _bpa.bit_len;
+		this->bit_len = len_bit(intmax_t(_val));
 
 		return *this;
 	}
@@ -1619,7 +1639,7 @@ struct BPAIR
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
-		this->bit_len = _rvBpa.bit_len;
+		this->bit_len = len_bit(intmax_t(_val));
 
 		_rvBpa._data = 0;
 		_rvBpa._val = 0;
@@ -1633,7 +1653,7 @@ struct BPAIR
 	}
 
 
-	operator int64_t() const {
+	operator intmax_t() const {
 		return this->_val;
 	}
 
@@ -1768,16 +1788,17 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 {
 	const std::size_t _len = _sNum.size();
 	char* _sf = new char[_len];
-	std::string _sfs;
-	int64_t _bv = 0;
-	static int64_t _result = 0;
+	std::string _sfs = "\0";
+	intmax_t _bv = 0;
+	static intmax_t _result = 0;
+
+	_result = 0;
 
 	std::memset(_sf, 0, _len);
 	std::strncpy(_sf, _sNum.data(), _len);
 
-	int64_t _iNum = strPos(_sNum.data(),"-"),
-		_maxPos = (int64_t)(_len - 1), 
-		_c = 0, _Exp = 0;
+	const intmax_t _iNum = strPos(_sNum.data(), "-");
+	intmax_t _maxPos = (intmax_t)(_len - 1), _c = 0, _Exp = 0;
 
 	if (_iNum >= 0)
 	{
@@ -1786,10 +1807,10 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 		--_maxPos;
 	}
 
-		for (int64_t i = _maxPos; i >= 0; i--)
+		for (intmax_t i = _maxPos; i >= 0; i--)
 		{
 			_c = _sf[i] ^ 0b00110000;
-			_bv = _bv + _c * (int64_t)std::pow(10, _Exp++);
+			_bv = _bv + _c * (intmax_t)std::pow(10, _Exp++);
 		};
 
 	
@@ -1801,18 +1822,20 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 }
 
 
-inline static std::string&& inttostr(const int64_t& nVal)
+inline static std::string&& inttostr(const intmax_t& nVal)
 {
 	// max. spaces for negative integer
-	const int64_t nDigits = oneAdder( (UINT)num_of_dec((int64_t)std::abs(nVal))); 
+	const intmax_t nDigits = oneAdder( (unsigned int)num_of_dec((intmax_t)std::abs(nVal))); 
 
 	// max. spaces for positive integer.
-	const int64_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
+	const intmax_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
 
 	char _ch;  static std::string _ss = "\0";
-	int64_t nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
+	intmax_t nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
 
-	std::string _tmpS;
+	std::string _tmpS = "\0";
+
+	_ss = "\0";
 
 	// if value is 0 (zero)
 	if (!nDiv) {
