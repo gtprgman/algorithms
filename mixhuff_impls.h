@@ -594,32 +594,19 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 // Generate a header data information ..
 static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info, 
 										std::vector<_Canonical>& header1_info,
-										const std::vector<_Canonical>& CniSrc,
-									    const std::vector<intmax_t>& _CodWords)
+										const std::vector<_Canonical>& CniSrc)
 {
 	size_t header0_size = 0, header1_size = 0, _vi = 0;
 	intmax_t _b = 0;
-	const size_t _CodSize = _CodWords.size();
-	intmax_t* wordsLen = new intmax_t[_CodSize];
-
-	std::vector<intmax_t>& _vCods = (std::vector<intmax_t>&)_CodWords;
 	std::vector<node> _vNods;
 	node _e = 0;
 
-	Can_Bit cni_head0 = {}, cni_head1 = {}; 
+	Can_Bit cni_head0 = {}, cni_head1 = {};
 
-	for (size_t w = 0; w < _CodSize; w++)
+	for (const auto& _ci : CniSrc)
 	{
-		_b = len_bit(intmax_t(_vCods[w]) );
-		wordsLen[w] = _b;
-	}
-
-	_b = 0;
-
-	// set up the frequency data for each bit length ..
-	for (size_t w = 0; w < _CodSize; w++)
-	{
-		_b = wordsLen[w]; // bit length info
+		_b = _ci._bitLen;
+		// set up the frequency data for each bit length ..
 
 		if (_vNods.empty())
 		{
@@ -632,17 +619,15 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 		if (_b == _vNods[_vi - 1].Value())
 		{
 			_b = _vNods[_vi - 1].FrequencyData();
-			_vNods[_vi- 1].setFrequencyData(intmax_t(++_b) );
+			_vNods[_vi - 1].setFrequencyData(intmax_t(++_b));
 			continue;
 		}
+		else goto addNode;
 		
 	addNode:
-		if (w < _CodSize)
-		{
 			_e = node(UC(_b)); // '_e ' is a bit length node
 			_e.setFrequencyData(_e.FrequencyData() + 1);  // frequency of a particular bit length node
 			_vNods.push_back(_e);
-		}
 	}
 
 	// the required information (_bitLen & _rle_bit_len) is gathered.
@@ -679,7 +664,6 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	vectorClean(header1_info);
 
 	// acquiring the encoded character & the bit length for each encoded character..
-	// writing encoded data ..
 	for (size_t d = 0; d < CndSize; d++)
 	{
 		cni_head1._xData = CniSrc[d]._xData; // encoded character
@@ -701,12 +685,12 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 }
 
 
-// Compresses the header info data to a file.
-static inline const size_t Compress_Header(	const std::string& _sqzFile,
-											std::FILE*& _fHandleRef,
-											const std::vector<_Canonical>& cn_head1 ,
-											const std::vector<_Canonical>& cn_head2 ,
-										    char&& _xDebug = 'u')
+// Writing header information to a file.
+static inline const size_t Write_Header( const std::string& _sqzFile,
+										 std::FILE*& _fHandleRef,
+										 const std::vector<_Canonical>& cn_head0,
+										 const std::vector<_Canonical>& cn_head1,
+										 char&& _xDebug = 'u')
 {
 	 _fHandleRef = std::fopen(_sqzFile.c_str(), "wb");
 
@@ -717,106 +701,74 @@ static inline const size_t Compress_Header(	const std::string& _sqzFile,
 	}
 	
 	std::size_t _fSize = 0 , i_Size = 0;
-	std::vector<BPAIR> _bpt = {};
-	std::vector<_Canonical> _vCan = {};
-	std::vector<intmax_t> _iCodes = {};
 	std::vector<unsigned char> _bit_length_info = {}, _codew_info = {};
 	int _uc = 0;
 
-	for (const auto& _hd0 : cn_head1) {
+	// acquiring bit lengths information ..
+	for (const auto& _hd0 : cn_head0) {
 		_uc = (int)_hd0._bitLen;
 		_bit_length_info.push_back( _uc ); // bit length of the previous generated huffman codes.
 
 	}
 
-	for (const auto& _hd1 : cn_head2)
-		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded character.
-
-	// generate a huffman encoding about the bit-length.
-	const int64_t _BitInt = Gen_Encoding_Info(_bit_length_info, _bpt, _vCan, _iCodes, COMP_RATE);
-
-	if (_xDebug == 'D')
-	{
-		for (const auto& _bp : _bpt)
-		{
-			RPRINTC((int)_bp._data); RPRINTC(_bp._val); RET;
-		}
-		RET;
+	if (_xDebug == 'D') {
+		RET; mix::generic::STL_Print(_bit_length_info.begin(), _bit_length_info.end(), RPRINTC<int>); RET;
 	}
-	
-	
-	_bit_length_info.clear();
-	_bit_length_info = {};
 
-	
-	for (const auto& _bpi : _bpt)
-		_bit_length_info.push_back((UC)_bpi._val); // encoded bit-length.
 
-	// saving the encoding information of the bit-length..
-	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info)))
-	{
-		std::cerr << "\n Error Writing Header-1 Data to File. \n";
+	// saving bit lengths information ..
+	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info))) {
+		std::cerr << "\n Error saving bit-length information.. \n";
 		if (_fHandleRef) std::fclose(_fHandleRef);
 		return 0;
 	}
 
-	_fSize += i_Size; 
-	vectorClean(_bpt); vectorClean(_vCan); vectorClean(_iCodes);
+	_fSize += i_Size;
+	vectorClean(_bit_length_info);
 
-	// generate a huffman encoding about the previous generated huffman codes.
-	const int64_t _CodInt = Gen_Encoding_Info(_codew_info, _bpt, _vCan, _iCodes, COMP_RATE);
+	// acquiring RLE of bit lengths ..
+	for (const auto& _h0d : cn_head0) {
+		_uc = (int)_h0d._rle_bit_len;
+		_bit_length_info.push_back(_uc);
+	}
 
 	if (_xDebug == 'D') {
-		for (const auto& _bp : _bpt)
-		{
-			RPRINTC((int)_bp._data); RPRINTC(_bp._val); RET;
-		}
-		RET;
+		RET; mix::generic::STL_Print(_bit_length_info.begin(), _bit_length_info.end(), RPRINTC<int>); RET;
 	}
 
-	_codew_info.clear();
-	_codew_info = {};
-
-
-	for (const auto& _bpc : _bpt)
-		_codew_info.push_back((int)_bpc._val); // the encoded of the previous huffman codes.
-	
-	// saving the encoding of the previous huffman codes..
-	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
-		std::cerr << "\n Error Writing Header-2 Data to File. \n";
+	// saving RLE information of bit lengths ..
+	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info))) {
+		std::cerr << "\n Error saving RLE Information of bit lengths .. \n";
 		if (_fHandleRef) std::fclose(_fHandleRef);
 		return 0;
 	}
 
-	// saving packed integer of the encoded bit-length..
-	if (!(i_Size = writePack(_fHandleRef, _BitInt)) )
-	{
-		std::cerr << "\n Error saving a compressed header outline to file. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
-	}
+	_fSize += i_Size; vectorClean(_bit_length_info);
 
-	_fSize += i_Size;
+	// Acquiring the encoded characters ..
 
-	
-	// saving packed integer of the encoded huffman codes..
-	if (!(i_Size = writePack(_fHandleRef, _CodInt)) )
-	{
-		std::cerr << "\n Error saving a compressed header core data to file. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
-	}
-
-	_fSize += i_Size;
-
-	vectorClean(_bpt);
-	vectorClean(_vCan);
-	vectorClean(_iCodes);
-	vectorClean(_bit_length_info);
 	vectorClean(_codew_info);
 
+	for (const auto& _hd1 : cn_head1)
+		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded character.
+
+
+	if (_xDebug == 'D') {
+		RET; mix::generic::STL_Print(_codew_info.begin(), _codew_info.end(), RPRINTC<char>); RET;
+	}
+	
+	// saving encoded characters information ..
+	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
+		std::cerr << "\n Error saving encoded characters information .. \n ";
+		if (_fHandleRef) std::fclose(_fHandleRef);
+		return 0;
+	}
+
+	_fSize += i_Size; vectorClean(_codew_info);
+	
 	return _fSize;
 }
+
 
 
 // extracting a saved encoding data into 'CnBit' and 'CnRaw' vectors
@@ -922,7 +874,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	
 	goto finishedDone;
 
-	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc,_pacInts);
+	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
 
 	// Raw Canonical Data
 	
