@@ -78,7 +78,18 @@ int main()
 	RET;
 
 	_EncHeadInt = Write_Header(_fname.c_str(), _fEncHead, _Cnh1, _Cnh2, 'D');
+	if (_fEncHead) std::fclose(_fEncHead);
 
+
+	vectorClean(_Cnh1); vectorClean(_Cnh2);
+
+	extract_encoding_info(_fname.c_str(), _Cnh1, _Cnh2);
+
+	for (const auto& _c2 : _Cnh2) {
+		RPRINTC(_c2._xData); RPRINTC(_c2._bitLen); RET;
+	}
+
+	RET;
 
 	vectorClean(vci);
 	vectorClean(_EncDat);
