@@ -106,14 +106,14 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 										 const std::vector<node>& _Vn)
 {
 	node _e = '0'; bool _bEncodeable = false;
-	int64_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
+	intmax_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
 	static intmax_t _fq = 0;
 	std::vector<BPAIR>::iterator _iGet;
 	const size_t _LowerBound = _From, _UpperBound = _To;
 
 	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
 
-	_fq = 100; // the initial root frequency is 100%
+	_fq = 50; // the initial root frequency is 50%
 
 	// Processing the Encoding from vector data
 	for (size_t i = _From; i < _To; i++)
@@ -201,7 +201,6 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 			
 
 		_Dir = _Dir ^ 1;
-		_msk = 0;
 		_msk |= _Dir;
 	}
 
@@ -249,7 +248,7 @@ static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector
 
 	for (size_t z = 0; z < h_size; z++)
 	{
-		std::fputc((int)_hDatInfo[z], _fHandle);
+		std::fputc(_hDatInfo[z], _fHandle);
 		++f_size;
 	}
 
@@ -261,7 +260,7 @@ static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<_Canonical>& Canie ,std::vector<_Canonical>& CnSrc)
 {
-	int64_t _x = 0;
+	intmax_t _x = 0;
 	Can_Bit cbi = {};
 	size_t _readSize = 0, infSize = 0;
 	std::FILE* _Fr = std::fopen(_inFile.data(), "rb");
@@ -272,7 +271,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 		return 0;
 	}
 
-
+	// Read the records's size number
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
 		std::cerr << "\n Error read header size information.";
@@ -293,6 +292,14 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 		cbi = {};
 	}
 
+	// read the records' size
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header size information.";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
+
 	// picking up RLE Info for each codeword length ..
 	for (size_t r = 0; r < header_size; r++)
 	{
@@ -305,7 +312,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	}
 
 
-	// Picking up a canonical header size ..
+	// Reads up size information ..
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
 		std::cerr << "\n Error read header info data.";
@@ -325,18 +332,6 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 		cbi = {};
 	}
 
-	
-	// bit length
-	for (size_t i = 0; i < cni_header_size; i++)
-	{
-		_x = std::fgetc(_Fr); 
-		if (_x > 0) {
-			CnSrc[i]._bitLen = _x;
-			++_readSize;
-		}
-		else CnSrc[i]._bitLen = 0;;
-	}
-
 	if (_Fr) std::fclose(_Fr);
 	return _readSize;
 }
@@ -344,10 +339,10 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 
 // Packed the raw data source and saves it to a file.
-static inline const std::size_t writePack(std::FILE*& _fHandle, const int64_t& _vPacked)
+static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& _vPacked)
 {
 	size_t _writtenSize = 0;
-	size_t _PckSize = len_bit(int64_t(_vPacked)) / 8;
+	size_t _PckSize = len_bit(intmax_t(_vPacked)) / 8;
 
 	if (!_fHandle) {
 		std::cerr << "\n Error Open File !! \n";
@@ -752,10 +747,10 @@ static inline const size_t Write_Header( const std::string& _sqzFile,
 	for (const auto& _hd1 : cn_head1)
 		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded character.
 
-
 	if (_xDebug == 'D') {
 		RET; mix::generic::STL_Print(_codew_info.begin(), _codew_info.end(), RPRINTC<char>); RET;
 	}
+
 	
 	// saving encoded characters information ..
 	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
@@ -774,7 +769,7 @@ static inline const size_t Write_Header( const std::string& _sqzFile,
 // extracting a saved encoding data into 'CnBit' and 'CnRaw' vectors
 static inline const int extract_encoding_info(const std::string& xFile,std::vector<_Canonical>& CnBit, std::vector<_Canonical>& CnRaw)
 {
-	if (!readPackInfo(xFile.data(), CnBit, CnRaw))
+	if (!readPackInfo(xFile.c_str(), CnBit, CnRaw))
 	{
 		std::cerr << "\n Error read encoding information ! " << "\n\n";
 		return 0;
@@ -800,7 +795,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	
 	std::FILE* _FO = std::fopen(_srcF.data(), "rb"), *_FHandleRef = nullptr;
 	std::size_t F_SIZE = 0, HCN_SIZE = 0, PACKED_HEADER_SIZE = 0;
-	int64_t _sqzNum = 0;
+	intmax_t _sqzNum = 0;
 
 	if (!_FO)
 	{
@@ -808,19 +803,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-
-	_SystemFile.assign(_srcF);
-
-
-	if ((_cF = strNPos(_SystemFile.data(), '.')) > -1) // if source file has extension
-	{
-		_SystemFile.assign(lstr(_srcF.data(), _cF));
-		_SystemFile = (char*)concat_str((char*)_SystemFile.data(), ".tbi");
-	}
-	else
-		_SystemFile = (char*)concat_str((char*)_SystemFile.data(), ".tbi");
-	
-
+	_cF = strNPos(_srcF.c_str(), '.');
 
 	if (_destF.empty())
 	{
@@ -859,43 +842,16 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 	
 	
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE,'D');
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
 	// _srcData is fully filled with correct data
-
-	for (const auto& _bc : _CodeMap)
-	{
-		RPRINTC(_bc._data); RPRINTC(_bc._val); RET;
-	}
-
-
-	/* PROBLEM STILL ENMESHED IN 'GEN_ENCODING_INFO()'
-		the 'schema_Iter()' function may rise an unexpected undefined erroneous state to the program.
-	*/
-	
-	goto finishedDone;
+	// _CodeMap is generated successfully
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
-
-	// Raw Canonical Data
+	// CniHead0 & CniHead1 are fully filled with correct data
 	
-
-	for (const auto& _ce : CniHead0)
-	{
-		RPRINTC(_ce._bitLen); RPRINTC(_ce._rle_bit_len); RET;
-	}
-
-	RET;
-
-	for (const auto& _ci : CniHead1)
-	{
-		RPRINTC(_ci._xData); RPRINTC(_ci._bitLen); RET;
-	}
-	RET;
-
+	PACKED_HEADER_SIZE = Write_Header(_destF.c_str(), _FHandleRef, CniHead0, CniHead1);
+	// encoding information successfully saved !
 	
-	//PACKED_HEADER_SIZE = Compress_Header(_destF.c_str(), _FHandleRef, CniHead0, CniHead1);
-
-	goto finishedDone;
 
 	// writing packed data source into a file ( *.sqz ).
 	if ( !(_bDone = writePack(_FHandleRef, _sqzNum)))
@@ -929,34 +885,32 @@ finishedDone:
 
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
-	int64_t cmb_bit = 0, _bi = 0, _x = 0;
+	intmax_t cmb_bit = 0, _bi = 0, _x = 0;
 	Can_Bit cnbi = {};
 	
 	std::vector<char> RawDat = {};
 	std::vector<_Canonical> _Canonic = {}, _Canine = {}, _CanDat = {};
 	std::vector<Can_Bit> vCnbi = {};
 
-	
 	std::size_t ReckonSize = 0, _UnSquezzed = 0;
-	std::vector<int64_t> cniBitLen, _SqzInts;
+	std::vector<intmax_t> cniBitLen, _SqzInts;
 
-	char* _OriginFile = (char*)_unPackedFile.c_str(), *_sExt = (char*)"\0";
+	char* _OriginFile = (char*)_unPackedFile.c_str();
 
-	// to obtain a *.tbi file
-	_SystemFile = (char*)lstr(_packedFile.data(), _packedFile.size() - 3).c_str();
-	_SystemFile = (char*)concat_str((char*)_SystemFile.data(), "tbi");
-
-	extract_encoding_info(_SystemFile, _Canonic, _Canine);
-
-	/*
-	if (!readPack(_packedFile, _SqzInts))
-	{
-		std::cerr << "\n Error read compressed file. ";
-		return 0;
-	}
-	*/
+	extract_encoding_info(_packedFile.c_str(), _Canonic, _Canine);
+	// _Canonic & _Canine are successfully filled with correct data.
 	
-	cmb_bit = mix_integral_constant(_SqzInts);
+	const size_t _CniSize = _Canonic.size();
+	const size_t _CneSize = _Canine.size();
+
+	for (size_t i = 0; i < _CneSize; i++) {
+		if (i > (_CniSize - 1) ) _Canonic.push_back(_Canine[i]);
+		else _Canonic[i]._xData = _Canine[i]._xData;
+	}
+
+	
+
+	return 0;
 
 
 	_Gen_Canonical_Info(_CanDat, _Canine);
