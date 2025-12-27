@@ -1,15 +1,15 @@
 /* Using License: GPL v. 3.0 */
 
 #ifndef REQUIRE_H
-	#include "mixutil.h"
-	#include "mixhuff.h"
+	#include	"C:\PROJECTS\MIXUTIL\Libs\mixutil.h"
+	#include	"C:\PROJECTS\MIXUTIL\Libs\mixhuff.h"
 
 #endif
 
 
 
 /*
-; Usages: 	  For compressing one file into a *.sqz file.
+; Usages: For compressing one file into a *.sqz file.
 		  squzip -q <file1.(ext)> <file2.sqz> [COMP_RATE]
 		  eg: "squzip -q Letter1.txt Letter1.sqz" --> uses default COMP_RATE
 			  "squzip -q Letter1.txt Letter1.sqz 0.65" --> takes COMP_RATE specified by user.
@@ -34,16 +34,15 @@ int main(const int argc, const char* args[MAX])
 	const char* _c0 = (args[1])? args[1] : "\0";
 
 	std::string _f0 = (args[2])? args[2] : "\0",  // raw input file
-			  _f1 = (args[3])? args[3] : "\0",  // target output file
-			  _fN = (args[4])? args[4] : "\0"; // COMP_RATE argument
+				_f1 = (args[3])? args[3] : "\0",  // target output file
+				_fN = (args[4])? args[4] : "\0"; // COMP_RATE argument
 
 	const double _d1 = (_fN.empty())? 0 : std::strtod(_fN.data(), nullptr);
-	
+
 	bool gfSucceed = false;
 	size_t fgSize = 0;
 
-	mix::ptr_type::U_ARRAY<char> _uBuff = MK_U_ARRAY<char>(_RowSize);
-
+	mix::ptr_type::U_ARRAY<unsigned char> _uBuff = MK_U_ARRAY<unsigned char>(_RowSize);
 
 	switch (_c0[1])
 	{
