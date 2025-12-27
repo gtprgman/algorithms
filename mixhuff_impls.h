@@ -505,7 +505,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	if (_cCode == 'D')
 	{
-		PRINT("Generated Huffman Encoding Information.");
+		PRINT("Generated Huffman Encoding Information. (BPAIR)");
+		PRINT("_xData <=> _val");
 		for (const auto& bp : CodInfo)
 		{
 			RPRINTC(bp._data); RPRINTC(bp._val); RET;
@@ -521,19 +522,21 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 
 	if (_cCode == 'D') {
-		PRINT("Raw Canonical Data Obtained from the Generated BPAIR.");
+		PRINT("Raw Canonical Data Obtained from the Generated BPAIR. (_Canonical) ");
+		PRINT("_xData <=> _bitLen");
 		for (const auto& ce : Cni_Dat)
 		{
 			RPRINTC(ce._xData); RPRINTC(ce._bitLen); RET;
 		}
 	}
 	
-	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<char>());
-	mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<intmax_t>());
-
+		mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<char>());
+		mix::generic::fast_sort(Cni_Dat.begin(), Cni_Dat.end(), mix::generic::NLess<intmax_t>());
+	
 	if (_cCode == 'D')
 	{
-		PRINT("Sorted Canonical Encoding Information Data..");
+		PRINT("Sorted Canonical Encoding Information Data.. (sorted _Canonical)" );
+		PRINT("_xData <=> _bitLen");
 		for (const auto& _cb : Cni_Dat)
 		{
 			RPRINTC(_cb._xData); RPRINTC(_cb._bitLen); RET;
@@ -547,7 +550,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	cni_enforce_unique(Cni_Info); // codewords data updated
 
 	if (_cCode == 'D') {
-		PRINT("Canonical Huffman Encoding Information Generated !");
+		PRINT("Canonical Huffman Encoding Information Generated ! (_Gen_Canonical_Info() called.)" );
+		PRINT("_xData <=> _codeWord <=> _bitLen");
 
 		for (const auto& ci : Cni_Info)
 		{
@@ -555,6 +559,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 			RET;
 		}
 	}
+
+	cbi = {};
 
 	for (const _Canonical& cni : Cni_Info)
 	{
@@ -565,6 +571,16 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 
 	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
+
+	if (_cCode == 'D') {
+		PRINT(" Finalized Sorted(char) Canonical Encoding Information Generated .. [ std::vector<Can_Bit>]");
+		PRINT(" _xData <=> _codeWord <=> _bitLen");
+		for (const auto& _cnb : CniBits) {
+			RPRINTC(_cnb._xData); RPRINTC(_cnb._codeWord); RPRINTC(_cnb._bitLen); RET;
+		}
+	}
+
+	RET;
 
 	// gathering source data..
 	for (size_t fz = 0; fz < T_SIZE; fz++)
@@ -788,7 +804,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	const char* _sExt = "\0";
 
 	std::vector<unsigned char> _srcData = {};
-	std::vector<int64_t> _pacInts = {};
+	std::vector<intmax_t> _pacInts = {};
 
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {};
@@ -845,6 +861,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
+	// _pacInts is fully filled with correct values
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
 	// CniHead0 & CniHead1 are fully filled with correct data
@@ -898,25 +915,58 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	char* _OriginFile = (char*)_unPackedFile.c_str();
 
 	extract_encoding_info(_packedFile.c_str(), _Canonic, _Canine);
-	// _Canonic & _Canine are successfully filled with correct data.
+	// _Canonic & _Canine are successfully filled with the correct data.
 	
-	const size_t _CniSize = _Canonic.size();
-	const size_t _CneSize = _Canine.size();
+	const size_t _CniSize = _Canonic.size(); // filled with bit length & RLE of bit length
+	const size_t _CneSize = _Canine.size(); // filled with encoded chars 
 
 	for (size_t i = 0; i < _CneSize; i++) {
 		if (i > (_CniSize - 1) ) _Canonic.push_back(_Canine[i]);
 		else _Canonic[i]._xData = _Canine[i]._xData;
 	}
 
-	
+	// _Canonic is fully filled with correct data (_xData + _bitLen + _rle_bit_len);
 
-	return 0;
+	const size_t _CanSize = _Canonic.size();
+
+	// RLE method unravels each number of repeated bit-length ..
+	for (size_t g = 0, f = 0; f < _CanSize ; f++)
+	{
+		_bi = _Canonic[f]._bitLen;
+		_x = _Canonic[f]._rle_bit_len;
+
+		// t = 0 -> number of repeated bit-length ..
+		for (intmax_t t = 0; t < _x; t++)
+		{
+			if (g < _CanSize) cniBitLen.push_back(intmax_t(_bi));
+			++g;
+		}
+	}
+
+	for (size_t z = 0; z < _CanSize; z++) _Canonic[z]._bitLen = cniBitLen[z];
+
+	mix::generic::fast_sort(_Canonic.begin(), _Canonic.end(), mix::generic::NLess<char>());
+	mix::generic::fast_sort(_Canonic.begin(), _Canonic.end(), mix::generic::NLess<intmax_t>());
+	/*
+		for (const auto& _cn : _Canonic) {
+		RPRINTC(_cn._xData); RPRINTC(_cn._bitLen); RET;
+		}
+
+		RET;
+		return 0;
+	*/
+
+	_Gen_Canonical_Info(_CanDat, _Canonic); cni_enforce_unique(_CanDat);
+	/*
+		for (const auto& _cda : _CanDat) {
+			RPRINTC(_cda._xData); RPRINTC(_cda._codeWord); RET;
+		}
+
+		RET;
+		return 0;
+	*/
 
 
-	_Gen_Canonical_Info(_CanDat, _Canine);
-	cni_enforce_unique(_CanDat);
-
-	
 	// filling up the most important data needed in 'ReSync_Int() ' calls..
 	for (const _Canonical& cnd : _CanDat)
 	{
@@ -926,22 +976,21 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		cnbi = {};
 	}
 
-	PRINT("\n sorting integers of symbols.. ");
-	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<int64_t>());
+	for (const auto& _cbi : vCnbi) {
+		RPRINTC(_cbi._xData); RPRINTC(_cbi._codeWord); RET;
+	}
 
-	
+	RET;
+
+	return 0;
+
+	PRINT("\n sorting integers of symbols.. ");
+	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<intmax_t>());
+
 	const size_t cnfSize = _Canonic.size();
 
 	
-	// RLE method unravels each bit length info of a packed integer..
-	for (size_t g = 0,f = 0; f < cnfSize; f++)
-	{
-		_bi = _Canonic[f]._bitLen;
-		_x = _Canonic[f]._rle_bit_len;
-
-		for (int64_t t = 0; t < _x; t++)
-			cniBitLen.push_back(_bi);
-	} 
+	
 
 	
 	PRINT("\n rematching integers with data .. ");
