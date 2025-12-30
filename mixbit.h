@@ -22,7 +22,7 @@ enum class INT_HEX : std::int8_t
 
 
 // a list of constants in hexa digit { A .. F }
-constexpr std::initializer_list<const int64_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
+constexpr std::initializer_list<const int8_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
 												   		(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
 													 };
 
@@ -32,9 +32,9 @@ constexpr std::initializer_list<const int64_t> HxC = { (int8_t)INT_HEX::A, (int8
 static inline char&& HEX_CHR(int64_t&& _i64)
 {
 	static char _cfx = '0';
-	int64_t _hc = 0;
+	int8_t _hc = 0, _i8t = (int8_t)_i64;
 
-	_hc = (mix::isRange(_i64, HxC))? _i64 : 0;
+	_hc = (mix::isRange(_i8t, HxC))? _i8t : 0;
 
 	_cfx = '0';
 
@@ -209,23 +209,23 @@ static inline int64_t&& Ints_Of(int64_t& _ebx)
 	return extract_Ints(_ebx);
 }
 
-// integrates number of integers in the vector into a single 64 bit integer
-static const int64_t mix_integral_constant(const std::vector<int64_t>&);
+// integrating number of integers in the vector into a single 64 bit integer
+static const intmax_t mix_integral_constant(const std::vector<intmax_t>&);
 
 // generate encoding information table based on Huffman Canonical Method
-static void _Gen_Canonical_Info(std::vector<int64_t>&, const std::vector<int64_t>&);
+static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax_t>&);
 
 // make sure every codeword integer is unique
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
 // packing a series of canonical bits into one integer and return the result as a bits string.
-static const intmax_t cni_bits_pack(const std::vector<int64_t>&);
+static const intmax_t cni_bits_pack(const std::vector<intmax_t>&);
 
 // saves a packed canonical bit to a one specified file
-static const size_t save_cni_bit(std::FILE*&, const int64_t&);
+static const size_t save_cni_bit(std::FILE*&, const intmax_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
-static const int read_cni_bit(std::FILE*&, std::vector<int64_t>&);
+static const int read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -559,7 +559,7 @@ static int64_t&& LoPart(int64_t&&);
 static int64_t&& HiPart(int64_t&&);
 
 // splits an integer into its composing bit factors and stored it to a vector
-inline static void parseInt(int64_t&, std::vector<int64_t>&);
+inline static void parseInt(intmax_t&&, std::vector<int64_t>&);
 
 // parses each integer of a vector into its 8 bit composing binary form.
 inline static void parseByte(std::vector<int>&, const std::vector<int64_t>&);
@@ -718,13 +718,14 @@ typename bin_to_dec<T>::value_type bin_to_dec<T>::_Dec = 0;
 
 
 
-template < class T, bool _Val = std::is_integral_v<T>,
-            class _Ty = std::conditional_t<_Val, intmax_t, mix::nullType> >
+template < class T , bool _Val = std::is_integral_v<T>,
+            class _Ty = std::conditional_t<_Val, intmax_t, nullptr_t> >
 struct To_HexF {
 	using val_type = typename std::remove_reference_t<_Ty>;
 
 	static inline std::string&& eval(val_type&& val_i64)
 	{
+		_hxs.clear();
 		_hxs.assign( hex_str(val_type(val_i64) ) );
 		
 		return std::move(_hxs);
@@ -739,23 +740,26 @@ private:
 		val_type _m64 = 0;
 		static std::string _hxf = "\0";
 
+		_hxf.clear();
 		vectorClean(_x16c);
 
 		if (_i64 <= 0) return std::move(_hxf);
 
 		while (_i64 > 0)
 		{
-			_m64 = _i64 % 16;
-			_x16c.push_back(_m64);
-			_i64 /= 16;
+			_m64 = (val_type)(_i64 % 16);
+			_x16c.push_back(_m64 );
+			_i64 = std::lldiv(_i64, 16).quot; 
+			_m64 = 0;
 		}
 
 		mix::generic::STL_Content_Reverse(_x16c);
-
+	
 		for (const val_type& _ix : _x16c)
 		{
-			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(val_type(_ix)) == '0')? inttostr(_ix).c_str() : 
-													new char[2] {HEX_CHR(val_type(_ix)), '\0'} );
+			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0') ? inttostr(_ix).c_str() :
+													new char[2] { HEX_CHR(int8_t(_ix)), '\0' });
+				       
 		}
 
 		vectorClean(_x16c);
@@ -768,7 +772,7 @@ template <class T, bool _v, class _Ty>
 std::string To_HexF<T, _v, _Ty>::_hxs = "\0";
 
 template <class T, bool _v, class _Ty>
-std::vector<typename To_HexF<T, _v, _Ty>::val_type> To_HexF<T, _v, _Ty>::_x16c = {};
+std::vector< typename To_HexF<T,_v,_Ty>::val_type > To_HexF<T, _v, _Ty>::_x16c = {};
 
 
 
@@ -838,14 +842,14 @@ static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
 }
 
 
-static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_Ints)
+static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
 {
-	int64_t rbx = 0, nShift = 0, bitsz = 0;
+	intmax_t rbx = 0, nShift = 0, bitsz = 0;
 	const size_t v_size = v_Ints.size();
 
 	for (size_t vi = 0; vi < v_size; vi++)
 	{
-		bitsz = len_bit(int64_t(v_Ints[vi]));
+		bitsz = len_bit(intmax_t(v_Ints[vi]));
 		nShift = (bitsz <= 4)? 4 : bitsz;
 
 		rbx = (rbx)? (rbx << nShift) | v_Ints[vi] : rbx | v_Ints[vi];
@@ -858,7 +862,7 @@ static inline const int64_t mix_integral_constant(const std::vector<int64_t>& v_
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
 {
-	int64_t _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
+	intmax_t _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
 	const std::size_t _codeSize = _Codes.size();
 	std::vector<_Canonical> _CnTemp = {};
 	_Canonical _Canon = _Codes[0];
@@ -874,7 +878,7 @@ static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std
 	for (size_t z = 1; z < _codeSize; z++)
 	{
 		_Canon = _Codes[z - 1];
-		_len1 = len_bit(int64_t(_Canon._codeWord));
+		_len1 = len_bit(intmax_t(_Canon._codeWord));
 		_len2 = _Codes[z]._bitLen;
 
 		if (_len2 > _len1)
@@ -926,14 +930,15 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const intmax_t cni_bits_pack(const std::vector<int64_t>& _canVec)
+static inline const intmax_t cni_bits_pack(const std::vector<intmax_t>& _canVec)
 {
-	int64_t _x = 0;
+	intmax_t _x = 0;
 	const size_t canSz = _canVec.size();
 
 		for (size_t t = 0; t < canSz; t++)
 		{
-			_x <<= len_bit(int64_t(_canVec[t] ));
+			_x <<= len_bit(intmax_t(_canVec[t] ));
+			if (!_canVec[t]) continue;
 			_x |= _canVec[t];
 		}
 		
@@ -941,7 +946,7 @@ static inline const intmax_t cni_bits_pack(const std::vector<int64_t>& _canVec)
 }
 
 
-static inline const size_t save_cni_bit(std::FILE*& _fHandle, const int64_t& v_bit)
+static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_bit)
 {
 	if (!_fHandle) {
 		std::cerr << "\n Can't open file with the specified I/O handle. \n";
@@ -951,7 +956,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const int64_t& v_b
 
 	std::string::iterator _xIt;
 	std::string _tmpS = "\0";
-	std::string _hexF = To_HexF<int64_t>::eval(int64_t(v_bit));
+	std::string _hexF = To_HexF<intmax_t>::eval(intmax_t(v_bit));
 	std::string _BitStr = HxFs_To_Bin(_hexF.c_str());
 	char* _pStr = nullptr;
 
@@ -998,7 +1003,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const int64_t& v_b
 }
 
 
-static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<int64_t>& Int_Bit)
+static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
 
@@ -1049,9 +1054,9 @@ static inline int64_t&& HiPart(int64_t&& _v)
 }
 
 
-inline static void parseInt(int64_t&& _rdx, std::vector<int64_t>& _Ints)
+inline static void parseInt(intmax_t&& _rdx, std::vector<intmax_t>& _Ints)
 {
-	int64_t _rbx = 0, _rcx = 0;
+	intmax_t _rbx = 0, _rcx = 0;
 
 	while ((_rbx = Ints_Of(_rdx)) > 0)
 	{
