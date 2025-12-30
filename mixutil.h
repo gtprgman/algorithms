@@ -598,7 +598,7 @@ namespace mix {
 
 
 	
-	constexpr const bool isRange(int64_t const _C, std::initializer_list<int64_t const> const& _vals) {
+	constexpr const bool isRange(int8_t const& _C, std::initializer_list<int8_t const> const& _vals) {
 		bool isElem = false;
 
 		for (auto const& _c : _vals) {
@@ -1059,6 +1059,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
