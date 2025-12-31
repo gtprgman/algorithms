@@ -16,46 +16,28 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 
 
 // ReSync the integers of *.sqz
-static inline const std::size_t ReSync_Int(std::vector<int64_t>& _vecSqz, std::vector<char>& ReSynced_Data,
-											const std::vector<int64_t>& Bits_Len,  const int64_t& IntSqz, 
-											const std::vector<Can_Bit>& _CniInfo)
+static inline const std::size_t ReSync_Int(std::vector<intmax_t>& _vecSqz, std::vector<char>& ReSynced_Data,
+											const std::vector<Can_Bit>& _CniInfo, const intmax_t& _IntSqz)
 {
-	int64_t w = 0, bx = 0;
-	size_t synced_size = 0;
-	const std::string xsbit = bit_str(int64_t(IntSqz) );
-
-	const size_t bitSize = xsbit.size();
-	const size_t BitsInfoSize = Bits_Len.size();
-
-	char* xs = (char*)xsbit.c_str();
-	xs[bitSize] = 0;
+	intmax_t w = 0, bx = 0;
+	std::size_t synced_size = 0;
 
 	std::vector<Can_Bit>& CNF = (std::vector<Can_Bit>&)_CniInfo;
-
 	std::vector<Can_Bit>::iterator CBT;
-
-	vectorClean(_vecSqz);
-
-	for (size_t i = 0; i < BitsInfoSize; i++)
-	{
-		w = Bits_Len[i];
-		bx = int_bit(lstr(xs, w));
-		_vecSqz.push_back(bx);
-		xs += w;
-	}
 
 	const size_t SqzSize = _vecSqz.size();
 
 	for (size_t q = 0; q < SqzSize; q++)
 	{
 		if (mix::generic::vector_search(CNF.begin(), CNF.end(), _vecSqz[q],
-											mix::generic::NLess<int64_t>(), CBT))
+											mix::generic::NLess<intmax_t>(), CBT))
 		{
 			ReSynced_Data.push_back(CBT->_xData); ++synced_size;
 		}
+		else std::cerr << "\n encoded symbol integer: " << _vecSqz[q] << " not found !\n ";
+		
 	}
 
-	NULLP(xs);
 	return synced_size;
 }
 
@@ -363,13 +345,35 @@ static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& 
 
 
 // Read the packed data source to a int Vector.
-static inline const std::size_t readPack(std::FILE*& _fHandle, std::vector<int64_t>& vInts)
+static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
 {
-	std::size_t _readBytes = 0;
+	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
 
-	_readBytes = read_cni_bit(_fHandle, vInts);
+	if (!_fHandle) {
+		std::cerr << "\n Error open Read-Access to File !\n\n";
+		return 0;
+	}
 
-return _readBytes;
+	std::size_t _totBytesRead = 0, _NBitLen = 0, _NRLE_BitLen = 0, _NCodeWs = 0;
+
+	if (!(_totBytesRead = std::fread(&_NBitLen, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n Error read number of bit-lengths' records' size !\n\n";
+
+	if (!(_totBytesRead = std::fread(&_NRLE_BitLen, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n Error read RLE of bit-lengths records' size !\n\n";
+
+	if (!(_totBytesRead = std::fread(&_NCodeWs, sizeof(size_t), 1, _fHandle))) {
+		std::cerr << "\n Error read compressed symbols.. ! Could not proceed !! \n\n";
+		if (_fHandle) std::fclose(_fHandle);
+		return 0;
+	}
+
+
+	_totBytesRead += read_cni_bit(_fHandle, vInts);
+
+	if (_fHandle) std::fclose(_fHandle);
+
+return _totBytesRead;
 }
 
 
@@ -443,9 +447,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	Can_Bit cbi = {};
 
-	std::vector<_Canonical> Cni_Info = {};
-	std::vector<Can_Bit> CniBits = {};
-	std::vector<Can_Bit>::iterator CBiT = {};
+	std::vector<_Canonical> Cni_Info = {} , CniBits = {};
+	std::vector<_Canonical>::iterator CBiT = {};
 
 	std::string xs_bit = "\0";
 
@@ -457,7 +460,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 
 	if (_cCode == 'D') {
-		PRINT("Nodes data..");
+		PRINT("\nNodes data..");
 		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
 	}
 	RET;
@@ -473,7 +476,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	if (_cCode == 'D')
 	{
-		PRINT("Filtered Nodes Data..");
+		PRINT("\nFiltered Nodes Data..");
 		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
 		RET;
 	}
@@ -493,7 +496,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	if (_cCode == 'D')
 	{
-		PRINT("Frequency nodes data..");
+		PRINT("\nFrequency nodes data..");
 		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
 		RET;
 	}
@@ -505,7 +508,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	if (_cCode == 'D')
 	{
-		PRINT("Generated Huffman Encoding Information. (BPAIR)");
+		PRINT("\nGenerated Huffman Encoding Information. (BPAIR)");
 		PRINT("_xData <=> _val");
 		for (const auto& bp : CodInfo)
 		{
@@ -522,7 +525,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 
 	if (_cCode == 'D') {
-		PRINT("Raw Canonical Data Obtained from the Generated BPAIR. (_Canonical) ");
+		PRINT("\nRaw Canonical Data Obtained from the Generated BPAIR. (_Canonical) ");
 		PRINT("_xData <=> _bitLen");
 		for (const auto& ce : Cni_Dat)
 		{
@@ -535,7 +538,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	
 	if (_cCode == 'D')
 	{
-		PRINT("Sorted Canonical Encoding Information Data.. (sorted _Canonical)" );
+		PRINT("\nSorted Canonical Encoding Information Data.. (sorted _Canonical) " );
 		PRINT("_xData <=> _bitLen");
 		for (const auto& _cb : Cni_Dat)
 		{
@@ -550,7 +553,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	cni_enforce_unique(Cni_Info); // codewords data updated
 
 	if (_cCode == 'D') {
-		PRINT("Canonical Huffman Encoding Information Generated ! (_Gen_Canonical_Info() called.)" );
+		PRINT("\nCanonical Huffman Encoding Information Generated ! (_Gen_Canonical_Info() called.) " );
 		PRINT("_xData <=> _codeWord <=> _bitLen");
 
 		for (const auto& ci : Cni_Info)
@@ -573,8 +576,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
 
 	if (_cCode == 'D') {
-		PRINT(" Finalized Sorted(char) Canonical Encoding Information Generated .. [ std::vector<Can_Bit>]");
-		PRINT(" _xData <=> _codeWord <=> _bitLen");
+		PRINT(" \n Finalized Sorted(char) Canonical Encoding Information Generated .. [ std::vector<Can_Bit>] ");
+		PRINT(" _xData <=> _codeWord <=> _bitLen ");
 		for (const auto& _cnb : CniBits) {
 			RPRINTC(_cnb._xData); RPRINTC(_cnb._codeWord); RPRINTC(_cnb._bitLen); RET;
 		}
@@ -596,7 +599,13 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 		}
 	}
 
-	SqzInt = cni_bits_pack(PacInts);
+	if (_cCode == 'D') {
+		PRINT("\n Generated Code Symbols ..");
+		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
+
+		SqzInt = cni_bits_pack(PacInts);
+		RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); RET;
+	}
 	
 	return SqzInt;
 }
@@ -862,6 +871,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
 	// _pacInts is fully filled with correct values
+	// _sqzNum is assigned with the correct returned value
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
 	// CniHead0 & CniHead1 are fully filled with correct data
@@ -929,13 +939,13 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	const size_t _CanSize = _Canonic.size();
 
-	// RLE method unravels each number of repeated bit-length ..
+	// RLE method unravels each number of repeated bit-lengths ..
 	for (size_t g = 0, f = 0; f < _CanSize ; f++)
 	{
 		_bi = _Canonic[f]._bitLen;
 		_x = _Canonic[f]._rle_bit_len;
 
-		// t = 0 -> number of repeated bit-length ..
+		// t = 0 -> number of repeated bit-lengths ..
 		for (intmax_t t = 0; t < _x; t++)
 		{
 			if (g < _CanSize) cniBitLen.push_back(intmax_t(_bi));
@@ -976,26 +986,37 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		cnbi = {};
 	}
 
-	for (const auto& _cbi : vCnbi) {
-		RPRINTC(_cbi._xData); RPRINTC(_cbi._codeWord); RET;
-	}
+	
+	for (const auto& _e : vCnbi) _SqzInts.push_back(_e._codeWord);
 
-	RET;
+	vectorClean(cniBitLen);
+
+	const size_t _SqzSize = readPack(_packedFile.c_str(), cniBitLen);
+
+	if (!_SqzSize) {
+		std::cerr << "\n Error read compressed symbols data ..! Could not proceed !!\n\n";
+		return 0;
+	}
+    
+	mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
 
 	return 0;
 
-	PRINT("\n sorting integers of symbols.. ");
-	mix::generic::t_sort(vCnbi.begin(), vCnbi.end(), 0.25, mix::generic::NLess<intmax_t>());
+	/*
+	cmb_bit = mix_integral_constant(cniBitLen);
 
-	const size_t cnfSize = _Canonic.size();
+	vectorClean(_SqzInts);
 
-	
-	
+	parseInt(intmax_t(cmb_bit), _SqzInts);
 
-	
-	PRINT("\n rematching integers with data .. ");
+	mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
 
-	ReckonSize = ReSync_Int(_SqzInts, RawDat, cniBitLen, cmb_bit, vCnbi);
+	return 0;
+
+	*/
+	PRINT("\n rematching symbols with data .. ");
+
+	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
 
 	
 	if (!ReckonSize)
