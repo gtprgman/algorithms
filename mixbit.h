@@ -196,11 +196,11 @@ template <typename _Ty >
 static _Ty&& _Get_Num_of_Bits(_Ty&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
-template < typename _Ty = int>
+template < typename _Ty = intmax_t >
 static std::string&& _Get_Binary_Str(_Ty&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
-template <class _T = int>
+template <class _T = intmax_t>
 static _T&& _Int_from_Bit_Str(std::string&&);
 
 // Invoker macro for extract_Ints
@@ -607,15 +607,16 @@ static inline std::string&& zero_bits(const size_t& n_Bits)
 
 
 // evaluate to how much number of bits that made up a constant value '_v'
-template < class T >
+template < class T, bool _Vt = std::is_integral_v<T>,
+			class _Ty = std::conditional_t<_Vt, intmax_t, nullptr_t> >
 struct num_of_bits
 {
-	using type = typename T;
+	using type = typename std::remove_reference_t<_Ty>;
 
-	static type&& eval(type&& _v)
+	static type&& eval(const type& _v)
 	{
 		static type&& cnt = 0;
-		type&& _val = type(_v);
+		type _val = _v;
 
 		cnt = 0;
 
@@ -626,7 +627,7 @@ struct num_of_bits
 
 		while (_val > 0)
 		{
-			_val /= 2;
+			_val = std::lldiv(_val, 2).quot;
 			++cnt;
 		}
 
@@ -637,15 +638,16 @@ struct num_of_bits
 
 
 // convert a specified decimal constant to its binary form
-template < typename T >
+template < typename T , bool _Val = std::is_integral_v<T>,
+             typename _Ty = std::conditional_t<_Val, intmax_t, nullptr_t> >
 struct to_binary
 {
-	using value_type = typename std::remove_reference_t<T>;
+	using value_type = typename std::remove_reference_t<_Ty>;
 
-	static inline std::string&& eval(value_type&& _dec)
+	static inline std::string&& eval(const value_type& _dec)
 	{
 		value_type _q = 0;
-		value_type _bsz = num_of_bits<value_type>::eval(value_type(_dec) );
+		value_type _bsz = num_of_bits<value_type>::eval(_dec);
 		_value = _dec;
 
 		if (!_value) {
@@ -658,14 +660,14 @@ struct to_binary
 
 		for (value_type i = 0; i < _bsz && _value > 0; i++)
 		{
-			_q = _value % 2;
+			_q = (value_type)std::fmodl( (long double)_value, (long double)2 );
 			_bs[i] = (_q)? '1' : '0';
-			_value = (_value > 1)? _value /= 2 : 0;
+			_value = (_value > 1)? std::lldiv(_value,2).quot : 0;
 		}
 
 		_value = 0;
 		_bs[_bsz] = 0;
-		_bs = (char*)reverse_str(_bs.data());
+		_bs = (char*)reverse_str(_bs.c_str());
 		return std::move(_bs);
 	}
 
@@ -675,11 +677,11 @@ private:
 };
 
 // static members initializer
-template <class T>
-typename to_binary<T>::value_type to_binary<T>::_value = 0;
+template <class T, bool _V, class _Ty>
+typename to_binary<T, _V, _Ty>::value_type to_binary<T, _V, _Ty>::_value = 0;
 
-template <class T>
-std::string to_binary<T>::_bs = "\0";
+template <class T, bool _V, class _Ty>
+std::string to_binary<T, _V, _Ty>::_bs = "\0";
 
 
 
@@ -703,7 +705,7 @@ struct bin_to_dec
 			_Dec += b * (value_type)std::pow(2, k++);
 		}
 
-		b = (_strBits[0] == 49) ? 1 : 0;
+		b = (_strBits[0] == 49)? 1 : 0;
 		_Dec += b * (value_type)std::pow(2, _maxBit);
 
 		return std::move(_Dec);
@@ -723,10 +725,11 @@ template < class T , bool _Val = std::is_integral_v<T>,
 struct To_HexF {
 	using val_type = typename std::remove_reference_t<_Ty>;
 
-	static inline std::string&& eval(val_type&& val_i64)
+	static inline std::string&& eval(const val_type& val_i64)
 	{
+		_hxs = "\0";
 		_hxs.clear();
-		_hxs.assign( hex_str(val_type(val_i64) ) );
+		_hxs.assign( hex_str(val_i64) );
 		
 		return std::move(_hxs);
 	}
@@ -735,21 +738,22 @@ private:
 	static std::string _hxs;
 	static std::vector<val_type> _x16c;
 
-	static inline std::string&& hex_str(val_type&& _i64)
+	static inline std::string&& hex_str(const val_type& _i64)
 	{
-		val_type _m64 = 0;
+		val_type _m64 = 0, _x64 = _i64;
 		static std::string _hxf = "\0";
 
+		_hxf = "\0";
 		_hxf.clear();
 		vectorClean(_x16c);
 
-		if (_i64 <= 0) return std::move(_hxf);
+		if (_x64 <= 0) return std::move(_hxf);
 
-		while (_i64 > 0)
+		while (_x64 > 0)
 		{
-			_m64 = (val_type)(_i64 % 16);
+			_m64 =  (val_type)std::fmodl((long double)_x64, (long double)16);
 			_x16c.push_back(_m64 );
-			_i64 = std::lldiv(_i64, 16).quot; 
+			_x64 = std::lldiv(_x64, 16).quot; 
 			_m64 = 0;
 		}
 
@@ -757,7 +761,7 @@ private:
 	
 		for (const val_type& _ix : _x16c)
 		{
-			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0') ? inttostr(_ix).c_str() :
+			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0')? inttostr(_ix).c_str() :
 													new char[2] { HEX_CHR(int8_t(_ix)), '\0' });
 				       
 		}
@@ -780,10 +784,11 @@ static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
 	int _xc = 0;
 	size_t _hxSz = 0;
-	std::vector<std::string> _vcBin;
-	static std::string _hxsBin;
+	std::vector<std::string> _vcBin = {};
+	static std::string _hxsBin = "\0";
 
-	_hxsBin = "\0";
+	_hxsBin.clear();
+	vectorClean(_vcBin);
 
 	for (std::string::iterator _xItr = _xhFs.begin(); _xItr != _xhFs.end(); _xItr++)
 	{
@@ -810,25 +815,25 @@ static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 template <typename _Ty>
 static inline _Ty&& _Get_Num_of_Bits(_Ty&& _ax)
 {
-	return num_of_bits<_Ty>::eval(_Ty(_ax) );
+	return num_of_bits<_Ty>::eval(_ax);
 }
 
 
 template < typename _Ty >
 static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
-	using _Type = std::remove_reference_t<_Ty>;
+	using _Type = typename std::remove_reference_t<_Ty>;
 	
 	const _Type HXZ = 4;
-	const _Type _LenDX = num_of_bits<_Type>::eval(_Type(_Dx));
-	const _Type _DiffT = HXZ - _LenDX;
+	//const _Type _LenDX = (const _Type)num_of_bits<_Type>::eval(_Type(_Dx));
+	//const _Type _DiffT = (HXZ > _LenDX)? HXZ - _LenDX : _LenDX - HXZ;
 	static std::string _StrBin = "\0";
-	char* _zeroBit = (char*)zero_bits(_DiffT).c_str();
+	//char* _zeroBit = (char*)zero_bits(_DiffT).c_str();
 
-	_StrBin = (char*)" ";
+	_StrBin = "\0";
+	_StrBin.clear();
 
-	_StrBin = concat_str((char*)_StrBin.c_str(), (_DiffT >= 4)? to_binary<_Type>::eval(_Type(_Dx)).c_str() :
-				concat_str(_zeroBit, to_binary<_Type>::eval(_Type(_Dx)).c_str()));
+	_StrBin = concat_str((char*)_StrBin.data(), to_binary<_Type>::eval(_Dx).c_str());
 			
 
 	return std::move(_StrBin);
@@ -977,7 +982,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 
 		if (!_tmpS.empty())
 		{
-			_xRec = int_bit(_tmpS.c_str());
+			_xRec = (int)int_bit(_tmpS.c_str());
 			if (_xRec) std::fputc(_xRec, _fHandle);
 			_xRec = 0; _bytesWritten += 8;
 		}
@@ -990,7 +995,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 	if (_BitDifft > 0)
 	{
 		_tmpS = rstr(_BitStr.c_str(), _BitDifft);
-		_xRec = int_bit(_tmpS.c_str());
+		_xRec = (int)int_bit(_tmpS.c_str());
 		if (_xRec) std::fputc(_xRec, _fHandle); _bytesWritten += _BitDifft;
 	}
 
