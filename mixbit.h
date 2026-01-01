@@ -13,6 +13,8 @@
 
 #endif
 
+constexpr size_t HEX_SIZE = 4;
+
 // an integer representation of a hex constant ( A .. F )
 enum class INT_HEX : std::int8_t
 {
@@ -192,8 +194,8 @@ static std::string&& HxFs_To_Bin(std::string&&);
 static std::string&& repl_char(char&&, const size_t&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
-template <typename _Ty >
-static _Ty&& _Get_Num_of_Bits(_Ty&&);
+template <typename _Ty = intmax_t >
+static intmax_t&& _Get_Num_of_Bits(_Ty&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
 template < typename _Ty = intmax_t >
@@ -201,7 +203,7 @@ static std::string&& _Get_Binary_Str(_Ty&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
 template <class _T = intmax_t>
-static _T&& _Int_from_Bit_Str(std::string&&);
+static intmax_t&& _Int_from_Bit_Str(std::string&&);
 
 // Invoker macro for extract_Ints
 static inline int64_t&& Ints_Of(int64_t& _ebx)
@@ -613,7 +615,7 @@ struct num_of_bits
 {
 	using type = typename std::remove_reference_t<_Ty>;
 
-	static type&& eval(const type& _v)
+	static type&& eval(const type& _v) noexcept
 	{
 		static type&& cnt = 0;
 		type _val = _v;
@@ -734,6 +736,32 @@ struct To_HexF {
 		return std::move(_hxs);
 	}
 
+	// converts a specified hex digits ('_hexStr') into its binary representation.
+	static inline std::string&& to_bit_str(std::string&& _hexStr)
+	{
+		_hxs.clear(); 
+		_hxs = "\0";
+		int _bi = 0; char _xc = 0;
+		size_t _biSize = 0;
+
+		for (std::string::iterator _hexIt = _hexStr.begin(); _hexIt != _hexStr.end(); _hexIt++)
+		{
+			_xc = *_hexIt;
+			_bi = (HEX_INT(char(_xc)))? HEX_INT(char(_xc)) : chartoint(char(_xc));
+			_biSize = len_bit(int(_bi));
+			_biSize = (HEX_SIZE > _biSize)? HEX_SIZE - _biSize : 0;
+			_hxs = (char*)concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
+														concat_str(std::string(zero_bits(_biSize).c_str()).data(),
+														bit_str(int(_bi)).c_str()) : 
+							// direct attaches the bit string onto '_pTemp'
+							bit_str(int(_bi)).c_str()  );
+			
+			_xc = 0; _bi = 0; _biSize = 0;
+		}
+		
+		return std::move(_hxs);
+	}
+
 private:
 	static std::string _hxs;
 	static std::vector<val_type> _x16c;
@@ -813,9 +841,9 @@ static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 
 
 template <typename _Ty>
-static inline _Ty&& _Get_Num_of_Bits(_Ty&& _ax)
+static inline intmax_t&& _Get_Num_of_Bits(_Ty&& _ax)
 {
-	return num_of_bits<_Ty>::eval(_ax);
+	return std::forward<intmax_t&&>( num_of_bits<_Ty>::eval(_ax) );
 }
 
 
@@ -823,27 +851,21 @@ template < typename _Ty >
 static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
 	using _Type = typename std::remove_reference_t<_Ty>;
-	
-	const _Type HXZ = 4;
-	//const _Type _LenDX = (const _Type)num_of_bits<_Type>::eval(_Type(_Dx));
-	//const _Type _DiffT = (HXZ > _LenDX)? HXZ - _LenDX : _LenDX - HXZ;
 	static std::string _StrBin = "\0";
-	//char* _zeroBit = (char*)zero_bits(_DiffT).c_str();
 
 	_StrBin = "\0";
 	_StrBin.clear();
 
-	_StrBin = concat_str((char*)_StrBin.data(), to_binary<_Type>::eval(_Dx).c_str());
+	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
 			
-
 	return std::move(_StrBin);
 }
 
 
 template <class _T >
-static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
+static inline intmax_t&& _Int_from_Bit_Str(std::string&& Bit_Str)
 {
-	return bin_to_dec<_T>::eval(Bit_Str.data());
+	return std::forward<intmax_t&&>( bin_to_dec<_T>::eval(Bit_Str.data()) );
 }
 
 
@@ -857,7 +879,8 @@ static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& 
 		bitsz = len_bit(intmax_t(v_Ints[vi]));
 		nShift = (bitsz <= 4)? 4 : bitsz;
 
-		rbx = (rbx)? (rbx << nShift) | v_Ints[vi] : rbx | v_Ints[vi];
+		rbx = (rbx)? rbx << nShift : rbx;
+		rbx |= v_Ints[vi];
 	}
 
 	return rbx;
@@ -984,7 +1007,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 		{
 			_xRec = (int)int_bit(_tmpS.c_str());
 			if (_xRec) std::fputc(_xRec, _fHandle);
-			_xRec = 0; _bytesWritten += 8;
+			_xRec = 0; ++_bytesWritten;
 		}
 
 		_xIt += 8;
@@ -992,11 +1015,13 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 		_tmpS = "\0";
 	}
 
+	_tmpS = "\0";
+
 	if (_BitDifft > 0)
 	{
 		_tmpS = rstr(_BitStr.c_str(), _BitDifft);
 		_xRec = (int)int_bit(_tmpS.c_str());
-		if (_xRec) std::fputc(_xRec, _fHandle); _bytesWritten += _BitDifft;
+		if (_xRec) std::fputc(_xRec, _fHandle); ++_bytesWritten;
 	}
 
 	_hexF.clear();
