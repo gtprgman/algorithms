@@ -1,4 +1,3 @@
-
 #pragma once
 /* Using License: GPL .v .3.0 */
 
@@ -16,6 +15,7 @@
 
 constexpr size_t HEX_SIZE = 4;
 
+
 // an integer representation of a hex constant ( A .. F )
 enum class INT_HEX : std::int8_t
 {
@@ -29,6 +29,8 @@ constexpr std::initializer_list<const int8_t> HxC = { (int8_t)INT_HEX::A, (int8_
 												   		(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
 													 };
 
+// return how much number of decimal digits which appeared in a constant integer '_v'.
+template <class _T> _T&& num_of_dec(const _T&);
 
 
 // a character selector for any constant in hexa digit { A .. F }
@@ -114,7 +116,7 @@ struct Can_Bit : virtual public _Canonical
 #define bit_str(_x_) _Get_Binary_Str(_x_)
 #define int_bit(_x_) _Int_from_Bit_Str(_x_)
 #define len_bit(_x_) _Get_Num_of_Bits(_x_)
-
+#define num_dec(_x_) _Get_Num_of_Digits(_x_)
 
 
 // calculate how many of bit '1' in the data
@@ -197,6 +199,10 @@ static std::string&& repl_char(char&&, const size_t&);
 // Invoker macro for 'num_of_bits<T>::eval()'
 template <typename _Ty = intmax_t >
 static intmax_t&& _Get_Num_of_Bits(_Ty&&);
+
+// Invoker macro for 'num_of_dec<T>::eval()'
+template <typename _T>
+static intmax_t&& _Get_Num_of_Digits(_T&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
 template < typename _Ty = intmax_t >
@@ -751,11 +757,13 @@ struct To_HexF {
 			_bi = (HEX_INT(char(_xc)))? HEX_INT(char(_xc)) : chartoint(char(_xc));
 			_biSize = len_bit(int(_bi));
 			_biSize = (HEX_SIZE > _biSize)? HEX_SIZE - _biSize : 0;
-			_hxs = (char*)concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
-														concat_str(std::string(zero_bits(_biSize).c_str()).data(),
-														bit_str(int(_bi)).c_str()) : 
-							// direct attaches the bit string onto '_pTemp'
-							bit_str(int(_bi)).c_str()  );
+
+			_hxs = concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
+													concat_str(std::string(zero_bits(_biSize).c_str()).data(),
+													bit_str(int(_bi)).c_str()) :
+				// direct attaches the bit string onto '_hxs'
+				bit_str(int(_bi)).c_str() );
+
 			
 			_xc = 0; _bi = 0; _biSize = 0;
 		}
@@ -848,6 +856,13 @@ static inline intmax_t&& _Get_Num_of_Bits(_Ty&& _ax)
 }
 
 
+template <typename _T >
+static inline  intmax_t&& _Get_Num_of_Digits(_T&& _Fx)
+{
+	return std::forward<_T&&>( num_of_dec(_Fx) );
+}
+
+
 template < typename _Ty >
 static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
@@ -872,19 +887,11 @@ static inline intmax_t&& _Int_from_Bit_Str(std::string&& Bit_Str)
 
 static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
 {
-	intmax_t rbx = 0, nShift = 0, bitsz = 0;
-	const size_t v_size = v_Ints.size();
+	std::string _hx = "\0";
+	intmax_t _I64 = 0;
 
-	for (size_t vi = 0; vi < v_size; vi++)
-	{
-		bitsz = len_bit(intmax_t(v_Ints[vi]));
-		nShift = (bitsz <= 4)? 4 : bitsz;
-
-		rbx = (rbx)? rbx << nShift : rbx;
-		rbx |= v_Ints[vi];
-	}
-
-	return rbx;
+	
+	return _I64;
 }
 
 
@@ -1802,21 +1809,21 @@ fixN<BITS>::operator int() const
 
 }
 
-// return how much number of decimal digits which appeared in a constant integer '_v'.
-inline static const int64_t num_of_dec(const int64_t& _v)
-{
-	if (_v <= 0) return 0;
 
-	int64_t _dec = _v, _count = 0, nMod=0;
+template <typename _Ty>
+inline static _Ty&& num_of_dec(const _Ty& _v)
+{
+	if ((_Ty)_v <= 0) return 0;
+
+	_Ty _dec = _v, _count = 0, nMod=0;
 
 	while (_dec > 0)
 	{
 		++_count;
-		nMod = _dec % 10;
-		_dec /= 10;
+		_dec = (_Ty)std::lldiv(_dec, 10).quot;
 	}
 
-	return _count;
+	return _Ty(_count);
 }
 
 
