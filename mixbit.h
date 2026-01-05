@@ -210,7 +210,7 @@ static std::string&& _Get_Binary_Str(_Ty&&);
 
 // Invoker macro for 'bin_to_dec<T>::eval()'
 template <class _T = intmax_t>
-static intmax_t&& _Int_from_Bit_Str(std::string&&);
+static _T&& _Int_from_Bit_Str(std::string&&);
 
 // Invoker macro for extract_Ints
 static inline int64_t&& Ints_Of(int64_t& _ebx)
@@ -218,7 +218,7 @@ static inline int64_t&& Ints_Of(int64_t& _ebx)
 	return extract_Ints(_ebx);
 }
 
-// integrating number of integers in the vector into a single 64 bit integer
+// integrating number of integers in the vector into one single 'intmax_t' number
 static const intmax_t mix_integral_constant(const std::vector<intmax_t>&);
 
 // generate encoding information table based on Huffman Canonical Method
@@ -759,7 +759,7 @@ struct To_HexF {
 			_biSize = (HEX_SIZE > _biSize)? HEX_SIZE - _biSize : 0;
 
 			_hxs = concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
-													concat_str(std::string(zero_bits(_biSize).c_str()).data(),
+													concat_str((char*)zero_bits(_biSize).c_str(),
 													bit_str(int(_bi)).c_str()) :
 				// direct attaches the bit string onto '_hxs'
 				bit_str(int(_bi)).c_str() );
@@ -819,32 +819,12 @@ std::vector< typename To_HexF<T,_v,_Ty>::val_type > To_HexF<T, _v, _Ty>::_x16c =
 
 static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
-	int _xc = 0;
-	size_t _hxSz = 0;
-	std::vector<std::string> _vcBin = {};
 	static std::string _hxsBin = "\0";
-
 	_hxsBin.clear();
-	vectorClean(_vcBin);
+	_hxsBin = "\0";
 
-	for (std::string::iterator _xItr = _xhFs.begin(); _xItr != _xhFs.end(); _xItr++)
-	{
-		_xc = HEX_INT(char(*_xItr));
-
-		if (_xc) _vcBin.push_back(bit_str(_xc));
-		else _vcBin.push_back(alphaNum2Bin(char(*_xItr)));
-
-		_xc = 0;
-	}
+	_hxsBin = To_HexF<int>::to_bit_str(_xhFs.c_str());
 	
-	for (const auto& _xb : _vcBin) {
-		_hxSz = _xb.size();
-
-		_hxsBin = concat_str(_hxsBin.data(), (_hxSz == 4)? _xb.c_str() :
-								concat_str(zero_bits(1).data(), _xb.c_str()));
-	}
-
-	vectorClean(_vcBin);
 	return std::move(_hxsBin);
 }
 
@@ -879,21 +859,35 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 
 
 template <class _T >
-static inline intmax_t&& _Int_from_Bit_Str(std::string&& Bit_Str)
+static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
 {
-	return std::forward<intmax_t&&>( bin_to_dec<_T>::eval(Bit_Str.data()) );
+	return std::forward<_T&&>( bin_to_dec<_T>::eval(Bit_Str.c_str()) );
 }
 
 
 static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
 {
-	std::string _hx = "\0";
-	intmax_t _I64 = 0;
+	intmax_t _iMax = 0, _iLast = 0;
+	std::string _b = "\0", _hx = "\0";
+	const size_t v_size = v_Ints.size();
+	const size_t v_last = v_size - 1;
+		
+	_iLast = v_Ints[v_last];
 
-	
-	return _I64;
+	for (size_t z = 0; z < v_size - 1; z++)
+	{
+		_hx = To_HexF<int>::eval(v_Ints[z]);
+		_b = concat_str((char*)_b.c_str(), To_HexF<int>::to_bit_str(_hx.c_str()).c_str());
+		_hx = "\0";
+	}
+
+	_hx = To_HexF<int>::eval(_iLast);
+	_b = concat_str((char*)_b.c_str(), concat_str(zero_bits(1).data(), bit_str(intmax_t(_iLast)).c_str()));
+	_iMax = int_bit(_b.c_str());
+	_hx = "\0";
+
+	return _iMax;
 }
-
 
 
 static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
@@ -1813,7 +1807,7 @@ fixN<BITS>::operator int() const
 template <typename _Ty>
 inline static _Ty&& num_of_dec(const _Ty& _v)
 {
-	if ((_Ty)_v <= 0) return 0;
+	if ((_Ty)_v <= 0) return _Ty(0);
 
 	_Ty _dec = _v, _count = 0, nMod=0;
 
