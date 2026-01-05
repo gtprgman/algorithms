@@ -344,7 +344,7 @@ static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& 
 
 
 
-// Read the packed data source to a int Vector.
+// Read the packed data source into a int Vector.
 static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
 {
 	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
@@ -602,10 +602,12 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	if (_cCode == 'D') {
 		PRINT("\n Generated Code Symbols ..");
 		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
+	}
 
 		SqzInt = cni_bits_pack(PacInts);
-		RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); RET;
-	}
+		
+	if (_cCode == 'D') RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); RET;
+	
 	
 	return SqzInt;
 }
@@ -828,32 +830,36 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-	_cF = strNPos(_srcF.c_str(), '.');
+	if ( !_srcF.empty()) _cF = strNPos(_srcF.c_str(), '.');
+	else {
+		std::cerr << "\n Can't find original source file. ! Could not proceed... \n";
+		goto finishedDone;
+	}
 
 	if (_destF.empty())
 	{
-		_copyOne = (char*)lstr(_srcF.data(), _cF).c_str();
+		_copyOne = (char*)lstr(_srcF.c_str(), _cF).c_str();
 		_copyOne = (char*)concat_str(_copyOne, ".sqz");
 		goto CoreProcesses;
 	}
 
 
-	if ( (_cF = strNPos(_destF.data(), '.')) > -1)  // if the file has an extension
+	if ( (_cF = strNPos(_destF.c_str(), '.')) > -1)  // if the target file has an extension
 	{
-		_sExt = rstr(_destF.data(), 3).c_str();
+		_sExt = rstr(_destF.c_str(), 3).c_str();
 
 		if (std::strncmp(_sExt, "sqz", 3)) // if the extension string not equal 'sqz'
 		{
 			_sExt = "sqz";
-			_CountStr = (int)(_destF.size() - 3); // Locate the first encountered position of the extension's name
-			_copyOne = (char*)tapStrBy(_destF.data(), _sExt, _CountStr - 1).c_str();
+			_CountStr = (int)(_destF.size() - 3); // Locate the first encountered position in the extension's name
+			_copyOne = (char*)tapStrBy(_destF.c_str(), _sExt, _CountStr - 1).c_str();
 		}
 	}
 	else {
 
 		// if no extension specified to the file
 		_sExt = ".sqz";
-		_copyOne = (char*)concat_str((char*)_destF.data(), _sExt);
+		_copyOne = (char*)concat_str((char*)_destF.c_str(), _sExt);
 	}
 
 
@@ -879,6 +885,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	PACKED_HEADER_SIZE = Write_Header(_destF.c_str(), _FHandleRef, CniHead0, CniHead1);
 	// encoding information successfully saved !
 	
+	//PRINT(_sqzNum);
 
 	// writing packed data source into a file ( *.sqz ).
 	if ( !(_bDone = writePack(_FHandleRef, _sqzNum)))
@@ -922,7 +929,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::size_t ReckonSize = 0, _UnSquezzed = 0;
 	std::vector<intmax_t> cniBitLen, _SqzInts;
 
-	char* _OriginFile = (char*)_unPackedFile.c_str();
+	char* _OriginFile = (char*)_unPackedFile.c_str(); 
 
 	extract_encoding_info(_packedFile.c_str(), _Canonic, _Canine);
 	// _Canonic & _Canine are successfully filled with the correct data.
@@ -998,6 +1005,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		return 0;
 	}
     
+	mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
 	mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
 
 	return 0;
@@ -1019,6 +1027,8 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
 
 	
+
+
 	if (!ReckonSize)
 		std::perror("\n\n it seems like something error has happened .. \n\n");
 
