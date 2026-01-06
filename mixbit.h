@@ -117,20 +117,22 @@ struct Can_Bit : virtual public _Canonical
 #define int_bit(_x_) _Int_from_Bit_Str(_x_)
 #define len_bit(_x_) _Get_Num_of_Bits(_x_)
 #define num_dec(_x_) _Get_Num_of_Digits(_x_)
+#define bit_set(_x_) _Count_Bits_Set(_x_)
 
 
 // calculate how many of bit '1' in the data
 constexpr int64_t&& count_bit_set(int64_t&& _x)
 {
-	int64_t _rcx = 0;
+	intmax_t _rcx = 0, _rdx = 0;
 
 	while (_x > 0)
 	{
-		if (_x % 2) ++_rcx;
-		_x /= 2;
+		_rdx = (intmax_t)std::fmodl((long double)_x, (long double)2);
+		if (_rdx) ++_rcx;
+		_x = std::lldiv(_x, 2).quot;
 	}
 
-	return int64_t(_rcx);
+	return (int64_t)(*(& _rcx) );
 }
 
 
@@ -211,6 +213,10 @@ static std::string&& _Get_Binary_Str(_Ty&&);
 // Invoker macro for 'bin_to_dec<T>::eval()'
 template <class _T = intmax_t>
 static _T&& _Int_from_Bit_Str(std::string&&);
+
+// Invoker macro for 'count_bit_set()'
+template <class _T = int64_t >
+static int64_t&& _Count_Bits_Set(_T&&);
 
 // Invoker macro for extract_Ints
 static inline int64_t&& Ints_Of(int64_t& _ebx)
@@ -865,14 +871,21 @@ static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
 }
 
 
+template < class _T >
+static inline int64_t&& _Count_Bits_Set(_T&& _X)
+{
+	return std::forward<int64_t&&>(count_bit_set((_T)_X));
+}
+
+
 static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
 {
-	intmax_t _iMax = 0, _iLast = 0;
-	std::string _b = "\0", _hx = "\0";
+	intmax_t _iMax = 0, _iLast = 0, _iDiff_t = 0;
+	std::string _b = "\0", _hx = "\0", _lhx = "\0";
 	const size_t v_size = v_Ints.size();
-	const size_t v_last = v_size - 1;
-		
-	_iLast = v_Ints[v_last];
+	const size_t v_last = v_size - 1;	
+
+	_iLast = v_Ints[v_last]; // the last element
 
 	for (size_t z = 0; z < v_size - 1; z++)
 	{
@@ -881,8 +894,11 @@ static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& 
 		_hx = "\0";
 	}
 
-	_hx = To_HexF<int>::eval(_iLast);
-	_b = concat_str((char*)_b.c_str(), concat_str(zero_bits(1).data(), bit_str(intmax_t(_iLast)).c_str()));
+	_hx = To_HexF<int>::eval(_iLast);  _hx = To_HexF<int>::to_bit_str(_hx.c_str());
+	_lhx = lstr(_hx.c_str(), HEX_SIZE); _iMax = bit_set(strtoint(_lhx.c_str())); 
+	_iDiff_t = HEX_SIZE - _iMax; _iDiff_t = (_iDiff_t > 1)? 1 : _iDiff_t;
+
+	_b = concat_str((char*)_b.c_str(), concat_str((char*)zero_bits(_iDiff_t).c_str(), bit_str(intmax_t(_iLast)).c_str()));
 	_iMax = int_bit(_b.c_str());
 	_hx = "\0";
 
@@ -1807,17 +1823,22 @@ fixN<BITS>::operator int() const
 template <typename _Ty>
 inline static _Ty&& num_of_dec(const _Ty& _v)
 {
-	if ((_Ty)_v <= 0) return _Ty(0);
+	using _Type = std::remove_reference_t<_Ty>;
+	static _Type _counter = 0 , _dec = 0;
 
-	_Ty _dec = _v, _count = 0, nMod=0;
+	_counter = 0; _dec = 0;
+
+	if ((_Ty)_v <= 0) return std::move(_counter);
+
+	_dec = _v;
 
 	while (_dec > 0)
 	{
-		++_count;
+		++_counter;
 		_dec = (_Ty)std::lldiv(_dec, 10).quot;
 	}
 
-	return _Ty(_count);
+	return std::move(_counter);
 }
 
 
