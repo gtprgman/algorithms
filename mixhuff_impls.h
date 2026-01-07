@@ -332,7 +332,7 @@ static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& 
 	}
 
 	if (!(_writtenSize = std::fwrite(&_PckSize, sizeof(_PckSize), 1, _fHandle))) {
-		std::cerr << "\n Error saving number of total bytes' size \n";
+		std::cerr << "\n Error saving packed sizes' information \n";
 		if (_fHandle) std::fclose(_fHandle);
 		return 0;
 	}
@@ -347,6 +347,7 @@ static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& 
 // Read the packed data source into a int Vector.
 static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
 {
+	int _x = 0;
 	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
 
 	if (!_fHandle) {
@@ -356,20 +357,24 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<int
 
 	std::size_t _totBytesRead = 0, _NBitLen = 0, _NRLE_BitLen = 0, _NCodeWs = 0;
 
-	if (!(_totBytesRead = std::fread(&_NBitLen, sizeof(size_t), 1, _fHandle)))
+	if (!(_totBytesRead += std::fread(&_NBitLen, sizeof(size_t), 1, _fHandle)))
 		std::cerr << "\n Error read number of bit-lengths' records' size !\n\n";
+	else for (size_t z = 0; z < _NBitLen; z++) _x = std::fgetc(_fHandle);
 
-	if (!(_totBytesRead = std::fread(&_NRLE_BitLen, sizeof(size_t), 1, _fHandle)))
+	if (!(_totBytesRead += std::fread(&_NRLE_BitLen, sizeof(size_t), 1, _fHandle)))
 		std::cerr << "\n Error read RLE of bit-lengths records' size !\n\n";
+	else for (size_t r = 0; r < _NRLE_BitLen; r++) _x = std::fgetc(_fHandle);
 
-	if (!(_totBytesRead = std::fread(&_NCodeWs, sizeof(size_t), 1, _fHandle))) {
+	if (!(_totBytesRead += std::fread(&_NCodeWs, sizeof(size_t), 1, _fHandle))) {
 		std::cerr << "\n Error read compressed symbols.. ! Could not proceed !! \n\n";
 		if (_fHandle) std::fclose(_fHandle);
 		return 0;
 	}
 
+	vectorClean(vInts);
 
-	_totBytesRead += read_cni_bit(_fHandle, vInts);
+	for (size_t w = 0; w < _NCodeWs; w++) vInts.push_back(int(std::fgetc(_fHandle)) );
+
 
 	if (_fHandle) std::fclose(_fHandle);
 
@@ -606,7 +611,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 		SqzInt = cni_bits_pack(PacInts);
 		
-	if (_cCode == 'D') RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); RET;
+		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
 	
 	
 	return SqzInt;
@@ -772,7 +777,7 @@ static inline const size_t Write_Header( const std::string& _sqzFile,
 	vectorClean(_codew_info);
 
 	for (const auto& _hd1 : cn_head1)
-		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded character.
+		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded characters.
 
 	if (_xDebug == 'D') {
 		RET; mix::generic::STL_Print(_codew_info.begin(), _codew_info.end(), RPRINTC<char>); RET;
@@ -877,6 +882,10 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
 	// _pacInts is fully filled with correct values
+	/*
+		mix::generic::STL_Print(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
+		return 0;
+	*/
 	// _sqzNum is assigned with the correct returned value
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
@@ -1025,9 +1034,6 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	PRINT("\n rematching symbols with data .. ");
 
 	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
-
-	
-
 
 	if (!ReckonSize)
 		std::perror("\n\n it seems like something error has happened .. \n\n");
