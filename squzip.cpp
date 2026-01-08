@@ -7,7 +7,6 @@
 #endif
 
 
-
 /*
 ; Usages: For compressing one file into a *.sqz file.
 		  squzip -q <file1.(ext)> <file2.sqz> [COMP_RATE]
