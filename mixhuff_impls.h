@@ -249,14 +249,14 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 	if (!_Fr)
 	{
-		std::cerr << "\n Error read accessed to file. ";
+		std::cerr << "\n Error read accesses to file. \n";
 		return 0;
 	}
 
 	// Read the records's size number
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
-		std::cerr << "\n Error read header size information.";
+		std::cerr << "\n Error read header size information. \n";
 		if (_Fr) std::fclose(_Fr);
 		return 0;
 	}
@@ -277,7 +277,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	// read the records' size
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
-		std::cerr << "\n Error read header size information.";
+		std::cerr << "\n Error read header size information. \n";
 		if (_Fr) std::fclose(_Fr);
 		return 0;
 	}
@@ -297,7 +297,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	// Reads up size information ..
 	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
 	{
-		std::cerr << "\n Error read header info data.";
+		std::cerr << "\n Error read header info data. \n";
 		if (_Fr) std::fclose(_Fr);
 		return 0;
 	}
@@ -321,25 +321,24 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 
 // Packed the raw data source and saves it to a file.
-static inline const std::size_t writePack(std::FILE*& _fHandle, const intmax_t& _vPacked)
+static inline const intmax_t writePack(std::FILE*& _fHandle, const intmax_t& _vPacked)
 {
-	size_t _writtenSize = 0;
-	size_t _PckSize = len_bit(intmax_t(_vPacked)) / 8;
-
+	int _begin = EOF;
+	
 	if (!_fHandle) {
-		std::cerr << "\n Error Open File !! \n";
+		std::cerr << "\n Error open read-accesses to file. \n";
 		return 0;
 	}
 
-	if (!(_writtenSize = std::fwrite(&_PckSize, sizeof(_PckSize), 1, _fHandle))) {
-		std::cerr << "\n Error saving packed sizes' information \n";
+	if (!std::fwrite(&_begin, sizeof(_begin), 1, _fHandle)) {
+		std::cerr << "\n Could not write packed symbols' sizes to file. \n\n";
 		if (_fHandle) std::fclose(_fHandle);
-		return 0;
+		return _begin;
 	}
 
-	_writtenSize += save_cni_bit(_fHandle, _vPacked);
+	const size_t w_size = save_cni_bit(_fHandle, _vPacked);
 
-	return _writtenSize;
+	return w_size;
 }
 
 
@@ -351,11 +350,11 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<int
 	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
 
 	if (!_fHandle) {
-		std::cerr << "\n Error open Read-Access to File !\n\n";
+		std::cerr << "\n Error open Read-Accesses to File !\n\n";
 		return 0;
 	}
 
-	std::size_t _totBytesRead = 0, _NBitLen = 0, _NRLE_BitLen = 0, _NCodeWs = 0;
+	std::size_t _totBytesRead = 0, _NBitLen = 0, _NRLE_BitLen = 0, _NCodes = 0;
 
 	if (!(_totBytesRead += std::fread(&_NBitLen, sizeof(size_t), 1, _fHandle)))
 		std::cerr << "\n Error read number of bit-lengths' records' size !\n\n";
@@ -365,16 +364,13 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<int
 		std::cerr << "\n Error read RLE of bit-lengths records' size !\n\n";
 	else for (size_t r = 0; r < _NRLE_BitLen; r++) _x = std::fgetc(_fHandle);
 
-	if (!(_totBytesRead += std::fread(&_NCodeWs, sizeof(size_t), 1, _fHandle))) {
-		std::cerr << "\n Error read compressed symbols.. ! Could not proceed !! \n\n";
-		if (_fHandle) std::fclose(_fHandle);
-		return 0;
-	}
+	
+	_x = std::fgetc(_fHandle); // read off the separator line between data on the file.
 
 	vectorClean(vInts);
 
-	for (size_t w = 0; w < _NCodeWs; w++) vInts.push_back(int(std::fgetc(_fHandle)) );
-
+	_NCodes = read_cni_bit(_fHandle, vInts);
+	_totBytesRead += _NCodes;
 
 	if (_fHandle) std::fclose(_fHandle);
 
@@ -815,10 +811,6 @@ static inline const int extract_encoding_info(const std::string& xFile,std::vect
 static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, unsigned char* _cBuff)
 {
 	bool _bDone = 0;
-	int _cF = 0, _CountStr = 0;
-	char* _copyOne = nullptr;
-	const char* _sExt = "\0";
-
 	std::vector<unsigned char> _srcData = {};
 	std::vector<intmax_t> _pacInts = {};
 
@@ -834,41 +826,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		std::cerr << "\n Error Read Source File. " << "\n\n";
 		goto finishedDone;
 	}
-
-	if ( !_srcF.empty()) _cF = strNPos(_srcF.c_str(), '.');
-	else {
-		std::cerr << "\n Can't find original source file. ! Could not proceed... \n";
-		goto finishedDone;
-	}
-
-	if (_destF.empty())
-	{
-		_copyOne = (char*)lstr(_srcF.c_str(), _cF).c_str();
-		_copyOne = (char*)concat_str(_copyOne, ".sqz");
-		goto CoreProcesses;
-	}
-
-
-	if ( (_cF = strNPos(_destF.c_str(), '.')) > -1)  // if the target file has an extension
-	{
-		_sExt = rstr(_destF.c_str(), 3).c_str();
-
-		if (std::strncmp(_sExt, "sqz", 3)) // if the extension string not equal 'sqz'
-		{
-			_sExt = "sqz";
-			_CountStr = (int)(_destF.size() - 3); // Locate the first encountered position in the extension's name
-			_copyOne = (char*)tapStrBy(_destF.c_str(), _sExt, _CountStr - 1).c_str();
-		}
-	}
-	else {
-
-		// if no extension specified to the file
-		_sExt = ".sqz";
-		_copyOne = (char*)concat_str((char*)_destF.c_str(), _sExt);
-	}
-
-
-	CoreProcesses:
 
 	if (!(F_SIZE = readOriginal(_FO, _srcData, _cBuff)) )
 	{
@@ -913,8 +870,6 @@ finishedDone:
 	vectorClean(CniHead0);
 	vectorClean(CniHead1);
 
-	
-	NULLP(_copyOne);
 	if (!_SystemFile.empty()) _SystemFile.clear();
 	if (_FO) std::fclose(_FO);
 	if (_FHandleRef) std::fclose(_FHandleRef);
@@ -1017,10 +972,11 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
 	mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
 
-	return 0;
-
-	/*
 	cmb_bit = mix_integral_constant(cniBitLen);
+
+	PRINT(cmb_bit); RET;
+
+	return 0;
 
 	vectorClean(_SqzInts);
 
@@ -1030,10 +986,12 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	return 0;
 
-	*/
 	PRINT("\n rematching symbols with data .. ");
 
 	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
+
+	
+
 
 	if (!ReckonSize)
 		std::perror("\n\n it seems like something error has happened .. \n\n");
