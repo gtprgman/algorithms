@@ -14,7 +14,7 @@
 		  eg: "squzip -q Letter1.txt Letter1.sqz" --> uses default COMP_RATE
 			  "squzip -q Letter1.txt Letter1.sqz 0.65" --> takes COMP_RATE specified by user.
 
-		  For uncompressing a *.sqz into its original format
+		  For uncompressing a *.sqz file into its original format
 		  squzip -d <file2.sqz> <fileX.(ext)> [0]
 		  eg: "squzip -d Letter1.sqz Letter1A.txt"
 
@@ -66,4 +66,5 @@ EndStop:
 
 	return 0;
 }
+
 
