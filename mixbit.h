@@ -132,7 +132,7 @@ constexpr int64_t&& count_bit_set(int64_t&& _x)
 		_x = std::lldiv(_x, 2).quot;
 	}
 
-	return (int64_t)(*(& _rcx) );
+	return int(  *(&_rcx) );
 }
 
 
@@ -240,7 +240,7 @@ static const intmax_t cni_bits_pack(const std::vector<intmax_t>&);
 static const size_t save_cni_bit(std::FILE*&, const intmax_t&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
-static const int read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
+static const intmax_t read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
 unsigned int MAX_BIT = 0;
@@ -293,7 +293,7 @@ static inline int64_t&& BYTE_PTR_X(int64_t&& _rcx)
 	const int64_t _rsi = _rdi - 7;
 
 	const int64_t _rgx = range_bit_set(int64_t(_rsi), int64_t(_rdi) );
-	return _rcx & _rgx;
+	return int64_t(_rcx & _rgx);
 }
 
 
@@ -880,27 +880,19 @@ static inline int64_t&& _Count_Bits_Set(_T&& _X)
 
 static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
 {
-	intmax_t _iMax = 0, _iLast = 0, _iDiff_t = 0;
-	std::string _b = "\0", _hx = "\0", _lhx = "\0";
+	intmax_t _iMax = 0;
+	std::string _b = "\0", _hx = "\0";
 	const size_t v_size = v_Ints.size();
-	const size_t v_last = v_size - 1;	
 
-	_iLast = v_Ints[v_last]; // the last element
 
-	for (size_t z = 0; z < v_size - 1; z++)
+	for (size_t z = 0; z < v_size; z++)
 	{
 		_hx = To_HexF<int>::eval(v_Ints[z]);
 		_b = concat_str((char*)_b.c_str(), To_HexF<int>::to_bit_str(_hx.c_str()).c_str());
 		_hx = "\0";
 	}
 
-	_hx = To_HexF<int>::eval(_iLast);  _hx = To_HexF<int>::to_bit_str(_hx.c_str());
-	_lhx = lstr(_hx.c_str(), HEX_SIZE); _iMax = bit_set(strtoint(_lhx.c_str())); 
-	_iDiff_t = HEX_SIZE - _iMax; _iDiff_t = (_iDiff_t > 1)? 1 : _iDiff_t;
-
-	_b = concat_str((char*)_b.c_str(), concat_str((char*)zero_bits(_iDiff_t).c_str(), bit_str(intmax_t(_iLast)).c_str()));
 	_iMax = int_bit(_b.c_str());
-	_hx = "\0";
 
 	return _iMax;
 }
@@ -1007,7 +999,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 	char* _pStr = nullptr;
 
 	const size_t _BitSize = _BitStr.size();
-	const size_t _totBytes = (size_t)(_BitSize / 8 );
+	const size_t _totBytes = (size_t)std::lldiv(_BitSize, 8).quot;
 	const size_t _totBits = _totBytes * 8;
 	const size_t _BitDifft = (_totBits < _BitSize)? _BitSize - _totBits : _totBits - _BitSize;
 	size_t _bytesWritten = 0;
@@ -1051,7 +1043,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 }
 
 
-static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>& Int_Bit)
+static inline const intmax_t read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>& Int_Bit)
 {
 	int read_bit = 0, read_size = 0;
 
@@ -1059,7 +1051,7 @@ static inline const int read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>
 
 	while ((read_bit = std::fgetc(_fHandle)) > -1 )
 	{
-		Int_Bit.push_back(read_bit);
+		Int_Bit.push_back(int(read_bit) );
 		++read_size;
 	}
 
