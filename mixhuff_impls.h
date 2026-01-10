@@ -21,6 +21,7 @@ static inline const std::size_t ReSync_Int(std::vector<intmax_t>& _vecSqz, std::
 {
 	intmax_t w = 0, bx = 0;
 	std::size_t synced_size = 0;
+	std::string words_bit = concat_str(zero_bits(1).data(), bit_str(intmax_t(_IntSqz)).c_str());
 
 	std::vector<Can_Bit>& CNF = (std::vector<Can_Bit>&)_CniInfo;
 	std::vector<Can_Bit>::iterator CBT;
@@ -234,6 +235,7 @@ static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector
 		++f_size;
 	}
 
+
 	return f_size;
 }
 
@@ -314,6 +316,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 		cbi = {};
 	}
 
+
 	if (_Fr) std::fclose(_Fr);
 	return _readSize;
 }
@@ -323,20 +326,13 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 // Packed the raw data source and saves it to a file.
 static inline const intmax_t writePack(std::FILE*& _fHandle, const intmax_t& _vPacked)
 {
-	int _begin = EOF;
-	
 	if (!_fHandle) {
-		std::cerr << "\n Error open read-accesses to file. \n";
+		std::cerr << "\n Error open write-accesses to file. \n";
 		return 0;
 	}
 
-	if (!std::fwrite(&_begin, sizeof(_begin), 1, _fHandle)) {
-		std::cerr << "\n Could not write packed symbols' sizes to file. \n\n";
-		if (_fHandle) std::fclose(_fHandle);
-		return _begin;
-	}
-
 	const size_t w_size = save_cni_bit(_fHandle, _vPacked);
+
 
 	return w_size;
 }
@@ -344,7 +340,7 @@ static inline const intmax_t writePack(std::FILE*& _fHandle, const intmax_t& _vP
 
 
 // Read the packed data source into a int Vector.
-static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
+static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<UC>& vCodes, std::vector<intmax_t>& vInts)
 {
 	int _x = 0;
 	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
@@ -364,8 +360,9 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<int
 		std::cerr << "\n Error read RLE of bit-lengths records' size !\n\n";
 	else for (size_t r = 0; r < _NRLE_BitLen; r++) _x = std::fgetc(_fHandle);
 
-	
-	_x = std::fgetc(_fHandle); // read off the separator line between data on the file.
+	if (!(_totBytesRead += std::fread(&_NCodes, sizeof(_NCodes), 1, _fHandle)))
+		std::cerr << "\n Error read encoded chars records' size ! \n\n";
+	else for (size_t w = 0; w < _NCodes; w++) vCodes.push_back(std::fgetc(_fHandle) );
 
 	vectorClean(vInts);
 
@@ -564,16 +561,20 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 		}
 	}
 
-	cbi = {};
+	cbi = {}; Cni_Dat.clear();
 
 	for (const _Canonical& cni : Cni_Info)
 	{
 		cbi._xData = cni._xData;
 		cbi._codeWord = cni._codeWord;
+		cbi._bitLen = len_bit(intmax_t(cni._codeWord));
 		CniBits.push_back(cbi);
+		Cni_Dat.push_back(cbi);
 		cbi = {};
 	}
 
+	cbi = {}; 
+	
 	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
 
 	if (_cCode == 'D') {
@@ -586,8 +587,10 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	RET;
 
+	const size_t CndSize = Cni_Dat.size();
+
 	// gathering source data..
-	for (size_t fz = 0; fz < T_SIZE; fz++)
+	for (size_t fz = 0, cz = 0; fz < T_SIZE; fz++, cz++)
 	{
 		char _ci = _Src[fz];
 
@@ -596,6 +599,15 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 			if (mix::generic::vector_search(CniBits.begin(), CniBits.end(), _ci, mix::generic::NLess<char>(), CBiT))
 			{
 				PacInts.push_back(CBiT->_codeWord);
+
+				/* replaces the '_bitLen' column field in 'Cni_Dat' with the actual bit-length, in this case
+				   the bit-length is the actual bit-length of each packed symbol. */
+				if (cz < CndSize) Cni_Dat[cz]._bitLen = CBiT->_bitLen;
+				else {
+					cbi._bitLen = CBiT->_bitLen;
+					Cni_Dat.push_back(cbi);
+					cbi = {};
+				}
 			}
 		}
 	}
@@ -663,11 +675,12 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	for (size_t d = 0; d < _InfoSize; d++)
 	{
 		_b = _vNods[d].Value();   // bit length info
-		cni_head0._bitLen = _b;
-
-		header0_info.push_back(cni_head0);
-		++header0_size;
-		cni_head0 = {};
+		if (_b) {
+			cni_head0._bitLen = _b;
+			header0_info.push_back(cni_head0);
+			++header0_size;
+			cni_head0 = {};
+		}
 	}
 
 	// writing RLE info for each codeword length ..
@@ -682,26 +695,32 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 		}
 	}
 
+	char _C = 0;
 	const size_t CndSize = CniSrc.size();
 
 	vectorClean(header1_info);
 
-	// acquiring the encoded character & the bit length for each encoded character..
+	// acquiring the encoded character & the codeword for each encoded character..
 	for (size_t d = 0; d < CndSize; d++)
 	{
-		cni_head1._xData = CniSrc[d]._xData; // encoded character
-		header1_info.push_back(cni_head1);
-		++header1_size;
-		cni_head1 = {};
+		_C = CniSrc[d]._xData;
+		if (_C) {
+			cni_head1._xData = CniSrc[d]._xData; // encoded character
+			header1_info.push_back(cni_head1);
+			++header1_size;
+			cni_head1 = {};
+		}
 	}
 
 
-	// writing bit length info ..
+	// writing codewords info ..
 	for (size_t cx = 0; cx < CndSize; cx++)
 	{
-		_b = CniSrc[cx]._bitLen;
-		header1_info[cx]._bitLen = _b;
-		++header1_size;
+		_b = CniSrc[cx]._codeWord;
+		if (_b) {
+			header1_info[cx]._codeWord = _b;
+			++header1_size;
+		}
 	}
 
 	return header0_size + header1_size;
@@ -838,13 +857,21 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
+	// _CanSrc is fetch back with the correct data values	
+
+	RPRINTC("xData"); RPRINTC("Code"); RPRINTC("Bit Length"); RET;
+	for (const auto& Cnd : _CanSrc) {
+		RPRINTC(Cnd._xData); RPRINTC(Cnd._codeWord); RPRINTC(Cnd._bitLen); RET;
+	}
+
+	goto finishedDone;
 	// _pacInts is fully filled with correct values
 	/*
 		mix::generic::STL_Print(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
 		return 0;
 	*/
 	// _sqzNum is assigned with the correct returned value
-
+	
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
 	// CniHead0 & CniHead1 are fully filled with correct data
 	
@@ -887,6 +914,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	Can_Bit cnbi = {};
 	
 	std::vector<char> RawDat = {};
+	std::vector<UC> _wCodes = {};
 	std::vector<_Canonical> _Canonic = {}, _Canine = {}, _CanDat = {};
 	std::vector<Can_Bit> vCnbi = {};
 
@@ -957,40 +985,32 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		cnbi = {};
 	}
 
-	
 	for (const auto& _e : vCnbi) _SqzInts.push_back(_e._codeWord);
 
 	vectorClean(cniBitLen);
 
-	const size_t _SqzSize = readPack(_packedFile.c_str(), cniBitLen);
+	const size_t _SqzSize = readPack(_packedFile.c_str(), _wCodes, cniBitLen);
 
 	if (!_SqzSize) {
 		std::cerr << "\n Error read compressed symbols data ..! Could not proceed !!\n\n";
 		return 0;
 	}
     
-	mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
-	mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
+	/*
+		mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
+		mix::generic::STL_Print(_wCodes.begin(), _wCodes.end(), RPRINTC<char>);RET;
+		mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
+
+		" All the vectors are filled with the correct data."
+	*/
 
 	cmb_bit = mix_integral_constant(cniBitLen);
-
-	PRINT(cmb_bit); RET;
-
-	return 0;
-
-	vectorClean(_SqzInts);
-
-	parseInt(intmax_t(cmb_bit), _SqzInts);
-
-	mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
-
-	return 0;
+	//PRINT(cmb_bit); 'call to mix_integral_constant()' has evaluated to a correct value
 
 	PRINT("\n rematching symbols with data .. ");
-
 	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
 
-	
+	return 0;
 
 
 	if (!ReckonSize)
