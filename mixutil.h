@@ -893,7 +893,7 @@ namespace mix {
 			int _cnt = 0;
 			for (_Iter _p = _Begin; _p != _End; _p++, ++_cnt)
 			{
-				_printFn(*_p);
+				_printFn( (int)*_p );
 				if (_cnt > 79) RET;
 			}
 		}
@@ -1059,6 +1059,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
