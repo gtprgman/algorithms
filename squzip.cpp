@@ -7,6 +7,7 @@
 #endif
 
 
+
 /*
 ; Usages: For compressing one file into a *.sqz file.
 		  squzip -q <file1.(ext)> <file2.sqz> [COMP_RATE]
@@ -14,9 +15,15 @@
 			  "squzip -q Letter1.txt Letter1.sqz 0.65" --> takes COMP_RATE specified by user.
 
 		  For uncompressing a *.sqz file into its original format
-		  squzip -d <file2.sqz> <fileX.(ext)> [0]
-		  eg: "squzip -d Letter1.sqz Letter1A.txt"
+		  squzip -d <file2.sqz> <fileX.(ext)> 
+		  eg: "squzip -d Letter1.sqz Letter1A.txt" --> uses default value
+		      "squzip -d Letter1.sqz Letter1A.txt 0.65" --> takes the user specified value.
 
+		  NB: It's important to notice that the COMP_RATE argument must be 
+		      the same value provided when you run squzip for squeezing [ -q ]
+			  nor unsqueezing [ -d ]. Otherwise the unsqueezing processes may
+			  produce undesired results.
+		      
 */
 
 constexpr int MAX = 5;
@@ -50,7 +57,7 @@ int main(const int argc, const char* args[MAX])
 		goto EndStop;
 
 	case 'd':
-		fgSize = UnCompress(_f0, _f1);
+		fgSize = UnCompress(_f0, _f1, _d1, _uBuff.get());
 		goto EndStop;
 
 	default:
