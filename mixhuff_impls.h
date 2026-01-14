@@ -211,7 +211,7 @@ inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
 }
 
 
-
+/*
 static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector<unsigned char>& _hDatInfo)
 {
 	size_t f_size = 0;
@@ -238,9 +238,10 @@ static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector
 
 	return f_size;
 }
+*/
 
 
-
+/*
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<_Canonical>& Canie ,std::vector<_Canonical>& CnSrc)
 {
@@ -320,19 +321,22 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 	if (_Fr) std::fclose(_Fr);
 	return _readSize;
 }
-
+*/
 
 
 // Packed the raw data source and saves it to a file.
-static inline const intmax_t writePack(std::FILE*& _fHandle, const intmax_t& _vPacked)
+static inline const intmax_t writePack(const std::string& _sqzFile, const intmax_t& _vPacked)
 {
-	if (!_fHandle) {
-		std::cerr << "\n Error open write-accesses to file. \n";
+	std::FILE* _fSqz = std::fopen(_sqzFile.c_str(), "wb");
+
+	if (!_fSqz) {
+		std::cerr << "\n\n Error Open Write-Accesses to File !\n";
 		return 0;
 	}
 
-	const size_t w_size = save_cni_bit(_fHandle, _vPacked);
+	const size_t w_size = save_cni_bit(_fSqz, _vPacked);
 
+	if (_fSqz) std::fclose(_fSqz);
 
 	return w_size;
 }
@@ -450,6 +454,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 
 	std::string xs_bit = "\0";
 
+	const double comp_ratio = (cmp_rate)? cmp_rate : COMP_RATE;
+
 	const size_t T_SIZE = _Src.size();
 
 	for (size_t t = 0; t < T_SIZE; t++)
@@ -500,7 +506,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
 	}
 
 	
-	_TREE::plot_tree(PNodes, cmp_rate);
+	_TREE::plot_tree(PNodes, comp_ratio);
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
 
@@ -727,92 +733,74 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 }
 
 
-// Writing header information to a file.
-static inline const size_t Write_Header( const std::string& _sqzFile,
-										 std::FILE*& _fHandleRef,
-										 const std::vector<_Canonical>& cn_head0,
-										 const std::vector<_Canonical>& cn_head1,
-										 char&& _xDebug = 'u')
+// Generate a crucial encoding information.
+static inline const size_t Gen_Header_Info( std::vector<unsigned char>& bit_lengths,
+										    std::vector<intmax_t>& rle_info,
+											std::vector<unsigned char>& encoded_chars,
+											std::vector<intmax_t>& codew_info,
+											const std::vector<_Canonical>& cn_head0,
+											const std::vector<_Canonical>& cn_head1,
+											char&& _xDebug = 'u')
 {
-	 _fHandleRef = std::fopen(_sqzFile.c_str(), "wb");
-
-	if (!_fHandleRef)
-	{
-		std::cerr << "\n Error Open Write-Access To File. \n";
-		return 0;
-	}
 	
-	std::size_t _fSize = 0 , i_Size = 0;
-	std::vector<unsigned char> _bit_length_info = {}, _codew_info = {};
+	std::size_t i_Size = 0;
 	int _uc = 0;
+
+	vectorClean(bit_lengths);
 
 	// acquiring bit lengths information ..
 	for (const auto& _hd0 : cn_head0) {
 		_uc = (int)_hd0._bitLen;
-		_bit_length_info.push_back( _uc ); // bit length of the previous generated huffman codes.
+		bit_lengths.push_back( _uc ); // bit length of the previous generated huffman codes.
 
 	}
+
+	i_Size += bit_lengths.size();
 
 	if (_xDebug == 'D') {
-		RET; mix::generic::STL_Print(_bit_length_info.begin(), _bit_length_info.end(), RPRINTC<int>); RET;
+		RET; mix::generic::STL_Print(bit_lengths.begin(), bit_lengths.end(), RPRINTC<int>); RET;
 	}
 
-
-	// saving bit lengths information ..
-	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info))) {
-		std::cerr << "\n Error saving bit-length information.. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
-	}
-
-	_fSize += i_Size;
-	vectorClean(_bit_length_info);
+	
+	vectorClean(rle_info);
 
 	// acquiring RLE of bit lengths ..
 	for (const auto& _h0d : cn_head0) {
 		_uc = (int)_h0d._rle_bit_len;
-		_bit_length_info.push_back(_uc);
+		rle_info.push_back(_uc);
 	}
+
+	i_Size += rle_info.size();
 
 	if (_xDebug == 'D') {
-		RET; mix::generic::STL_Print(_bit_length_info.begin(), _bit_length_info.end(), RPRINTC<int>); RET;
+		RET; mix::generic::STL_Print(rle_info.begin(), rle_info.end(), RPRINTC<int>); RET;
 	}
-
-	// saving RLE information of bit lengths ..
-	if (!(i_Size = writePackInfo(_fHandleRef, _bit_length_info))) {
-		std::cerr << "\n Error saving RLE Information of bit lengths .. \n";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
-	}
-
-	_fSize += i_Size; vectorClean(_bit_length_info);
 
 	// Acquiring the encoded characters ..
-
-	vectorClean(_codew_info);
+	vectorClean(encoded_chars);
 
 	for (const auto& _hd1 : cn_head1)
-		_codew_info.push_back(_hd1._xData); // previous generated huffman encoded characters.
+		encoded_chars.push_back(_hd1._xData); // previous generated huffman encoded characters.
 
 	if (_xDebug == 'D') {
-		RET; mix::generic::STL_Print(_codew_info.begin(), _codew_info.end(), RPRINTC<char>); RET;
+		RET; mix::generic::STL_Print(encoded_chars.begin(), encoded_chars.end(), RPRINTC<char>); RET;
 	}
 
-	
-	// saving encoded characters information ..
-	if (!(i_Size = writePackInfo(_fHandleRef, _codew_info))) {
-		std::cerr << "\n Error saving encoded characters information .. \n ";
-		if (_fHandleRef) std::fclose(_fHandleRef);
-		return 0;
-	}
+	i_Size += encoded_chars.size();
 
-	_fSize += i_Size; vectorClean(_codew_info);
 	
-	return _fSize;
+	// Acquiring the codeword for each encoded char ..
+	vectorClean(codew_info);
+
+	for (const auto& _h1d : cn_head1) codew_info.push_back(_h1d._codeWord);
+
+	i_Size += codew_info.size();
+
+	return i_Size;
 }
 
 
-
+/*
 // extracting a saved encoding data into 'CnBit' and 'CnRaw' vectors
 static inline const int extract_encoding_info(const std::string& xFile,std::vector<_Canonical>& CnBit, std::vector<_Canonical>& CnRaw)
 {
@@ -824,10 +812,11 @@ static inline const int extract_encoding_info(const std::string& xFile,std::vect
 
 	return -1;
 }
+*/
 
 
-
-static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, unsigned char* _cBuff)
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, 
+									unsigned char* _cBuff)
 {
 	bool _bDone = 0;
 	std::vector<unsigned char> _srcData = {};
@@ -836,7 +825,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {};
 	
-	std::FILE* _FO = std::fopen(_srcF.data(), "rb"), *_FHandleRef = nullptr;
+	std::FILE* _FO = std::fopen(_srcF.data(), "rb");
 	std::size_t F_SIZE = 0, HCN_SIZE = 0, PACKED_HEADER_SIZE = 0;
 	intmax_t _sqzNum = 0;
 
@@ -854,17 +843,11 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 	
 	
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, COMP_RATE);
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _pacInts, compRate);
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
 	// _CanSrc is fetch back with the correct data values	
 
-	RPRINTC("xData"); RPRINTC("Code"); RPRINTC("Bit Length"); RET;
-	for (const auto& Cnd : _CanSrc) {
-		RPRINTC(Cnd._xData); RPRINTC(Cnd._codeWord); RPRINTC(Cnd._bitLen); RET;
-	}
-
-	goto finishedDone;
 	// _pacInts is fully filled with correct values
 	/*
 		mix::generic::STL_Print(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
@@ -874,14 +857,12 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc);
 	// CniHead0 & CniHead1 are fully filled with correct data
-	
-	PACKED_HEADER_SIZE = Write_Header(_destF.c_str(), _FHandleRef, CniHead0, CniHead1);
-	// encoding information successfully saved !
+
 	
 	//PRINT(_sqzNum);
 
 	// writing packed data source into a file ( *.sqz ).
-	if ( !(_bDone = writePack(_FHandleRef, _sqzNum)))
+	if ( !(_bDone = writePack(_destF, _sqzNum)))
 	{
 		RET;
 		std::cerr << "\n Error writing compressed file !  \n\n";
@@ -899,8 +880,7 @@ finishedDone:
 
 	if (!_SystemFile.empty()) _SystemFile.clear();
 	if (_FO) std::fclose(_FO);
-	if (_FHandleRef) std::fclose(_FHandleRef);
-
+	
 	_TREE::Clean();
 	F_SIZE = 0;
 	return _bDone;
@@ -908,132 +888,55 @@ finishedDone:
 
 
 
-static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
+static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile, 
+											const double& cmp_rate, unsigned char* _SrcBuff)
 {
-	intmax_t cmb_bit = 0, _bi = 0, _x = 0;
-	Can_Bit cnbi = {};
+	std::vector<UC> _RawSrc , _BitL, _EncData;
+	std::vector<BPAIR> _bpr;
+	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
+	std::vector<intmax_t> _CodInt, _RLE_BitL, _Codes;
+	intmax_t _SqzInt = 0;
+	size_t _OriSize = 0, _rawSize = 0, header_size = 0;
+
+	std::FILE* _FI = std::fopen(_unPackedFile.c_str(), "rb");
+
+	if (!_FI) {
+		std::cerr << "\n\n Error open read-accesses to original source file.";
+		std::cerr << "\n Could not proceed ...\n";
+		goto EndPhase;
+	}
+
+	if (!(_rawSize = readOriginal(_FI, _RawSrc, _SrcBuff)))
+	{
+		std::cerr << "\n\n Data read error from the source file. ";
+		std::cerr << "\n Could not proceed... \n";
+		goto EndPhase;
+	}
 	
-	std::vector<char> RawDat = {};
-	std::vector<UC> _wCodes = {};
-	std::vector<_Canonical> _Canonic = {}, _Canine = {}, _CanDat = {};
-	std::vector<Can_Bit> vCnbi = {};
+	_SqzInt = Gen_Encoding_Info(_RawSrc, _bpr, Cni_Info, _CodInt, cmp_rate);
 
-	std::size_t ReckonSize = 0, _UnSquezzed = 0;
-	std::vector<intmax_t> cniBitLen, _SqzInts;
-
-	char* _OriginFile = (char*)_unPackedFile.c_str(); 
-
-	extract_encoding_info(_packedFile.c_str(), _Canonic, _Canine);
-	// _Canonic & _Canine are successfully filled with the correct data.
+	header_size = Gen_Cni_Header_Info(Cni_Head0, Cni_Head1, Cni_Info);
 	
-	const size_t _CniSize = _Canonic.size(); // filled with bit length & RLE of bit length
-	const size_t _CneSize = _Canine.size(); // filled with encoded chars 
+	header_size = Gen_Header_Info(_BitL, _RLE_BitL, _EncData, _Codes, 
+									Cni_Head0, Cni_Head1);
 
-	for (size_t i = 0; i < _CneSize; i++) {
-		if (i > (_CniSize - 1) ) _Canonic.push_back(_Canine[i]);
-		else _Canonic[i]._xData = _Canine[i]._xData;
-	}
+	
+EndPhase:
+	if (_FI) std::fclose(_FI);
 
-	// _Canonic is fully filled with correct data (_xData + _bitLen + _rle_bit_len);
-
-	const size_t _CanSize = _Canonic.size();
-
-	// RLE method unravels each number of repeated bit-lengths ..
-	for (size_t g = 0, f = 0; f < _CanSize ; f++)
-	{
-		_bi = _Canonic[f]._bitLen;
-		_x = _Canonic[f]._rle_bit_len;
-
-		// t = 0 -> number of repeated bit-lengths ..
-		for (intmax_t t = 0; t < _x; t++)
-		{
-			if (g < _CanSize) cniBitLen.push_back(intmax_t(_bi));
-			++g;
-		}
-	}
-
-	for (size_t z = 0; z < _CanSize; z++) _Canonic[z]._bitLen = cniBitLen[z];
-
-	mix::generic::fast_sort(_Canonic.begin(), _Canonic.end(), mix::generic::NLess<char>());
-	mix::generic::fast_sort(_Canonic.begin(), _Canonic.end(), mix::generic::NLess<intmax_t>());
-	/*
-		for (const auto& _cn : _Canonic) {
-		RPRINTC(_cn._xData); RPRINTC(_cn._bitLen); RET;
-		}
-
-		RET;
-		return 0;
-	*/
-
-	_Gen_Canonical_Info(_CanDat, _Canonic); cni_enforce_unique(_CanDat);
-	/*
-		for (const auto& _cda : _CanDat) {
-			RPRINTC(_cda._xData); RPRINTC(_cda._codeWord); RET;
-		}
-
-		RET;
-		return 0;
-	*/
+	vectorClean(_RawSrc);
+	vectorClean(Cni_Info);
+	vectorClean(_bpr);
+	vectorClean(_CodInt);
+	vectorClean(_BitL);
+	vectorClean(_RLE_BitL);
+	vectorClean(_EncData);
+	vectorClean(_Codes);
+	vectorClean(Cni_Head0);
+	vectorClean(Cni_Head1);
 
 
-	// filling up the most important data needed in 'ReSync_Int() ' calls..
-	for (const _Canonical& cnd : _CanDat)
-	{
-		cnbi._xData = cnd._xData;
-		cnbi._codeWord = cnd._codeWord;
-		vCnbi.push_back(cnbi);
-		cnbi = {};
-	}
-
-	for (const auto& _e : vCnbi) _SqzInts.push_back(_e._codeWord);
-
-	vectorClean(cniBitLen);
-
-	const size_t _SqzSize = readPack(_packedFile.c_str(), _wCodes, cniBitLen);
-
-	if (!_SqzSize) {
-		std::cerr << "\n Error read compressed symbols data ..! Could not proceed !!\n\n";
-		return 0;
-	}
-    
-	/*
-		mix::generic::STL_Print(_SqzInts.begin(), _SqzInts.end(), RPRINTC<intmax_t>); RET;
-		mix::generic::STL_Print(_wCodes.begin(), _wCodes.end(), RPRINTC<char>);RET;
-		mix::generic::STL_Print(cniBitLen.begin(), cniBitLen.end(), RPRINTC<intmax_t>); RET;
-
-		" All the vectors are filled with the correct data."
-	*/
-
-	cmb_bit = mix_integral_constant(cniBitLen);
-	//PRINT(cmb_bit); 'call to mix_integral_constant()' has evaluated to a correct value
-
-	PRINT("\n rematching symbols with data .. ");
-	ReckonSize = ReSync_Int(_SqzInts, RawDat, vCnbi, cmb_bit);
-
-	return 0;
-
-
-	if (!ReckonSize)
-		std::perror("\n\n it seems like something error has happened .. \n\n");
-
-
-	if (!(_UnSquezzed = writeOriginal(_OriginFile, RawDat)))
-	{
-		std::cerr << "\n Error writing uncompressed data format.";
-	}
-
-
-
-	vectorClean(_Canonic);
-	vectorClean(_Canine);
-	vectorClean(_CanDat);
-	vectorClean(vCnbi);
-	vectorClean(RawDat);
-	vectorClean(_SqzInts);
-	vectorClean(cniBitLen);
-
-
-	return _UnSquezzed;
+	return _OriSize;
 }
 
 
