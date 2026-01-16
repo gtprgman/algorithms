@@ -16,28 +16,57 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 
 
 // ReSync the integers of *.sqz
-static inline const std::size_t ReSync_Int(std::vector<intmax_t>& _vecSqz, std::vector<char>& ReSynced_Data,
-											const std::vector<Can_Bit>& _CniInfo, const intmax_t& _IntSqz)
+static inline const std::size_t ReSync_Int(const intmax_t& _IntSqz, 
+										   const std::vector<UC> Bit_Len,
+										   const std::vector<_Canonical>& _CniHeader, 
+										   std::vector<UC>& _Original)
 {
 	intmax_t w = 0, bx = 0;
 	std::size_t synced_size = 0;
-	std::string words_bit = concat_str(zero_bits(1).data(), bit_str(intmax_t(_IntSqz)).c_str());
+	std::vector<_Canonical>& HeaderInfo = (std::vector<_Canonical>&)_CniHeader;
+	std::vector<_Canonical>::iterator _HiT;
 
-	std::vector<Can_Bit>& CNF = (std::vector<Can_Bit>&)_CniInfo;
-	std::vector<Can_Bit>::iterator CBT;
+	char _x = 0;
+	std::string bitX = "\0", 
+	_bit_str = concat_str((char*)"0", bit_str(intmax_t(_IntSqz)).c_str());
 
-	const size_t SqzSize = _vecSqz.size();
+	std::string::iterator _bitter = _bit_str.begin();
+	char* _pb = (char*)_bitter._Ptr; // points to the beginning of _bit_str
 
-	for (size_t q = 0; q < SqzSize; q++)
-	{
-		if (mix::generic::vector_search(CNF.begin(), CNF.end(), _vecSqz[q],
-											mix::generic::NLess<intmax_t>(), CBT))
-		{
-			ReSynced_Data.push_back(CBT->_xData); ++synced_size;
-		}
-		else std::cerr << "\n encoded symbol integer: " << _vecSqz[q] << " not found !\n ";
+	std::vector<intmax_t> _SqzCodes = {};
+	const size_t _BitL_Size = Bit_Len.size();
+
+	// acquiring codes symbols from the read *.sqz data
+	for (size_t g = 0; g < _BitL_Size; g++) {
+		w = Bit_Len[g];
+		bitX = lstr(_pb, w);
+		bx = int_bit(bitX.c_str());
+		_SqzCodes.push_back(bx);
 		
+		bx = 0; bitX.clear();
+
+		_bitter += w; w = 0;
+		_pb = (char*)_bitter._Ptr;
 	}
+
+	mix::generic::t_sort(HeaderInfo.begin(), HeaderInfo.end(), 0.25, mix::generic::NLess<intmax_t>());
+
+	const size_t pacSize = _SqzCodes.size();
+
+	// resolving codes symbols into original data ..
+	for (size_t t = 0; t < pacSize; t++)
+	{
+		if (mix::generic::vector_search(HeaderInfo.begin(), HeaderInfo.end(), _SqzCodes[t],
+										mix::generic::NLess<intmax_t>(), _HiT))
+		{
+			_x = _HiT->_xData;
+			_Original.push_back(_x);
+			++synced_size;
+		}
+
+	}
+
+	//mix::generic::STL_Print(_Original.begin(), _Original.end(), RPRINTC<char>); RET;
 
 	return synced_size;
 }
@@ -346,7 +375,7 @@ static inline const intmax_t writePack(const std::string& _sqzFile, const intmax
 // Read the packed data source into a int Vector.
 static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<UC>& vCodes, std::vector<intmax_t>& vInts)
 {
-	int _x = 0;
+	size_t _totBytesRead = 0;
 	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
 
 	if (!_fHandle) {
@@ -354,24 +383,9 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<UC>
 		return 0;
 	}
 
-	std::size_t _totBytesRead = 0, _NBitLen = 0, _NRLE_BitLen = 0, _NCodes = 0;
-
-	if (!(_totBytesRead += std::fread(&_NBitLen, sizeof(size_t), 1, _fHandle)))
-		std::cerr << "\n Error read number of bit-lengths' records' size !\n\n";
-	else for (size_t z = 0; z < _NBitLen; z++) _x = std::fgetc(_fHandle);
-
-	if (!(_totBytesRead += std::fread(&_NRLE_BitLen, sizeof(size_t), 1, _fHandle)))
-		std::cerr << "\n Error read RLE of bit-lengths records' size !\n\n";
-	else for (size_t r = 0; r < _NRLE_BitLen; r++) _x = std::fgetc(_fHandle);
-
-	if (!(_totBytesRead += std::fread(&_NCodes, sizeof(_NCodes), 1, _fHandle)))
-		std::cerr << "\n Error read encoded chars records' size ! \n\n";
-	else for (size_t w = 0; w < _NCodes; w++) vCodes.push_back(std::fgetc(_fHandle) );
-
 	vectorClean(vInts);
 
-	_NCodes = read_cni_bit(_fHandle, vInts);
-	_totBytesRead += _NCodes;
+	_totBytesRead += read_cni_bit(_fHandle, vInts);
 
 	if (_fHandle) std::fclose(_fHandle);
 
@@ -381,7 +395,7 @@ return _totBytesRead;
 
 
 // write the original uncompressed form of the data into a file.
-static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<char>& raw_dat)
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<UC>& raw_dat)
 {
 	size_t rawSize = 0;
 	std::FILE* FRaw = std::fopen(_OriginFile.data(), "wb");
@@ -895,13 +909,30 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::vector<BPAIR> _bpr;
 	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
 	std::vector<intmax_t> _CodInt, _RLE_BitL, _Codes;
-	intmax_t _SqzInt = 0;
-	size_t _OriSize = 0, _rawSize = 0, header_size = 0;
+	intmax_t _SqzInt = 0, _bix = 0;
+	size_t _rawSize = 0, header_size = 0;
 
-	std::FILE* _FI = std::fopen(_unPackedFile.c_str(), "rb");
+	std::string _OriFile = "\0", _ext = concat_str((char*)".", rstr(_unPackedFile.c_str(), 3).c_str());
+	int _extPos = strNPos(_packedFile.c_str(), '.');
+
+	std::FILE* _FI = nullptr;
+
+	if (_extPos > 0) {
+		_OriFile = lstr(_packedFile.c_str(), _extPos);
+		_OriFile = concat_str((char*)_OriFile.c_str(), _ext.c_str());
+	}
+	else
+	{
+		std::cerr << "\n Data Read ERROR! From the Source File !";
+		std::cerr << "\n Could not proceed .. !";
+		goto EndPhase;
+	}
+
+	_FI = std::fopen(_OriFile.c_str(), "rb");
+
 
 	if (!_FI) {
-		std::cerr << "\n\n Error open read-accesses to original source file.";
+		std::cerr << "\n\n Error open read-accesses to the original source file.";
 		std::cerr << "\n Could not proceed ...\n";
 		goto EndPhase;
 	}
@@ -914,13 +945,32 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	}
 	
 	_SqzInt = Gen_Encoding_Info(_RawSrc, _bpr, Cni_Info, _CodInt, cmp_rate);
+	// Cni_Info is fully filled with the correct data.
+	// _CodInt is fully filled with the correct data.
 
 	header_size = Gen_Cni_Header_Info(Cni_Head0, Cni_Head1, Cni_Info);
 	
 	header_size = Gen_Header_Info(_BitL, _RLE_BitL, _EncData, _Codes, 
 									Cni_Head0, Cni_Head1);
 
+	// _BitL is fully filled with the correct data.
+	// _RLE_BitL is fully filled with the correct data.
+	// _EncData is fully filled with the correct data.
+	// _Codes is fully filled with the correct data.
+	// _SqzInt is assigned with the correct value.
+
+	vectorClean(_BitL);
+
+	for (const auto& _cne : Cni_Info) _BitL.push_back((int)_cne._bitLen);
+
+	PRINT("\n rematching code symbols with data ..");
+	_rawSize = ReSync_Int(_SqzInt, _BitL, Cni_Head1, _RawSrc);
+
+	if (_rawSize) writeOriginal(_unPackedFile.c_str(), _RawSrc);
+	else std::cerr << "\n Error Read / Matching Codes Symbols ..";
+
 	
+
 EndPhase:
 	if (_FI) std::fclose(_FI);
 
@@ -936,7 +986,7 @@ EndPhase:
 	vectorClean(Cni_Head1);
 
 
-	return _OriSize;
+	return _rawSize;
 }
 
 
