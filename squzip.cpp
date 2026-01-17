@@ -14,12 +14,6 @@
 		  eg: "squzip -q Letter1.txt Letter1.sqz" --> uses default COMP_RATE
 			  "squzip -q Letter1.txt Letter1.sqz 0.65" --> takes COMP_RATE specified by user.
 			
-			NB: The source file's name that's specified to be squeezed with option [ -q ] must be the same
-			    as the target output file's name which is the result of the squeezing processes. The difference
-				lie only in their extension name. With ' *.sqz ' determined to be the produced squeezing processes.
-				Otherwise, if the initial source file's name is differed from the produced output, the unsqueezing
-				result maybe a distorted or unreadable file's content.
-
 		  For uncompressing a *.sqz file into its original format
 		  squzip -d <file2.sqz> <fileX.(ext)> 
 		  eg: "squzip -d Letter1.sqz Letter1A.txt" --> uses default value
@@ -63,7 +57,7 @@ int main(const int argc, const char* args[MAX])
 		goto EndStop;
 
 	case 'd':
-		fgSize = UnCompress(_f0, _f1, _d1, _uBuff.get());
+		fgSize = UnCompress(_f0, _f1, _d1);
 		goto EndStop;
 
 	default:
