@@ -12,6 +12,7 @@ be implemented in the any time of the future.
 
 #ifndef REQUIRE_H
 #define REQUIRE_H
+		#include<ctime>
 		#include <iostream>
 		#include <array>
 		#include <vector>
@@ -36,10 +37,10 @@ typedef LONGFLOAT LFLOAT;
 
 #define RET std::cout << "\n";
 
-template <typename T>
+template <typename T >
 constexpr void PRINT(const T& _t) { std::cout << _t << "\n"; }
 
-template <typename T>
+template <typename T >
 constexpr void RPRINT(T const& _t) { std::cout << _t; }
 
 template < typename T >
@@ -378,13 +379,13 @@ namespace mix {
 	
 	template <class P >
 	struct ptrTraits
-	{
-		using type = typename P;
-		using rootType = typename std::remove_pointer_t<P>;
+	{ 
+		using type = typename std::remove_reference_t<P>; 
+		using rootType = std::conditional_t<std::is_pointer_v<type>, type*, type>;
 
 		enum {
-			isPointer = _BOOLC(std::is_pointer_v<P>),
-			isRef = _BOOLC(std::is_reference_v<P>)
+			isPointer = _BOOLC(std::is_pointer_v<rootType>),
+			isReference = _BOOLC(std::is_reference_v<rootType>)
 		};
 	};
 
@@ -395,8 +396,7 @@ namespace mix {
 		using type = nullType;
 	};
 
-	
-	
+
 	template < class P >
 	struct ptrTraits<P*> {
 		using type = typename P*;
@@ -410,7 +410,7 @@ namespace mix {
 
 	
 	
-	template < class P , unsigned int Nx >
+	template < class P , ptrdiff_t Nx >
 	struct ptrTraits<P[Nx]> {
 		using type = typename P[Nx];
 		using rootType = typename P;
@@ -541,16 +541,17 @@ namespace mix {
 	namespace auto_looper
 	{
 		template <class Fn, std::size_t... I>
-		void loopsn(const Fn& _fn, const std::index_sequence<I...>)
+		void loopsn(const Fn& _fn, const std::index_sequence<I...>&)
 		{
 			(_fn(I), ...);
 		}
 
-		template <const int N, class Fn >
+		template <const size_t N, class Fn >
 		void forLoop(const Fn& _fnc)
 		{
 			loopsn(_fnc,std::make_index_sequence<N>());
 		}
+
 	}
 
 
@@ -921,7 +922,6 @@ namespace mix {
 			_pType = mix::nullType();
 		}
 
-
 		// prints out the content of any buffer
 		template <typename _T, class _FnPrint>
 		static inline void BUFF_Print(_T* _xBuffer, const std::size_t _maxBuf, const _FnPrint& _printFn)
@@ -1011,7 +1011,7 @@ namespace mix {
 	 search function plus the data element itself should be convertible to an integer value.
 	*/
 	template <class _Iter, class _Other = typename _Iter::value_type, class _Pred >
-	inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
+	static inline const bool vector_search(const _Iter& _Begin, const _Iter& _Last,
 					const _Other& _LookUp_Value, _Pred _fCompare, _Iter& _foundElem)
 	{
 		if (_Begin._Ptr == nullptr || _Last._Ptr == nullptr) return false;
@@ -1059,12 +1059,6 @@ namespace mix {
   } // End of generic namespace
 
 };
-
-
-
-
-
-
 
 
 
