@@ -660,7 +660,15 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		cbi = {};
 	}
 
-	cbi = {}; 
+	cbi = {}; vectorClean(Cni_Info1);
+
+	for (const auto& _cnb : CniBits) {
+		cbi._xData = _cnb._xData;
+		cbi._codeWord = _cnb._codeWord;
+		cbi._bitLen = _cnb._bitLen;
+		Cni_Info1.push_back(cbi);
+		cbi = {};
+	}
 	
 	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
 
@@ -674,8 +682,6 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	RET;
 
-	vectorClean(Cni_Info1);
-
 	// gathering source data..
 	for (size_t fz = 0; fz < T_SIZE; fz++)
 	{
@@ -686,12 +692,6 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 			if (mix::generic::vector_search(CniBits.begin(), CniBits.end(), _ci, mix::generic::NLess<char>(), CBiT))
 			{
 				PacInts.push_back(CBiT->_codeWord);
-				/* the bit-length is the actual bit-length of each packed symbol. */
-					cbi._xData = CBiT->_xData;
-					cbi._codeWord = CBiT->_codeWord;
-					cbi._bitLen = CBiT->_bitLen;
-					Cni_Info1.push_back(cbi);
-					cbi = {};
 			}
 		}
 	}
@@ -713,6 +713,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 // Generate a header data information ..
 static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info, 
 										std::vector<_Canonical>& header1_info,
+										const std::vector<intmax_t>& pac_Ints,   // Code Symbols
 										const std::vector<_Canonical>& CniSrc,  // Cni_Info0
 										const std::vector<_Canonical>& CniInfo, // Cni_Info1
 										char&& _iDebug = 'u')
@@ -725,9 +726,9 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	Can_Bit cni_head0 = {}, cni_head1 = {};
 
 	 // constructs the bit-length & RLE of bit-length of the actual packed symbols..
-	for (const auto& _ci : CniInfo) // Cni_Info1
+	for (const auto& _ci : pac_Ints) // Code Symbols
 	{
-		_b = _ci._bitLen;
+		_b = len_bit(intmax_t(_ci));
 		// set up the frequency data for each bit length ..
 
 		if (_vNods.empty())
@@ -756,17 +757,17 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 	const size_t _InfoSize = _vNods.size();
 
-	vectorClean(header0_info);
+	vectorClean(header1_info);
 
 	// writing actual code symbols length..
 	for (size_t d = 0; d < _InfoSize; d++)
 	{
 		_b = _vNods[d].Value();   // bit length info
 		if (_b) {
-			cni_head0._bitLen = _b;
-			header0_info.push_back(cni_head0);
-			++header0_size;
-			cni_head0 = {};
+			cni_head1._bitLen = _b;
+			header1_info.push_back(cni_head1);
+			++header1_size;
+			cni_head1 = {};
 		}
 	}
 
@@ -777,8 +778,8 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 
 		if (_b > 0)
 		{
-			header0_info[f]._rle_bit_len = _b;
-			++header0_size;
+			header1_info[f]._rle_bit_len = _b;
+			++header1_size;
 		}
 	}
 
@@ -786,17 +787,17 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	char _C = 0;
 	const size_t CndSize = CniSrc.size(); // from the 'Cni_Info0' data table
 
-	vectorClean(header1_info);
+	vectorClean(header0_info);
 
 	// acquiring the encoded character & the codeword for each encoded character..
 	for (size_t d = 0; d < CndSize; d++)
 	{
 		_C = CniSrc[d]._xData;
 		if (_C) {
-			cni_head1._xData = CniSrc[d]._xData; // encoded character
-			header1_info.push_back(cni_head1);
-			++header1_size;
-			cni_head1 = {};
+			cni_head0._xData = CniSrc[d]._xData; // encoded character
+			header0_info.push_back(cni_head0);
+			++header0_size;
+			cni_head0 = {};
 		}
 	}
 
@@ -806,8 +807,8 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	{
 		_b = CniSrc[cx]._bitLen;
 		if (_b) {
-			header1_info[cx]._bitLen = _b;
-			++header1_size;
+			header0_info[cx]._bitLen = _b;
+			++header0_size;
 		}
 	}
 
@@ -815,19 +816,19 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 	if (_iDebug == 'D')
 	{
 		PRINT("Header 0 : ");
-		RPRINTC("Bit Length: "); RPRINTC("RLE of Bit Length: "); RET;
+		RPRINTC("Data: "); RPRINTC("Bit Length: "); RET;
 		for (const auto& cn0 : header0_info)
 		{
-			RPRINTC(cn0._bitLen);  RPRINTC(cn0._rle_bit_len); RET;
+			RPRINTC(cn0._xData);  RPRINTC(cn0._bitLen); RET;
 		}
 
 		PRINT("\n\n");
 
 		PRINT("Header 1 : ");
-		RPRINTC("Data: "); RPRINTC("Bit Length: "); RET;
+		RPRINTC("Bit Length: "); RPRINTC("RLE of Bit Length: "); RET;
 		for (const auto& cn1 : header1_info)
 		{
-			RPRINTC(cn1._xData); RPRINTC(cn1._bitLen); RET;
+			RPRINTC(cn1._bitLen); RPRINTC(cn1._rle_bit_len); RET;
 		}
 
 		RET;
@@ -887,20 +888,10 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	*/
 
 	// _sqzNum is assigned with the correct returned value
-
-	RET;
-	RPRINTC("Data: "); RPRINTC("Code: "); RPRINTC("Bit Length: "); RET;
-
-	for (const auto& cnf : _CanInfo)
-	{
-		RPRINTC(cnf._xData); RPRINTC(cnf._codeWord); RPRINTC(cnf._bitLen); RET;
-	}
 	
-	goto finishedDone;
-
 	vectorClean(CniHead0); vectorClean(CniHead1);
 
-	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1,_CanSrc, _CanInfo,'D');
+	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo,'D');
 	// CniHead0 & CniHead1 are fully filled with correct data
 
 	//PRINT(_sqzNum);
@@ -1093,7 +1084,6 @@ EndPhase:
 
 	return _rawSize;
 }
-
 
 
 
