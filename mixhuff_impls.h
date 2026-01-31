@@ -438,9 +438,8 @@ static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<int
 		std::cerr << "\n actual codes' RLE information read error ..";
 	else for (size_t i = 0; i < h_size; i++) _x = std::fgetc(_fHandle);
 
-	_totBytesRead = 0;
 
-	if (!(_totBytesRead = read_cni_bit(_fHandle, vInts)))
+	if (!(_totBytesRead += read_cni_bit(_fHandle, vInts)))
 	{
 		std::cerr << "\n Fatal !! corrupted packed symbols read ..";
 		std::cerr << "\n could not proceed ..\n";
@@ -888,15 +887,12 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	*/
 
 	// _sqzNum is assigned with the correct returned value
-	
 	vectorClean(CniHead0); vectorClean(CniHead1);
 
-	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo,'D');
+	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo);
 	// CniHead0 & CniHead1 are fully filled with correct data
 
 	//PRINT(_sqzNum);
-
-	goto finishedDone;
 
 	// Saving encoding information headers data ..
 	for (const auto& cn0 : CniHead0)
@@ -1014,14 +1010,39 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
+	/*
+	   // Debugging Codes..
+	    
+	PRINT("\n Initial Huffman Information.. ");
+	RPRINTC("Data: "); RPRINTC("Bit length: "); RET;
+	for (const auto& cn0 : Cni_Head0)
+	{
+		RPRINTC(cn0._xData); RPRINTC(cn0._bitLen); RET;
+	}
+
+	PRINT("\n Actual Code Symbols Information.. ");
+	RPRINTC("Bit length: "); RPRINTC("RLE of Bit length: "); RET;
+	for (const auto& cn1 : Cni_Head1)
+	{
+		RPRINTC(cn1._bitLen); RPRINTC(cn1._rle_bit_len); RET;
+	}
+
+	RET;
+	goto EndPhase;
+	*/
+	
+
 	_Gen_Canonical_Info(Cni_Info, Cni_Head0);
 	cni_enforce_unique(Cni_Info); // Cni_Info successfully fetched with correct data
 	_SqzInt = readPack(_packedFile.c_str(), _Codes); // _Codes successfully fetched with correct data
 	
 	_SqzInt = mix_integral_constant(_Codes); // _SqzInt successfully assigned with correct values.
 
+	PRINT(_SqzInt);
+	goto EndPhase;
+
 	header_size = Cni_Head1.size();
-	// expands out RLE information into _BitL vector
+	// expands out RLE information into '_BitL' vector
 	for (size_t x = 0; x < header_size; x++)
 	{
 		_Bit = (int)Cni_Head1[x]._bitLen;
@@ -1035,14 +1056,16 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	} // _BitL is successfully fetched with correct data
 
 
-	PRINT(_SqzInt); RET;
-	PRINT(bit_str(intmax_t(_SqzInt))); RET;
-	goto EndPhase;
+  /*
+		// Debugging codes..
+		PRINT(_SqzInt); RET;
+		PRINT(bit_str(intmax_t(_SqzInt))); RET;
+		goto EndPhase;
 
-	// '_SqzInt' and its evaluated bit string are came out to be correct
+		// '_SqzInt' and its evaluated bit string are come out to be correct
+  */
 
-
-/*
+/*  // Debugging codes.. 
 	RPRINTC("Data: "); RPRINTC("Code: "); RET;
 	for (const auto& _cni : Cni_Info)
 	{
@@ -1084,6 +1107,5 @@ EndPhase:
 
 	return _rawSize;
 }
-
 
 
