@@ -80,11 +80,11 @@ constexpr int8_t HEX_INT(char&& _chxf)
 // a header data structure for storing encoding information of huffman method
 struct _Canonical
 {
-	char _xData;
+	char _xData = NULL;
 	int64_t _bitLen;
 	int64_t _codeWord;
 	int64_t _rle_bit_len;
-
+	
 	operator int64_t() {
 		return this->_bitLen;
 	}
@@ -92,6 +92,9 @@ struct _Canonical
 	operator char() {
 		return this->_xData;
 	}
+
+	
+	
 };
 
 
@@ -106,6 +109,8 @@ struct Can_Bit : virtual public _Canonical
 	operator int64_t() {
 		return this->_codeWord;
 	}
+
+	
 };
 
 
@@ -984,6 +989,7 @@ static inline const intmax_t cni_bits_pack(const std::vector<intmax_t>& _canVec)
 }
 
 
+
 static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_bit)
 {
 	if (!_fHandle) {
@@ -991,53 +997,35 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 		return 0;
 	}
 	
-
-	std::string::iterator _xIt;
-	std::string _tmpS = "\0";
-	std::string _hexF = To_HexF<intmax_t>::eval(intmax_t(v_bit));
-	std::string _BitStr = HxFs_To_Bin(_hexF.c_str());
-	char* _pStr = nullptr;
-
-	const size_t _BitSize = _BitStr.size();
-	const size_t _totBytes = (size_t)std::lldiv(_BitSize, 8).quot;
-	const size_t _totBits = _totBytes * 8;
-	const size_t _BitDifft = (_totBits < _BitSize)? _BitSize - _totBits : _totBits - _BitSize;
+	int byte_value = 0;
 	size_t _bytesWritten = 0;
 
-	int _xRec = 0;
+	std::string::iterator _xIt;
+	std::string _hexF = To_HexF<int>::eval(intmax_t(v_bit));
+	std::string _BitStr = "\0";
 
-	_xIt = _BitStr.begin();
-	_pStr = (char*)_xIt._Ptr;
+	const size_t _hexSize = _hexF.size();
 
-	for (size_t z = 0; z < _totBytes; z++)
+	_xIt = _hexF.begin();
+	char* _pHex = (char*)_xIt._Ptr;
+
+	for (size_t z = 0; z < _hexSize; z += 2)
 	{
-		_tmpS = scanStr(_pStr, lstr(_pStr, 8).c_str());
+		_BitStr = HxFs_To_Bin(lstr(_pHex, 2) );
+		byte_value = (int)int_bit(_BitStr.c_str());
+		std::fputc(byte_value, _fHandle);
 
-		if (!_tmpS.empty())
-		{
-			_xRec = (int)int_bit(_tmpS.c_str());
-			if (_xRec) std::fputc(_xRec, _fHandle);
-			_xRec = 0; ++_bytesWritten;
-		}
+		// clear temp. mem
+		_BitStr.clear(); 
+		_BitStr = "\0";
+		byte_value = 0;
 
-		_xIt += 8;
-		_pStr = (char*)_xIt._Ptr;
-		_tmpS = "\0";
+		// update string iterator & pointer to hex string
+		_xIt += 2;
+		_pHex = (char*)_xIt._Ptr;
+		++_bytesWritten;
 	}
 
-	_tmpS = "\0";
-
-	if (_BitDifft > 0)
-	{
-		_tmpS = rstr(_BitStr.c_str(), _BitDifft);
-		_xRec = (int)int_bit(_tmpS.c_str());
-		if (_xRec) std::fputc(_xRec, _fHandle); ++_bytesWritten;
-	}
-
-	_hexF.clear();
-	_BitStr.clear();
-
-	NULLP(_pStr);
 
 	return _bytesWritten;
 }
