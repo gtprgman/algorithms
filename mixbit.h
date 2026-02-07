@@ -238,11 +238,11 @@ static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax
 // make sure every codeword integer is unique
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
-// packing a series of canonical bits into one integer and return the result as a bits string.
-static const intmax_t cni_bits_pack(const std::vector<intmax_t>&);
+// packing a bit series from one vector into another result vector
+static const intmax_t cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
 
 // saves a packed canonical bit to a one specified file
-static const size_t save_cni_bit(std::FILE*&, const intmax_t&);
+static const size_t save_cni_bit(std::FILE*&, const std::string&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const intmax_t read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
@@ -973,9 +973,10 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const intmax_t cni_bits_pack(const std::vector<intmax_t>& _canVec)
+static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const std::vector<intmax_t>& _canVec)
 {
 	intmax_t _x = 0;
+	intmax_t pac_bytes = 0, x_bits = 0;
 	const size_t canSz = _canVec.size();
 
 		for (size_t t = 0; t < canSz; t++)
@@ -983,14 +984,31 @@ static inline const intmax_t cni_bits_pack(const std::vector<intmax_t>& _canVec)
 			_x <<= len_bit(intmax_t(_canVec[t] ));
 			if (!_canVec[t]) continue;
 			_x |= _canVec[t];
+
+			x_bits += len_bit(intmax_t(_x));
+			
+			if (x_bits > 32)
+			{
+				_result.push_back(_x);
+				pac_bytes += x_bits / 8;
+
+				_x = 0;
+				x_bits = 0;
+			}
+
+			if ( (t + 1) == canSz && (_x > 0) )
+			{
+				_result.push_back(_x);
+				break;
+			}
 		}
 		
-		return _x;
+		return pac_bytes;
 }
 
 
 
-static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_bit)
+static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string& _hex_str)
 {
 	if (!_fHandle) {
 		std::cerr << "\n Can't open file with the specified I/O handle. \n";
@@ -1001,7 +1019,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const intmax_t& v_
 	size_t _bytesWritten = 0;
 
 	std::string::iterator _xIt;
-	std::string _hexF = To_HexF<int>::eval(intmax_t(v_bit));
+	std::string _hexF = _hex_str;
 	std::string _BitStr = "\0";
 
 	const size_t _hexSize = _hexF.size();
