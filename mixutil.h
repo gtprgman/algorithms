@@ -38,13 +38,13 @@ typedef LONGFLOAT LFLOAT;
 #define RET std::cout << "\n";
 
 template <typename T >
-constexpr void PRINT(const T& _t) { std::cout << _t << "\n"; }
+static constexpr void PRINT(const T& _t) { std::cout << _t << "\n"; }
 
 template <typename T >
-constexpr void RPRINT(T const& _t) { std::cout << _t; }
+static constexpr void RPRINT(T const& _t) { std::cout << _t; }
 
 template < typename T >
-constexpr void RPRINTC(T const& _t) { std::cout << _t << ","; }
+static constexpr void RPRINTC(T const& _t) { std::cout << _t << ","; }
 
 
 inline void RET2() {
@@ -894,7 +894,7 @@ namespace mix {
 			int _cnt = 0;
 			for (_Iter _p = _Begin; _p != _End; _p++, ++_cnt)
 			{
-				_printFn( (int)*_p );
+				_printFn( *_p );
 				if (_cnt > 79) RET;
 			}
 		}
