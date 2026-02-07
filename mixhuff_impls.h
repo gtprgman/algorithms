@@ -389,14 +389,14 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 
 
 // Packed the raw data source and saves it to a file.
-static inline const intmax_t writePack(std::FILE*& _fSqz, const intmax_t& _vPacked)
+static inline const intmax_t writePack(std::FILE*& _fSqz, const std::string& sqz_hex)
 {
 	if (!_fSqz) {
 		std::cerr << "\n\n Error Open Write-Accesses to File !\n";
 		return 0;
 	}
 
-	const size_t w_size = save_cni_bit(_fSqz, _vPacked);
+	const size_t w_size = save_cni_bit(_fSqz, sqz_hex);
 
 	if (_fSqz) std::fclose(_fSqz);
 
@@ -515,6 +515,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 											  std::vector<BPAIR>& CodInfo, 
 										      std::vector<_Canonical>& Cni_Info0, 
 											  std::vector<_Canonical>& Cni_Info1,
+											  std::vector<intmax_t>& PacResults,
 											  std::vector<intmax_t>& PacInts,
 										      const double& cmp_rate, 
 											  char&& _cCode = 'u')
@@ -700,8 +701,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
 	}
 
-		SqzInt = std::abs(cni_bits_pack(PacInts));
-		
+		SqzInt = cni_bits_pack(PacResults,PacInts);
+
 		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
 	
 	
@@ -843,10 +844,12 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	bool _bDone = 0;
 	UC _xt = 0;
 
+	std::string _sqz_hex = "\0";
+
 	std::vector<UC> _srcData = {}, xChars = {}, xBitLen = {},
 					_bit_len = {}, rle_bit = {};
 
-	std::vector<intmax_t> _pacInts = {};
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {};
 
 	std::vector<BPAIR> _CodeMap = {};
 	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {}, _CanInfo = {};
@@ -871,7 +874,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 	
 	
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _CanInfo, _pacInts, compRate);
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _CanInfo, _pacRes,_pacInts, compRate);
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
 	// _CanSrc is fetch back with the correct data values	
@@ -886,7 +889,10 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	  _CanInfo => Cni_Info1 in Gen_Encoding_Info()
 	*/
 
-	// _sqzNum is assigned with the correct returned value
+	for (const auto& _ei : _pacRes) _sqz_hex = concat_str((char*)_sqz_hex.c_str(), To_HexF<int>::eval(_ei).c_str());
+	
+	// _sqz_hex is assigned with the correct hex string pattern
+
 	vectorClean(CniHead0); vectorClean(CniHead1);
 
 	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo);
@@ -953,7 +959,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 
 	// writing packed data source into a file ( *.sqz ).
-	if ( !(_bDone = writePack(_FT, _sqzNum)))
+	if ( !(_bDone = writePack(_FT, _sqz_hex)))
 	{
 		RET;
 		std::cerr << "\n Error writing compressed file !  \n\n";
