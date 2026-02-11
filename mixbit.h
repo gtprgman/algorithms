@@ -196,6 +196,9 @@ inline static const int chartoint(const char&);
 // returns a binary representation of an alphanumeric character
 inline static std::string&& alphaNum2Bin(char&&);
 
+// truncate any zeroes in the left end (MSB) of a bits pattern
+static inline std::string::iterator trunc_left_zeroes(const std::string&);
+
 // convert a hex string evaluated by 'To_HexF' to its binary representation
 static std::string&& HxFs_To_Bin(std::string&&);
 
@@ -402,6 +405,22 @@ static inline int64_t&& get_n_of_msb(int64_t&& _Vx, int64_t&& N_Bits)
 	return int64_t(_rdx);
 }
 
+
+static inline std::string::iterator trunc_left_zeroes(const std::string& bit_str)
+{
+	std::string& bits_pattern = (std::string&)bit_str;
+	std::string::iterator _xItr = bits_pattern.begin();
+	char* _pBit = (char*)_xItr._Ptr;
+
+	while (*_pBit == '0')
+	{
+		++_xItr;
+		_pBit = (char*)_xItr._Ptr;
+	}
+
+	_pBit = nullptr;
+	return _xItr;
+}
 
 
 // returns a specific named token which evaluates to a max. number of bits.
@@ -1051,7 +1070,8 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 
 static inline const intmax_t read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>& Int_Bit)
 {
-	int read_bit = 0, read_size = 0;
+	int read_bit = 0;
+	intmax_t read_size = 0;
 
 	if (!_fHandle) return 0;
 
