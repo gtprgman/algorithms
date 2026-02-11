@@ -15,6 +15,7 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 									 in the command line */
 
 
+
 // ReSync the integers of *.sqz
 static inline const std::size_t ReSync_Int(const intmax_t& _IntSqz, 
 										   const std::vector<UC> Bit_Len,
@@ -405,7 +406,7 @@ static inline const intmax_t writePack(std::FILE*& _fSqz, const std::string& sqz
 
 
 
-// Read the packed data source into a int Vector.
+// Read the packed data source into an int Vector.
 static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
 {
 	int _x = 0;
@@ -957,7 +958,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-
+	
 	// writing packed data source into a file ( *.sqz ).
 	if ( !(_bDone = writePack(_FT, _sqz_hex)))
 	{
@@ -974,7 +975,9 @@ finishedDone:
 	vectorClean(_CanSrc);
 	vectorClean(CniHead0);
 	vectorClean(CniHead1);
-
+	vectorClean(xChars);
+	vectorClean(xBitLen);
+	
 	if (!_SystemFile.empty()) _SystemFile.clear();
 	if (_FO) std::fclose(_FO);
 	if (_FT) std::fclose(_FT);
@@ -997,6 +1000,8 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	intmax_t _SqzInt = 0, _bix = 0;
 	size_t _rawSize = 0, header_size = 0;
 	std::FILE* _FX = std::fopen(_packedFile.c_str(), "rb");
+	std::string _read_hex = "\0";
+	std::string::iterator hex_Itr;
 
 	if (!_FX)
 	{
@@ -1042,10 +1047,21 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	cni_enforce_unique(Cni_Info); // Cni_Info successfully fetched with correct data
 	_SqzInt = readPack(_packedFile.c_str(), _Codes); // _Codes successfully fetched with correct data
 	
-	_SqzInt = mix_integral_constant(_Codes); // _SqzInt successfully assigned with correct values.
+	for (const auto& _e : _Codes) _read_hex = concat_str((char*)_read_hex.c_str(), To_HexF<int>::eval(_e).c_str());
+	// _read_hex is assigned with the correct hex digits pattern
 
-	PRINT(_SqzInt);
+	_read_hex = HxFs_To_Bin(_read_hex.c_str()); // _read_hex is assigned with the corret bits pattern
+
+	hex_Itr = trunc_left_zeroes(_read_hex); // hex_Itr is assigned with the correct truncated bits pattern
+
+	_SqzInt = int_bit(_read_hex.c_str());
+
+	PRINT(_SqzInt); 
+
+	RET;
+
 	goto EndPhase;
+
 
 	header_size = Cni_Head1.size();
 	// expands out RLE information into '_BitL' vector
@@ -1097,7 +1113,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 
 	if (!(_rawSize = writeOriginal(_unPackedFile.c_str(), _rawData)))
-		std::cerr << "\n Error writing original data to a specified file.";
+		std::cerr << "\n Error writing original data to a file.";
 
 EndPhase:
 	if (_FX) std::fclose(_FX);
@@ -1109,7 +1125,6 @@ EndPhase:
 	vectorClean(Cni_Head0);
 	vectorClean(Cni_Head1);
 	vectorClean(cnbt);
-
 
 	return _rawSize;
 }
