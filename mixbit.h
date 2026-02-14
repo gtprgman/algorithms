@@ -996,13 +996,14 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 {
 	intmax_t _x = 0;
 	intmax_t pac_bytes = 0, x_bits = 0;
-	const size_t canSz = _canVec.size();
+	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
+	const intmax_t _lastX = _canVec[_canVec.size() - 1];
 
-		for (size_t t = 0; t < canSz; t++)
+		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _CodInts.end(); _canIt++ )
 		{
-			_x <<= len_bit(intmax_t(_canVec[t] ));
-			if (!_canVec[t]) continue;
-			_x |= _canVec[t];
+			_x <<= len_bit(intmax_t(*_canIt ));
+			if (!(*_canIt) ) continue;
+			_x |= *_canIt;
 
 			x_bits += len_bit(intmax_t(_x));
 			
@@ -1014,14 +1015,11 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 				_x = 0;
 				x_bits = 0;
 			}
-
-			if ( (t + 1) == canSz && (_x > 0) )
-			{
-				_result.push_back(_x);
-				break;
-			}
 		}
 		
+		_result.push_back(_lastX);
+		++pac_bytes;
+
 		return pac_bytes;
 }
 
