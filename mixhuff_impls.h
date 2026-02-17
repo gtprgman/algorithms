@@ -1002,6 +1002,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::FILE* _FX = std::fopen(_packedFile.c_str(), "rb");
 	std::string _read_hex = "\0";
 	std::string::iterator hex_Itr;
+	char* _hex_End = (char*)"\0";
 
 	if (!_FX)
 	{
@@ -1050,18 +1051,21 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	for (const auto& _e : _Codes) _read_hex = concat_str((char*)_read_hex.c_str(), To_HexF<int>::eval(_e).c_str());
 	// _read_hex is assigned with the correct hex digits pattern
 
+	_hex_End = (char*)rstr(_read_hex.c_str(), 1).c_str();
+	
+	_bix = strtoint(_hex_End);
+
+	_read_hex = rtrimx(_read_hex.c_str(), 1, '\0');
+
 	_read_hex = HxFs_To_Bin(_read_hex.c_str()); // _read_hex is assigned with the corret bits pattern
+
+	_read_hex = (char*)concat_str((char*)_read_hex.c_str(), bit_str(intmax_t(_bix)).c_str());
 
 	hex_Itr = trunc_left_zeroes(_read_hex); // hex_Itr is assigned with the correct truncated bits pattern
 
-	_SqzInt = int_bit(_read_hex.c_str());
-
-	PRINT(_SqzInt); 
-
-	RET;
+	PRINT(hex_Itr._Ptr); RET;
 
 	goto EndPhase;
-
 
 	header_size = Cni_Head1.size();
 	// expands out RLE information into '_BitL' vector
