@@ -1,1956 +1,1136 @@
 #pragma once
-/* Using License: GPL .v .3.0 */
+/* Using License GPL v 3.0. */
 
-#ifndef HUFF_TREE
-	#ifndef REQUIRE_H
-		#include <vector>	 
-	#endif
-#endif
-
-
-#ifndef MX_BIT
-	#define MX_BIT
+#ifndef MX_HUFF_IMPLS
+	#define MX_HUFF_IMPLS
 
 #endif
 
-constexpr size_t HEX_SIZE = 4;
+
+const size_t _ROWSZ = 80;
+static std::string _SystemFile = "\0";
 
 
-// an integer representation of a hex constant ( A .. F )
-enum class INT_HEX : std::int8_t
+constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
+									 in the command line */
+
+
+
+// ReSync the integers of *.sqz
+static inline const std::size_t ReSync_Int(const intmax_t& _IntSqz, 
+										   const std::vector<UC> Bit_Len,
+										   const std::vector<Can_Bit>& _CniHeader, 
+										   std::vector<UC>& _Original)
 {
-	A = 10, B= 11, C = 12, D= 13, E = 14, F = 15
-};
-
-
-
-// a list of constants in hexa digit { A .. F }
-constexpr std::initializer_list<const int8_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
-												   		(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
-													 };
-
-// return how much number of decimal digits which appeared in a constant integer '_v'.
-template <class _T> _T&& num_of_dec(const _T&);
-
-
-// a character selector for any constant in hexa digit { A .. F }
-static inline char&& HEX_CHR(int64_t&& _i64)
-{
-	static char _cfx = '0';
-	int8_t _hc = 0, _i8t = (int8_t)_i64;
-
-	_hc = (mix::isRange(_i8t, HxC))? _i8t : 0;
-
-	_cfx = '0';
-
-	switch (_hc)
-	{
-			case 10: _cfx =  'A'; break;
-			case 11: _cfx =  'B'; break;
-			case 12: _cfx =  'C'; break;
-			case 13: _cfx =  'D'; break;
-			case 14: _cfx =  'E'; break;
-			case 15: _cfx =  'F'; break;
-		default: break;
-	}
-	return std::move(_cfx);
-}
-
-
-
-// an integer selector for any constant in hexa digit { A .. F }
-constexpr int8_t HEX_INT(char&& _chxf)
-{
-	int8_t xCh = 0;
-
-	switch (_chxf)
-	{
-			case 'A': xCh = (int8_t)INT_HEX::A; break;
-			case 'B': xCh = (int8_t)INT_HEX::B; break;
-			case 'C': xCh = (int8_t)INT_HEX::C; break;
-			case 'D': xCh = (int8_t)INT_HEX::D; break;
-			case 'E': xCh = (int8_t)INT_HEX::E; break;
-			case 'F': xCh = (int8_t)INT_HEX::F; break;
-			default: break;
-	}
-	return xCh;
-}
-
-
-// a header data structure for storing encoding information of huffman method
-struct _Canonical
-{
-	char _xData = NULL;
-	int64_t _bitLen;
-	int64_t _codeWord;
-	int64_t _rle_bit_len;
-	
-	operator int64_t() {
-		return this->_bitLen;
-	}
-
-	operator char() {
-		return this->_xData;
-	}
-
-	
-	
-};
-
-
-
-// a data structure representing a subset of _Canonical
-struct Can_Bit : virtual public _Canonical
-{
-	operator char() {
-		return this->_xData;
-	}
-
-	operator int64_t() {
-		return this->_codeWord;
-	}
-
-	
-};
-
-
-
-#define SPACE (char)32
-#define halfSz(_Tot_) (_Tot_ / 2) - 1
-
-#define bit_str(_x_) _Get_Binary_Str(_x_)
-#define int_bit(_x_) _Int_from_Bit_Str(_x_)
-#define len_bit(_x_) _Get_Num_of_Bits(_x_)
-#define num_dec(_x_) _Get_Num_of_Digits(_x_)
-#define bit_set(_x_) _Count_Bits_Set(_x_)
-
-
-// calculate how many of bit '1' in the data
-constexpr int64_t&& count_bit_set(int64_t&& _x)
-{
-	intmax_t _rcx = 0, _rdx = 0;
-
-	while (_x > 0)
-	{
-		_rdx = (intmax_t)std::fmodl((long double)_x, (long double)2);
-		if (_rdx) ++_rcx;
-		_x = std::lldiv(_x, 2).quot;
-	}
-
-	return int(  *(&_rcx) );
-}
-
-
-
-// generates a digit '1' a number of '_reps' times
-#define x1_bit(_ch_ptr, _reps)						\
-{													\
-	repl_char('1', _reps);							\
-}
-
-
-
-constexpr const UINT oneAdder(const UINT _x)
-{
-	return _x + (UINT)1;
-}
-
-
-
-template < class T >
-constexpr bool vectorClean(std::vector<T>& _vecT)
-{
-	if (!_vecT.empty()) _vecT.clear();
-	return (_vecT.empty());
-}
-
-
-constexpr unsigned HEXBIT = 4;
-constexpr unsigned BYTE = 8;
-constexpr unsigned WORD = 16;
-constexpr unsigned DWORD = 32;
-constexpr unsigned QWORD = 64;
-constexpr unsigned MULTIWORDS = 128;
-
-constexpr int64_t i4Mask = 0xF;
-constexpr int64_t i8Mask = 255;
-constexpr int64_t i16Mask = 65535;
-constexpr int64_t i32Mask = 0xFFFFFFFF;
-
-static int64_t&& extract_Ints(int64_t&);
-constexpr int64_t&& set_low_bit(int64_t&&);
-constexpr int64_t&& range_bit_set(int64_t&&, int64_t&&);
-
-// generates bit '0' a number of n_Bits
-static std::string&& zero_bits(const size_t&);
-
-// returns a char representation of an ascii integer
-inline static char&& to_char(const int&);
-
-// returns a boolean indicating whether a specified char is an alphanumeric or not
-inline static const bool is_alpha_num(const char&);
-
-// returns a real integer of an alphanumeric character
-inline static const int chartoint(const char&);
-
-// returns a binary representation of an alphanumeric character
-inline static std::string&& alphaNum2Bin(char&&);
-
-// truncate any zeroes in the left end (MSB) of a bits pattern
-static inline std::string::iterator trunc_left_zeroes(const std::string&);
-
-// convert a hex string evaluated by 'To_HexF' to its binary representation
-static std::string&& HxFs_To_Bin(std::string&&);
-
-
-// multiple the number of a given character with a definite count
-static std::string&& repl_char(char&&, const size_t&);
-
-// Invoker macro for 'num_of_bits<T>::eval()'
-template <typename _Ty = intmax_t >
-static intmax_t&& _Get_Num_of_Bits(_Ty&&);
-
-// Invoker macro for 'num_of_dec<T>::eval()'
-template <typename _T>
-static intmax_t&& _Get_Num_of_Digits(_T&&);
-
-// Invoker macro for 'to_binary<T>::eval()' 
-template < typename _Ty = intmax_t >
-static std::string&& _Get_Binary_Str(_Ty&&);
-
-// Invoker macro for 'bin_to_dec<T>::eval()'
-template <class _T = intmax_t>
-static _T&& _Int_from_Bit_Str(std::string&&);
-
-// Invoker macro for 'count_bit_set()'
-template <class _T = int64_t >
-static int64_t&& _Count_Bits_Set(_T&&);
-
-// Invoker macro for extract_Ints
-static inline int64_t&& Ints_Of(int64_t& _ebx)
-{
-	return extract_Ints(_ebx);
-}
-
-// integrating number of integers in the vector into one single 'intmax_t' number
-static const intmax_t mix_integral_constant(const std::vector<intmax_t>&);
-
-// generate encoding information table based on Huffman Canonical Method
-static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax_t>&);
-
-// make sure every codeword integer is unique
-static void cni_enforce_unique(std::vector<_Canonical>&);
-
-// packing a bit series from one vector into another result vector
-static const intmax_t cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
-
-// saves a packed canonical bit to a one specified file
-static const size_t save_cni_bit(std::FILE*&, const std::string&);
-
-// reads a packed canonical bit from one file and parses it to a vector integer
-static const intmax_t read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
-
-// the max. number of bits evaluated by 'BIT_TOKEN()'
-unsigned int MAX_BIT = 0;
-
-
-constexpr int64_t&& HI_HEX(int64_t&& _rbx)
-{
-	return (i4Mask << 4) & _rbx;
-}
-
-constexpr int64_t&& LO_HEX(int64_t&& _rbx)
-{
-	return (i4Mask & _rbx);
-}
-
-constexpr int64_t&& BYTE_PTR_HI(int64_t&& _rbx)
-{
-	return (i8Mask << 8) & _rbx;
-}
-
-constexpr int64_t&& BYTE_PTR_LO(int64_t&& rbx_)
-{
-	return 0xFF & rbx_;
-}
-
-constexpr int64_t&& WORD_PTR_HI(int64_t&& _rdx)
-{
-	return (i16Mask << 16) & _rdx;
-}
-
-constexpr int64_t&& WORD_PTR_LO(int64_t&& rdx_)
-{
-	return i16Mask & rdx_;
-}
-
-constexpr int64_t&& DWORD_PTR_HI(int64_t&& _rax)
-{
-	return (i32Mask << 32) & _rax;
-}
-
-constexpr int64_t&& DWORD_PTR_LO(int64_t&& rax_)
-{
-	return i32Mask & rax_;
-}
-
-// pulls off a byte from the MSB of a specified integer '_rcx'
-static inline int64_t&& BYTE_PTR_X(int64_t&& _rcx)
-{
-	const int64_t _rdi = len_bit(int64_t(_rcx) );
-	const int64_t _rsi = _rdi - 7;
-
-	const int64_t _rgx = range_bit_set(int64_t(_rsi), int64_t(_rdi) );
-	return int64_t(_rcx & _rgx);
-}
-
-
- // pulls off a hex number from the MSB of a specified integer '_rex'
-static inline int64_t&& HEX_PTR_X(int64_t&& _rex)
-{
-	const int64_t _rbx = len_bit(int64_t(_rex) );
-	const int64_t _rax = _rbx - 3;
-	const int64_t _rfx = range_bit_set(int64_t(_rax), int64_t(_rbx) );
-	return _rex & _rfx;
-}
-
-/* pulls off a series of bit from a specfied integer '_rax', starting from a specified bit position
-   to a definite end bit position */
-static inline int64_t&& ANY_PTR_X(int64_t&& _rax, int64_t&& _startBit, int64_t&& _endBit)
-{
-	const int64_t _rbx = len_bit(int64_t(_rax) );
-	const int64_t& _rdi = _endBit;
-	const int64_t& _rsi = _startBit;
-
-	const int64_t _rfx = range_bit_set(int64_t(_rsi), int64_t(_rdi) );
-	return _rax & _rfx;
-}
-
-
-/* generates number of set bits on the LSB of a data unit. (little - endian).
-   NB: {
-	 bit indices are zer0-based oriented. Eg. to specify the first 8 bits or
-	 any n-bits are set, the rule is: set_low_bit( (n-1) ), so the first 8 bits
-     would be: set_low_bit(7). The first 4 bit hex number would be: set_low_bit(3)
-     The first 16 bits number (65535) would be: set_low_bit(15).
-   }
- */
-constexpr int64_t&& set_low_bit(int64_t&& _Max)
-{
-	int64_t _TotSum = 0;
-	const int64_t _hi = _Max;
-
-	for (int64_t _bi = _hi; _bi >= 0;  _bi--)
-	{
-		_TotSum += (int64_t)( 1 * std::pow(2, _bi) );
-	}
-
-	return int64_t(_TotSum);
-}
-
-
-
-/* generates a range of set bits from the initial bit position to a determined bit position of a data unit.
-   The indices of bit are based on the same rule as 'set_low_bit()'. (little-endian) 
-   Eg. To specify the first 8 bits are set, you should call range_bit_set() with argument 0 
-       as the min and 7 as the max argument.
-   
+	intmax_t w = 0, bx = 0;
+	std::size_t synced_size = 0;
+	std::vector<Can_Bit>& HeaderInfo = (std::vector<Can_Bit>&)_CniHeader;
+	std::vector<Can_Bit>::iterator _HiT;
+
+	char _x = 0;
+	std::string bitX = "\0", 
+	_bit_str = concat_str((char*)"0", bit_str(intmax_t(_IntSqz)).c_str());
+/*
+	PRINT(_bit_str); RET;
+	return 0;  
+	// '_bit_str' is assigned with correct bits pattern
 */
-constexpr int64_t&& range_bit_set(int64_t&& _Min, int64_t&& _Max)
-{
-	int64_t _Sum = 0;
-	const int64_t _start_bit = _Min, _end_bit = _Max;
 
-	if (_start_bit < 0 || _end_bit < 0) {
-		std::cerr << " \n the specified ranges yield to negative bit indices ..\n";
-		return 0;
+	std::string::iterator _bitter = _bit_str.begin();
+	char* _pb = (char*)_bitter._Ptr; // points to the beginning of _bit_str
+
+	std::vector<intmax_t> _SqzCodes = {};
+	const size_t _BitL_Size = Bit_Len.size();
+
+	// acquiring codes symbols from the read *.sqz data
+	for (size_t g = 0; g < _BitL_Size; g++) {
+		w = Bit_Len[g];
+		bitX = lstr(_pb, w);
+		bx = int_bit(bitX.c_str());
+		_SqzCodes.push_back(bx);
+		
+		bx = 0; bitX.clear();
+
+		_bitter += w; w = 0;
+		_pb = (char*)_bitter._Ptr;
 	}
 
-	for (int64_t _bi = _start_bit; _bi <= _end_bit; _bi++)
-	{
-		_Sum += (int64_t)(1 * (int64_t)std::pow(2, _bi) );
-	}
-
-	return int64_t(_Sum);
-}
-
-
-// get '_n_Bits' from the LSB of a specified integer ' _valX '.
-constexpr int64_t&& get_n_of_lsb(int64_t&& _valX, int64_t&& _n_Bits)
-{
-	int64_t _v = 0;
-	const int64_t _b = 0b1;
-
-	for (int64_t _x = 0; _x < _n_Bits; _x++)
-	{
-		_v |= _valX & (_b << _x);
-	}
-	return int64_t(_v);
-}
-
-
-// get 'N_Bits' from the MSB of a specified integer '_Vx'.
-static inline int64_t&& get_n_of_msb(int64_t&& _Vx, int64_t&& N_Bits)
-{
-	const int64_t _tot_Bits = (int64_t)_Get_Num_of_Bits(int64_t(_Vx) ) - 1;
-	const int64_t _rbx = (int64_t)0b1 << _tot_Bits;
-	int64_t _rdx = 0;
-
-	_rdx = _rbx;
-
-	for (int64_t _n = 0; _n < N_Bits; _n++)
-	{
-		_rdx |= _Vx & (_rbx >> _n);
-	}
-	return int64_t(_rdx);
-}
-
-
-static inline std::string::iterator trunc_left_zeroes(const std::string& bit_str)
-{
-	std::string& bits_pattern = (std::string&)bit_str;
-	std::string::iterator _xItr = bits_pattern.begin();
-	char* _pBit = (char*)_xItr._Ptr;
-
-	while (*_pBit == '0')
-	{
-		++_xItr;
-		_pBit = (char*)_xItr._Ptr;
-	}
-
-	_pBit = nullptr;
-	return _xItr;
-}
-
-
-// returns a specific named token which evaluates to a max. number of bits.
-constexpr uint64_t&& BIT_TOKEN(int64_t&& nBits)
-{
-	if (nBits > 0 && nBits <= HEXBIT) MAX_BIT = HEXBIT;
-	else if (nBits > HEXBIT && nBits <= BYTE) MAX_BIT = BYTE;
-	else if (nBits > BYTE && nBits <= WORD) MAX_BIT = WORD;
-	else if (nBits > WORD && nBits <= DWORD) MAX_BIT = DWORD;
-	else if (nBits > DWORD && nBits <= QWORD) MAX_BIT = QWORD;
-	else MAX_BIT = MULTIWORDS;
-
-	return MAX_BIT;
-}
-
-
-
-/* a data structure for storing every byte portion of an integer value.
-   A little-endian order is being assumed, so the first two elements of _eax
-   represent the MSB of a 32-bit integer. */
-struct _Int_Bits
-{
-	_Int_Bits() : _eax{ 0,0,0,0 } {}
-
-	_Int_Bits(_Int_Bits const& _DWORD)
-	{
-		if (this == &_DWORD) return;
-		*this = _DWORD;
-	}
-
-	const _Int_Bits& operator= (const _Int_Bits& _rDWORD)
-	{
-		if (this == &_rDWORD) return *this;
-
-		this->_eax[0] = _rDWORD._eax[0];
-		this->_eax[1] = _rDWORD._eax[1];
-		this->_eax[2] = _rDWORD._eax[2];
-		this->_eax[3] = _rDWORD._eax[3];
-
-		return *this;
-	}
-
-	int _eax[4] = { 0,0,0,0 };
-};
-
-
-template <const unsigned>
-struct fixN;
-
-
-// invert every bit in the bit array.
-inline static void invert_bits(bool _pb[], const unsigned nBits)
-{
-	for (unsigned j = 0; j < nBits; j++)
-	{
-		_pb[j] = !_pb[j];
-	}
-}
-
-
-// get a bit character from a position in the bit array as specified by '_pb'.
-inline static const char* char_from_bit(const bool _pb[], const int _index)
-{
-	return (_pb[_index])? (char*)"1" : (char*)"0";
-}
-
-
-// get a value from a position in the bit array 
-inline static const unsigned n_of_bit(const bool _pb[], const int _index)
-{
-	return _pb[_index];
-}
-
-
-// obtain a full bits string from the bit array specified by '_pb'.
-inline static const std::string str_from_bits(const bool _pb[], const unsigned nBits)
-{
-	char* _ss = new char[nBits];
-
-	for (unsigned i = 0; i < nBits; i++)
-		_ss[i] = (_pb[i])? '1' : '0';
-
-	_ss[nBits] = '\0';
-	return _ss;
-}
-
-
-/* obtain a bits from a string data, this includes the most significant bits padded
-   to the left of primary bits */
-inline static const bool* bits_from_str(const std::string& _cBits)
-{
-
-	const int64_t numBits = (int64_t)std::strlen(_cBits.data());
-	uint64_t nZeros = BIT_TOKEN(int64_t(numBits)) - numBits;
-
-	bool* _pb = new bool[nZeros + numBits];
-
-	// pad trailing bits with '0'
-	for (unsigned z = 0; z < nZeros; z++) _pb[z] = false;
-
-	// top-up leading bits with '_cBits'
-	for (unsigned i = 0; i < numBits; i++)
-	{
-		_pb[nZeros++] = (_cBits.c_str()[i] == 49)? true : false;
-	}
-
-	return _pb;
-}
-
-
-
-// uppercase the specified char
-constexpr char&& upCase(int&&);
-
-// downcase the specified char
-constexpr char&& downCase(int&&);
-
-// scan a specific string pattern within the target string and return the found position in the target string.
-static int&& strPos(const char*, const char*);
-
-// scan a byte value within the specified string pattern and return the found position in the string being scanned
-static int&& strNPos(const char*, const int);
-
-// scan a substring within the target string and return the found substring in the target string.
-inline static std::string&& scanStr(const char*, const char*);
-
-inline static const char* concat_str(char* , const char*);
-
-// take the n number of characters from the left end of the string
-inline static std::string&& lstr(const char*, const std::size_t&);
-
-/* get a number of characters from a string, starting from a position specified
-   by '_Start', then take the number of characters specified by '_End'. The position is
-   numbered from [0] to [n - 1], but the number of characters snapped is based on common
-   sense of counting.
+/*
+	mix::generic::STL_Print(_SqzCodes.begin(), _SqzCodes.end(), RPRINTC<intmax_t>); RET;
+	return 0;
+   // '_SqzCodes' vector is successfully filled with correct codes symbols
 */
-inline static std::string&& snapStr(const char*, const size_t&, const size_t&);
 
-/* replaces 'x' number of characters of a string with a character specified by '_tpChr' ,
-   the offset of the string is starting from 0 to [n - 1]. The 'x' number of characters
-   is specified using common counting principle.
+/*
+	for (const auto& _cne : _CniHeader)
+	{
+		RPRINTC(_cne._xData); RPRINTC(_cne._codeWord); RET;
+	}
+
 */
-inline static std::string&& tapStr(const char*, const char&, const size_t&, const size_t&);
 
-/* supersede part of a string with a specified substring at a specified position in the target string.
-   Zero-based index array accesses is assumed */
-inline static std::string&& tapStrBy(const char*, const char*, const int&);
+	const intmax_t pacSize = _SqzCodes.size();
 
-/* pad the right end of a string with a number of unique characters specified by '_padC'.
-   the '_Count' argument is specified using common arithmetic principle. */
-inline static std::string&& rtrimx(const char*, const size_t&, const char&);
-
-// removes extra spaces before and after the specified letter words
-inline static std::string&& LRTrim(const char*);
-
-/*pad the left end of a string with a number of unique chars specified by '_padCh',
-  assumed zero-based index array accesses and arithmetic counting principle. */
-inline static std::string&& ltrimx(const char*, const size_t&, const char& _padCh);
-
-// take the n number of characters from the right end of the string
-inline static std::string&& rstr(const char*, const std::size_t&);
-
-// Convert alphanumeric string '0,1,2..9' to integer
-inline static int64_t&& strtoint(std::string&&);
-
-inline static std::string&& inttostr(const int64_t&);
-
-// return the exact number of bits that composing a value '_n'
-static uint64_t&& proper_bits(int64_t&&);
-
-// return the least significant portion of bits of a specified value '_v'
-static int64_t&& LoPart(int64_t&&);
-
-// return the most significant portion of bits of a specified value '_v'
-static int64_t&& HiPart(int64_t&&);
-
-// splits an integer into its composing bit factors and stored it to a vector
-inline static void parseInt(intmax_t&&, std::vector<int64_t>&);
-
-// parses each integer of a vector into its 8 bit composing binary form.
-inline static void parseByte(std::vector<int>&, const std::vector<int64_t>&);
-
-// merge the MSB and LSB portions together to form a single unit of data
-constexpr int64_t&& MergeBits(int64_t&&, int64_t&&);
-
-inline static const char* reverse_str(const char*);
-
-
-inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
-{
-	static std::string _repStr = "\0";
-
-	if (!_Count || (int64_t)_Count < 0) return std::move(_repStr);
-
-	char* _repC = new char[_Count];
-
-	for (size_t i = 0; i < _Count; i++) _repC[i] = char(_aChar);
-
-	
-	_repC[_Count] = 0;
-
-	_repStr = _repStr.assign(_repC);
-
-
-	NULLP(_repC);
-	return std::move(_repStr);
-}
-
-
-
-
-static inline std::string&& zero_bits(const size_t& n_Bits)
-{
-	intmax_t xZeros = n_Bits;
-	static std::string _ci = " ";
-
-	if (!xZeros || xZeros < 0 ) xZeros = 1; // minimum number of '0' should at least 1
-
-	_ci = repl_char('0', xZeros);
-	return std::move(_ci);
-}
-
-
-
-// evaluate to how much number of bits that made up a constant value '_v'
-template < class T, bool _Vt = std::is_integral_v<T>,
-			class _Ty = std::conditional_t<_Vt, intmax_t, nullptr_t> >
-struct num_of_bits
-{
-	using type = typename std::remove_reference_t<_Ty>;
-
-	static type&& eval(const type& _v) noexcept
+	// resolving codes symbols into original data ..
+	for (intmax_t t = 0; t < pacSize; t++)
 	{
-		static type&& cnt = 0;
-		type _val = _v;
-
-		cnt = 0;
-
-		if (!_val) {
-			cnt = 1;
-			return std::move(cnt);
-		}
-
-		while (_val > 0)
+		if ( mix::generic::vector_search(HeaderInfo.begin(), HeaderInfo.end(), _SqzCodes.at(t),
+										mix::generic::NLess<intmax_t>(), _HiT) )
 		{
-			_val = std::lldiv(_val, 2).quot;
-			++cnt;
+			_x = _HiT->_xData;
+			_Original.push_back((int)_x);
+			++synced_size;
+			_x = 0;
 		}
 
-		return std::move(cnt);
 	}
-};
+
+	//mix::generic::STL_Print(_Original.begin(), _Original.end(), RPRINTC<char>); RET;
+
+	return synced_size;
+}
 
 
 
-// convert a specified decimal constant to its binary form
-template < typename T , bool _Val = std::is_integral_v<T>,
-             typename _Ty = std::conditional_t<_Val, intmax_t, nullptr_t> >
-struct to_binary
+static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_queue<node>& _Pqueue)
 {
-	using value_type = typename std::remove_reference_t<_Ty>;
+	std::size_t _Cnt = 0;
+	node _nod = 0;
+	intmax_t _fqr = 0;
 
-	static inline std::string&& eval(const value_type& _dec)
+
+	while (!_Pqueue.empty())
 	{
-		value_type _q = 0;
-		value_type _bsz = num_of_bits<value_type>::eval(_dec);
-		_value = _dec;
+		_nod = _Pqueue.top();
+		_Pqueue.pop();
 
-		if (!_value) {
-			_bs = "0";
-			return std::move(_bs);
-		}
-
-		if (_bsz > 0)
-			_bs = new char[_bsz]; 
-
-		for (value_type i = 0; i < _bsz && _value > 0; i++)
+		if (_target.empty())
 		{
-			_q = (value_type)std::fmodl( (long double)_value, (long double)2 );
-			_bs[i] = (_q)? '1' : '0';
-			_value = (_value > 1)? std::lldiv(_value,2).quot : 0;
+			_fqr = _nod.FrequencyData();
+			if (!_fqr) ++_fqr;
+			_nod.setFrequencyData(intmax_t(_fqr) );
+			_target.push_back(_nod);
+			continue;
 		}
 
-		_value = 0;
-		_bs[_bsz] = 0;
-		_bs = (char*)reverse_str(_bs.c_str());
-		return std::move(_bs);
-	}
-
-private:
-	static value_type _value;
-	static std::string _bs;
-};
-
-// static members initializer
-template <class T, bool _V, class _Ty>
-typename to_binary<T, _V, _Ty>::value_type to_binary<T, _V, _Ty>::_value = 0;
-
-template <class T, bool _V, class _Ty>
-std::string to_binary<T, _V, _Ty>::_bs = "\0";
-
-
-
-template <class T >
-struct bin_to_dec
-{
-	using value_type = typename std::remove_reference_t<T>;
-
-	// the bit string is assumed to be in little-endian order.
-	static inline value_type&& eval(std::string&& _strBits)
-	{
-		std::size_t lenMax = _strBits.size();
-		std::size_t _maxBit = lenMax - 1;
-		value_type k = 0, b = 0;
-
-		_Dec = 0;
-
-		for (std::size_t i = _maxBit; i > 0; i--)
+		if (_target[_Cnt] == _nod)
 		{
-			b = (_strBits[i] == 49)? 1 : 0;
-			_Dec += b * (value_type)std::pow(2, k++);
+			_fqr = _target[_Cnt].FrequencyData();
+			_target[_Cnt].setFrequencyData(intmax_t(++_fqr) );
+			continue;
 		}
-
-		b = (_strBits[0] == 49)? 1 : 0;
-		_Dec += b * (value_type)std::pow(2, _maxBit);
-
-		return std::move(_Dec);
-	}
-
-private:
-	static value_type _Dec;
-};
-// static member initializer
-template <class T>
-typename bin_to_dec<T>::value_type bin_to_dec<T>::_Dec = 0;
-
-
-
-template < class T , bool _Val = std::is_integral_v<T>,
-            class _Ty = std::conditional_t<_Val, intmax_t, nullptr_t> >
-struct To_HexF {
-	using val_type = typename std::remove_reference_t<_Ty>;
-
-	static inline std::string&& eval(const val_type& val_i64)
-	{
-		_hxs = "\0";
-		_hxs.clear();
-		_hxs.assign( hex_str(val_i64) );
-		
-		return std::move(_hxs);
-	}
-
-	// converts a specified hex digits ('_hexStr') into its binary representation.
-	static inline std::string&& to_bit_str(std::string&& _hexStr)
-	{
-		_hxs.clear(); 
-		_hxs = "\0";
-		int _bi = 0; char _xc = 0;
-		size_t _biSize = 0;
-
-		for (std::string::iterator _hexIt = _hexStr.begin(); _hexIt != _hexStr.end(); _hexIt++)
-		{
-			_xc = *_hexIt;
-			_bi = (HEX_INT(char(_xc)))? HEX_INT(char(_xc)) : chartoint(char(_xc));
-			_biSize = len_bit(int(_bi));
-			_biSize = (HEX_SIZE > _biSize)? HEX_SIZE - _biSize : 0;
-
-			_hxs = concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
-													concat_str((char*)zero_bits(_biSize).c_str(),
-													bit_str(int(_bi)).c_str()) :
-				// direct attaches the bit string onto '_hxs'
-				bit_str(int(_bi)).c_str() );
-
-			
-			_xc = 0; _bi = 0; _biSize = 0;
-		}
-		
-		return std::move(_hxs);
-	}
-
-private:
-	static std::string _hxs;
-	static std::vector<val_type> _x16c;
-
-	static inline std::string&& hex_str(const val_type& _i64)
-	{
-		val_type _m64 = 0, _x64 = _i64;
-		static std::string _hxf = "\0";
-
-		_hxf = "\0";
-		_hxf.clear();
-		vectorClean(_x16c);
-
-		if (_x64 <= 0) return std::move(_hxf);
-
-		while (_x64 > 0)
-		{
-			_m64 =  (val_type)std::fmodl((long double)_x64, (long double)16);
-			_x16c.push_back(_m64 );
-			_x64 = std::lldiv(_x64, 16).quot; 
-			_m64 = 0;
-		}
-
-		mix::generic::STL_Content_Reverse(_x16c);
-	
-		for (const val_type& _ix : _x16c)
-		{
-			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0')? inttostr(_ix).c_str() :
-													new char[2] { HEX_CHR(int8_t(_ix)), '\0' });
-				       
-		}
-
-		vectorClean(_x16c);
-		return std::move(_hxf);
-	}
-};
-
-// static member initialization ..
-template <class T, bool _v, class _Ty>
-std::string To_HexF<T, _v, _Ty>::_hxs = "\0";
-
-template <class T, bool _v, class _Ty>
-std::vector< typename To_HexF<T,_v,_Ty>::val_type > To_HexF<T, _v, _Ty>::_x16c = {};
-
-
-
-static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
-{
-	static std::string _hxsBin = "\0";
-	_hxsBin.clear();
-	_hxsBin = "\0";
-
-	_hxsBin = To_HexF<int>::to_bit_str(_xhFs.c_str());
-	
-	return std::move(_hxsBin);
-}
-
-
-template <typename _Ty>
-static inline intmax_t&& _Get_Num_of_Bits(_Ty&& _ax)
-{
-	return std::forward<intmax_t&&>( num_of_bits<_Ty>::eval(_ax) );
-}
-
-
-template <typename _T >
-static inline  intmax_t&& _Get_Num_of_Digits(_T&& _Fx)
-{
-	return std::forward<_T&&>( num_of_dec(_Fx) );
-}
-
-
-template < typename _Ty >
-static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
-{
-	using _Type = typename std::remove_reference_t<_Ty>;
-	static std::string _StrBin = "\0";
-
-	_StrBin = "\0";
-	_StrBin.clear();
-
-	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
-			
-	return std::move(_StrBin);
-}
-
-
-template <class _T >
-static inline _T&& _Int_from_Bit_Str(std::string&& Bit_Str)
-{
-	return std::forward<_T&&>( bin_to_dec<_T>::eval(Bit_Str.c_str()) );
-}
-
-
-template < class _T >
-static inline int64_t&& _Count_Bits_Set(_T&& _X)
-{
-	return std::forward<int64_t&&>(count_bit_set((_T)_X));
-}
-
-
-static inline const intmax_t mix_integral_constant(const std::vector<intmax_t>& v_Ints)
-{
-	intmax_t _iMax = 0;
-	std::string _b = "\0", _hx = "\0";
-	const size_t v_size = v_Ints.size();
-
-
-	for (size_t z = 0; z < v_size; z++)
-	{
-		_hx = To_HexF<int>::eval(v_Ints[z]);
-		_b = concat_str((char*)_b.c_str(), To_HexF<int>::to_bit_str(_hx.c_str()).c_str());
-		_hx = "\0";
-	}
-
-	_iMax = int_bit(_b.c_str());
-
-	return _iMax;
-}
-
-
-static inline void _Gen_Canonical_Info(std::vector<_Canonical>& _cBit, const std::vector<_Canonical>& _Codes)
-{
-	intmax_t _len1 = 0, _len2 = 0, _bi = 0, _xDiff = 0;
-	const std::size_t _codeSize = _Codes.size();
-	std::vector<_Canonical> _CnTemp = {};
-	_Canonical _Canon = _Codes[0];
-
-	_len1 = _Canon._bitLen;
-
-	std::string&& _si = zero_bits(_len1);
-	_bi = strtoint(_si.data());
-	_Canon._codeWord = _bi;
-
-	_CnTemp.push_back(_Canon); _Canon = {};
-
-	for (size_t z = 1; z < _codeSize; z++)
-	{
-		_Canon = _Codes[z - 1];
-		_len1 = len_bit(intmax_t(_Canon._codeWord));
-		_len2 = _Codes[z]._bitLen;
-
-		if (_len2 > _len1)
-		{
-			_xDiff = _len2 - _len1;
-			_bi = _Canon._codeWord;
-			++_bi;
-			_bi <<= _xDiff;
-		}
-		else if (_len2 < _len1)
-		{
-			_xDiff = _len1 - _len2;
-			_bi = _Canon._codeWord;
-			--_bi;
-			_bi >>= _xDiff;
-
-		}
-		else if (_len2 == _len1)
-		{
-			_bi = _Canon._codeWord;
-			++_bi;
-		}
-
-		_Canon = _Codes[z];
-		_Canon._codeWord = _bi;
-
-		_CnTemp.push_back(_Canon );
-		_Canon = {};
-	}
-
-	for (std::vector<_Canonical>::iterator _CiT = _CnTemp.begin(); _CiT != _CnTemp.end(); _CiT++)
-		_cBit.push_back(*_CiT);
-
-}
-
-
-static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
-{
-	intmax_t _cw = 0;
-	const size_t cnSize = cniDat.size();
-
-	for (size_t _ci = 0; _ci < cnSize; _ci++)
-	{
-		_cw = cniDat[_ci]._codeWord;
-		_cw += _ci;
-		cniDat[_ci]._codeWord = _cw;
-	}
-	
-}
-
-
-static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const std::vector<intmax_t>& _canVec)
-{
-	intmax_t _x = 0;
-	intmax_t pac_bytes = 0, x_bits = 0;
-	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
-	const intmax_t _lastX = _canVec[_canVec.size() - 1];
-
-		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _CodInts.end(); _canIt++ )
-		{
-			_x <<= len_bit(intmax_t(*_canIt ));
-			if (!(*_canIt) ) continue;
-			_x |= *_canIt;
-
-			x_bits += len_bit(intmax_t(_x));
-			
-			if (x_bits > 32)
-			{
-				_result.push_back(_x);
-				pac_bytes += x_bits / 8;
-
-				_x = 0;
-				x_bits = 0;
-			}
-		}
-		
-		_result.push_back(_lastX);
-		++pac_bytes;
-
-		return pac_bytes;
-}
-
-
-
-static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string& _hex_str)
-{
-	if (!_fHandle) {
-		std::cerr << "\n Can't open file with the specified I/O handle. \n";
-		return 0;
-	}
-	
-	int byte_value = 0;
-	size_t _bytesWritten = 0;
-
-	std::string::iterator _xIt;
-	std::string _hexF = _hex_str;
-	std::string _BitStr = "\0";
-
-	const size_t _hexSize = _hexF.size();
-
-	_xIt = _hexF.begin();
-	char* _pHex = (char*)_xIt._Ptr;
-
-	for (size_t z = 0; z < _hexSize; z += 2)
-	{
-		_BitStr = HxFs_To_Bin(lstr(_pHex, 2) );
-		byte_value = (int)int_bit(_BitStr.c_str());
-		std::fputc(byte_value, _fHandle);
-
-		// clear temp. mem
-		_BitStr.clear(); 
-		_BitStr = "\0";
-		byte_value = 0;
-
-		// update string iterator & pointer to hex string
-		_xIt += 2;
-		_pHex = (char*)_xIt._Ptr;
-		++_bytesWritten;
-	}
-
-
-	return _bytesWritten;
-}
-
-
-static inline const intmax_t read_cni_bit(std::FILE*& _fHandle, std::vector<intmax_t>& Int_Bit)
-{
-	int read_bit = 0;
-	intmax_t read_size = 0;
-
-	if (!_fHandle) return 0;
-
-	while ((read_bit = std::fgetc(_fHandle)) > -1 )
-	{
-		Int_Bit.push_back(int(read_bit) );
-		++read_size;
-	}
-
-	
-	return read_size;
-}
-
-
-
-static inline uint64_t&& proper_bits(int64_t&& _n)
-{
-	const int64_t _nBits = num_of_bits<int64_t>::eval(int64_t(_n) );
-	const int64_t _maxBits = BIT_TOKEN(int64_t(_nBits) );
-
-	return _maxBits;
-}
-
-
-static inline int64_t&& LoPart(int64_t&& _v)
-{
-	const int64_t bit_width = len_bit(int64_t(_v) );
-	const int64_t half_bit = bit_width / 2;
-	const int64_t bit_order_difft = bit_width - half_bit;
-	const int64_t low_mask = set_low_bit(int64_t(bit_order_difft) );
-	const int64_t low_order_value = low_mask & _v;
-
-	return int64_t(low_order_value);
-}
-
-
-static inline int64_t&& HiPart(int64_t&& _v)
-{
-	const int64_t bit_wide = len_bit(int64_t(_v) );
-	const int64_t bit_half = bit_wide / 2;
-	const int64_t bit_difft = bit_wide - bit_half;
-	const int64_t bit_high_mask = range_bit_set(int64_t(bit_half), int64_t(bit_wide) );
-	const int64_t high_order_value = bit_high_mask & _v;
-	
-	return int64_t(high_order_value);
-}
-
-
-inline static void parseInt(intmax_t&& _rdx, std::vector<intmax_t>& _Ints)
-{
-	intmax_t _rbx = 0, _rcx = 0;
-
-	while ((_rbx = Ints_Of(_rdx)) > 0)
-	{
-		while ( (_rcx = len_bit(int64_t(_rbx) )) > 16 )
-				_rbx >>= 8;
-
-		_Ints.push_back(_rbx);
-	}
-}
-
-inline static void parseByte(std::vector<int>& _iBytes, const std::vector<int64_t>& _Ints)
-{
-	int64_t _rdx = 0, _rcx = 0,
-			_eax = 0, _ebx = 0;
-
-	int		_ax = 0, _ah = 0, _al = 0,
-			_dx = 0, _dh = 0, _dl = 0;
-
-	for (const int64_t& i64 : _Ints)
-	{
-		_rdx = i64; _rcx = len_bit(int64_t(_rdx) );
-		
-		if (_rcx <= 8)
-		{
-			_dx = (int)_rdx;
-			_iBytes.push_back(_dx);
-		}
-		else if (_rcx > 8 && _rcx <= 16)
-		{
-			_dh = (int)BYTE_PTR_HI(int64_t(_rdx)) >> 8; _iBytes.push_back(_dh);
-			_dl = (int)BYTE_PTR_LO(int64_t(_rdx)); _iBytes.push_back(_dl);
-		}
-		else if (_rcx > 16 && _rcx <= 32)
-		{
-			_ax = (int)WORD_PTR_HI(int64_t(_rdx)) >> 16; _ah = (int)BYTE_PTR_HI((int64_t)_ax) >> 8; _al = (int)BYTE_PTR_LO((int64_t)_ax);
-			_dx = (int)WORD_PTR_LO(int64_t(_rdx));  _dh = (int)BYTE_PTR_HI((int64_t)_dx) >> 8; _dl = (int)BYTE_PTR_LO((int64_t)_dx);
-
-			_iBytes.push_back(_ah); _iBytes.push_back(_al);
-			_iBytes.push_back(_dh); _iBytes.push_back(_dl);
-
-		}
-		else if (_rcx > 32 && _rcx <= 64)
-		{
-			_eax = DWORD_PTR_HI(int64_t(_rdx)) >> 32;
-			_ebx = DWORD_PTR_LO(int64_t(_rdx) );
-
-			_ax = (int)WORD_PTR_HI(int64_t(_eax) ) >> 16; _ah = (int)BYTE_PTR_HI((int64_t)_ax) >> 8; _al = (int)BYTE_PTR_LO((int64_t)_ax);
-			_dx = (int)WORD_PTR_LO(int64_t(_eax) ); _dh = (int)BYTE_PTR_HI((int64_t)_dx) >> 8; _dl = (int)BYTE_PTR_LO((int64_t)_dx);
-
-			_iBytes.push_back(_ah); _iBytes.push_back(_al);
-			_iBytes.push_back(_dh); _iBytes.push_back(_dl);
-
-			_ax = (int)WORD_PTR_HI(int64_t(_ebx) ) >> 16; _ah = (int)BYTE_PTR_HI((int64_t)_ax) >> 8; _al = (int)BYTE_PTR_LO((int64_t)_ax);
-			_dx = (int)WORD_PTR_LO(int64_t(_ebx) ); _dh = (int)BYTE_PTR_HI((int64_t)_dx) >> 8; _dl = (int)BYTE_PTR_LO((int64_t)_dx);
-
-			_iBytes.push_back(_ah); _iBytes.push_back(_al);
-			_iBytes.push_back(_dh); _iBytes.push_back(_dl);
-		}
-
-	}
-}
-
-
-
-constexpr int64_t&& MergeBits(int64_t&& _Hi, int64_t&& _Lo)
-{
-	int64_t _Bits = 0b0;
-
-	_Bits = _Hi | _Lo;
-
-	return int64_t(_Bits);
-}
-
-
-
-/* extract the composing bit factors out of an integer '_v'.
-*/
-static inline int64_t&& extract_Ints(int64_t& _v)
-{
-	int64_t _d1 = -1, bit_width = 0;
-
-	bit_width = len_bit(int64_t(_v) );
-
-	if (bit_width <= 8)
-	{
-		_d1 = (_v > 0)? (int64_t)255 & _v : -1;
-		_v -= _d1;
-
-	}
-	else if (bit_width > 8 )
-	{
-		_d1 = (_v > 0)? BYTE_PTR_X(int64_t(_v) ) : -1;
-		_v -= _d1;
-	}
-	
-	
-	return int64_t(_d1);
-}
-
-
-
-// fixed point numeric type
-template <const unsigned BITS>
-struct fixN
-{
-	fixN();
-	fixN(const double);
-	fixN(const int);
-
-	void operator= (const double);
-	void operator= (const int);
-	const double operator()();
-	const int operator()(const int) const;
-	const double decimal();
-	const double rational();
-
-	operator int() const;
-	operator double() const;
-
-private:
-	int _nVal;
-
-	const int scale = BITS / 2;
-
-	const int fXMask = ((int)std::pow(2, BITS) - 1) & ((int)std::pow(2, scale) - 1);
-	const int iXMask = 0xFFFF << scale;
-
-	const double toFix(const double);
-	const double toDouble(const int);
-	const int toFixInt(const int);
-	const int fixtoInt(const int);
-};
-
-
-
-
-inline static char&& to_char(const int& _c)
-{
-	static char _ch = 0;
-	const int _nc = _c;
-
-	_ch = 0;
-
-	if (_c >= 65 && _c <= 90)
-		_ch = 90 - (90 - _nc);
-	else if (_c >= 97 && _c <= 122)
-		_ch = 122 - (122 - _nc);
-	else
-		_ch = _nc;
-
-
-	return std::move(_ch);
-}
-
-
-
-inline static const bool is_alpha_num(const char& _chx)
-{
-	if (_chx >= '0' && _chx <= '9') return _BOOLC(1);
-	else return _BOOLC(0);
-}
-
-
-
-inline static const int chartoint(const char& _ch)
-{
-	if (is_alpha_num(_ch))
-		return _ch ^ 48;
-	else return -1;
-}
-
-
-
-inline static std::string&& alphaNum2Bin(char&& _hxc)
-{
-	int _x = chartoint(_hxc);
-	static std::string _hxfs ;
-	
-	_hxfs = "\0";
-	_hxfs = std::string( (_x > 0)? bit_str(_x) : inttostr(0) );
-		
-	return std::move(_hxfs);
-}
-
-
-
-constexpr char&& upCase(int&& _c)
-{
-	if (_c <= 0) return _c;
-
-	// is _c already in upper case??
-	if (_c >= 65 && _c <= 90)
-		return _c;
-
-	
-	int _ch = 0b00100000 ^ _c;
-
-	return char(_ch);
-}
-
-
-constexpr char&& downCase(int&& _cAlpha)
-{
-	if (_cAlpha <= 0) return _cAlpha;
-
-	// is _cAlpha already in lower case??
-	if (_cAlpha >= 97 && _cAlpha <= 122)
-		return _cAlpha;
-
-	int _cLow = 0b01100000 | _cAlpha;
-
-	return char(_cLow);
-}
-
-
-static inline int&& strPos(const char* _aStr, const char* _cStr)
-{
-	const std::size_t _Sz1 = std::strlen(_aStr), _Sz2 = std::strlen(_cStr);
-	static int _Pos = 0;
-	bool _bFound = false;
-
-	_Pos = 0;
-
-	if (!_Sz1 || !_Sz2) return std::move(_Pos);
-	if (_Sz2 > _Sz1) return std::move(_Pos);
-
-	for (std::size_t gf = 0; gf < _Sz1; gf++, _Pos++)
-	{
-		if (std::strncmp(&_aStr[gf], _cStr, _Sz2)) continue;
-		else {
-			_bFound = true;
-			break;
-		}
-	}
-	return (_bFound)? std::move(_Pos): std::move(- 1);
-}
-
-
-
-static inline int&& strNPos(const char* _StSrc, const int _chr)
-{
-	static int _iPos = 0;
-	const int _maxSz = (int)std::strlen(_StSrc);
-	bool _cFnd = false;
-
-	_iPos = 0;
-
-	for (_iPos = 0; _iPos < _maxSz; _iPos++)
-	{
-		if (_StSrc[_iPos] == _chr) {
-			_cFnd = true;
-			break;
-		}
-	}
-
-	return (_cFnd)? std::move(_iPos) : std::move(- 1);
-}
-
-
-
-inline static std::string&& scanStr(const char* _Str0, const char* _searchStr)
-{
-	static std::string _SF = "\0";
-	const size_t _SrcLen = std::strlen(_Str0), _SearchLen = std::strlen(_searchStr);
-
-	_SF = "\0";
-
-	if (!_Str0 || !_searchStr) return std::move(_SF);
-	if (!_SrcLen || !_SearchLen) return std::move(_SF);
-	if (_SearchLen > _SrcLen) return std::move(_SF);
-
-	for (size_t _i = 0; _i < _SrcLen; _i++)
-	{
-		if (std::strncmp(&_Str0[_i], _searchStr, _SearchLen)) continue;
 		else
 		{
-			_SF = std::string(std::strncpy(_SF.data(), &_Str0[_i], _SearchLen));
-			break;
+			_fqr = 1;
+			_nod.setFrequencyData(int64_t(_fqr) );
+			_target.push_back(_nod);
+			_Cnt = _target.size() - 1;
 		}
 	}
-	return std::move(_SF);
-}
-
-
-inline static const char* concat_str(char* _target, const char* _str)
-{
-	const std::size_t lenz = std::strlen(_target),
-	lenS = std::strlen(_str);
-
-	char* _pStr = new char[lenz + lenS];
-
-	if (_pStr) std::memset(_pStr, 0, lenz + lenS);
-
-	std::strncpy(_pStr, _target, lenz);
-	std::strncpy(&_pStr[lenz], _str, lenS);
-	_pStr[lenz + lenS] = 0;
-
-	return _pStr;
-}
-
-
-inline static const char* reverse_str(const char* _str)
-{
-	const int64_t lenz = std::strlen(_str), _max = lenz - 1;
-	char* _ps = new char[lenz];
-
-	for (int64_t i = 0,j = _max; j >= 0; )
-		_ps[i++] = _str[j--];
-
-	_ps[lenz] = 0;
-	return _ps;
-}
-
-
-// take the n number of characters from the left end of the string
-inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
-{
-	static std::string _str = "\0";
-	const size_t lenMax = std::strlen(_srcStr);
-
-	_str = "\0";
-
-	if (_nGrab > lenMax || _nGrab <= 0) return std::move(_str);
-
-	_str = std::string(std::strncpy(_str.data(), _srcStr, _nGrab));
-
-	_str[_nGrab] = 0;
-	return std::move(_str);
 }
 
 
 
-inline static std::string&& snapStr(const char* _srcStr, const size_t& _Start, const size_t& _End)
+inline const bool _TREE::create_encoding(const size_t& _From, 
+										 const size_t& _To,
+										 int64_t& _bt,
+										 const std::vector<node>& _Vn)
 {
-	static std::string _snpStr = "\0";
+	node _e = '0'; bool _bEncodeable = false;
+	intmax_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
+	static intmax_t _fq = 0;
+	std::vector<BPAIR>::iterator _iGet;
+	const size_t _LowerBound = _From, _UpperBound = _To;
 
-	_snpStr = "\0";
+	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
 
-	if (!_srcStr) return std::move(_snpStr);
+	_fq = 50; // the initial root frequency is 50%
 
-	int64_t _xBegin = (int64_t)_Start;
-
-	if (_xBegin < 0 ) return std::move(_snpStr);
-
-	const size_t SrcLen = std::strlen(_srcStr);
-
-	if (_Start > SrcLen) return std::move(_snpStr);
-	
-	if (_End > SrcLen) return std::move(_snpStr);
-
-	const size_t n_Snap = _Start + _End;
-
-	if (n_Snap > SrcLen) return std::move(_snpStr);
-	
-	_snpStr = std::string(std::strncpy(_snpStr.data(), &_srcStr[_Start], _End));
-
-	return std::move(_snpStr);
-}
-
-
-inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const size_t& _First, const size_t& _Count)
-{
-	static std::string _tpStr = "\0";
-
-	_tpStr = "\0";
-
-	if (!_pStr) return std::move(_tpStr);
-
-	const size_t _SrcLen = std::strlen(_pStr);
-
-	if ((int64_t)_First < 0 || _First > _SrcLen) return std::move(_tpStr);
-
-	const size_t n_Tap = _First + _Count;
-
-	if (n_Tap > _SrcLen) return std::move(_tpStr);
-
-	_tpStr.assign(_pStr);
-
-	for (size_t i = _First; i < n_Tap; i++) _tpStr[i] = _tpChr;
-
-
-	return std::move(_tpStr);
-}
-
-
-static inline std::string&& tapStrBy(const char* _aStr, const char* _aSubstitute, const int& _startPos)
-{
-	static std::string _tappedStr = "\0";
-	static std::string::iterator _Start, _End;
-	const std::size_t _maxSz = std::strlen(_aStr),  _Len = std::strlen(_aSubstitute);
-	
-	_tappedStr = "\0"; 
-
-	if (!_maxSz || !_Len) return std::move(_tappedStr);
-
-	_tappedStr = std::string(std::strncpy(_tappedStr.data(), _aStr, _maxSz));
-
-	_Start = _tappedStr.begin() + _startPos;
-	_End = _tappedStr.begin() + _startPos + _Len;
-
-	_tappedStr = std::string( _tappedStr.replace(_Start, _End, _aSubstitute) );
-	
-	return std::move(_tappedStr);
-}
-
-
-inline static std::string&& rtrimx(const char* _ssStr, const size_t& _Count, const char& _padC = ' ')
-{
-	static std::string _rtms = "\0";
-	char* _Start = nullptr;
-
-	_rtms = "\0";
-
-	if (!_ssStr || (int64_t)_Count <= 0) return std::move(_rtms);
-
-	const size_t _ssLen = std::strlen(_ssStr);
-	const size_t _nPads = _ssLen - _Count;
-	std::string _padStr = repl_char(char(_padC), _Count);
-
-	_rtms = std::string(std::strncpy(_rtms.data(), _ssStr, _ssLen));
-
-	_Start = &_rtms[_nPads];
-
-	_Start = std::strncpy(_Start, _padStr.c_str(), _Count);
-
-
-	return std::move(_rtms);
-}
-
-
-inline static std::string&& ltrimx(const char* _uStr, const size_t& _Count, const char& _padCh = ' ')
-{
-	static std::string _LStr = "\0";
-	static std::string::iterator _LiBegin, _LiEnd;
-
-	_LStr = "\0";
-
-	if (!_uStr || (int64_t)_Count <= 0) return std::move(_LStr);
-
-	const size_t _uMax = std::strlen(_uStr);
-
-	_LStr = std::string(std::strncpy(_LStr.data(), _uStr, _uMax));
-
-	for (_LiBegin = _LStr.begin(), _LiEnd = _LiBegin + _Count; _LiBegin < _LiEnd; _LiBegin++) *_LiBegin = _padCh;
-
-	return std::move(_LStr);
-}
-
-
-// take the n number of characters from the right end of the string
-inline static std::string&& rstr(const char* _sStr, const std::size_t& _nChars)
-{
-	static std::string _rStr = "\0";
-	const size_t maxLen = std::strlen(_sStr);
-
-	_rStr = "\0";
-
-	if (_nChars > maxLen || _nChars <= 0) return std::move(_rStr);
-
-	_rStr = std::string(std::strncpy(_rStr.data(), &_sStr[maxLen - _nChars], _nChars) );
-
-	return std::move(_rStr);
-}
-
-
-inline static std::string&& LRTrim(const char* _Sstr)
-{
-	static std::string _LRTrmStr = "\0";
-	static std::string::iterator _LRI;
-	const size_t _nMax = std::strlen(_Sstr);
-	size_t _i = 0, _iMax = 0;
-
-	_LRTrmStr = "\0";
-
-	if (!_Sstr || (int64_t)_nMax <= 0) return std::move(_LRTrmStr);
-
-	std::string _tmpStr;
-
-	_LRTrmStr = std::string(std::strncpy(_LRTrmStr.data(), _Sstr, _nMax));
-
-	// Trimming the left spaces trail before the string
-	for (_LRI = _LRTrmStr.begin(); _LRI != _LRTrmStr.end(); _LRI++)
+	// Processing the Encoding from vector data
+	for (size_t i = _From; i < _To; i++)
 	{
-		if (*_LRI == SPACE) continue;
-		else {
-			_tmpStr = concat_str(_tmpStr.data(), _LRI._Ptr); break;
-		}
-	}
+		 _e = _Vn.at(i);
 
-	// Trimming the right spaces trail after the string
-	for (_iMax = _tmpStr.size(); _tmpStr[_iMax] == SPACE; _iMax--)
-		_tmpStr[_iMax] = '\0';
+		if (_fq > _e.FrequencyData())
+			_Dir = L;
 
+		else if (_fq < _e.FrequencyData())
+			_Dir = R;
 
-	_LRTrmStr.assign(_tmpStr);
-
-	return std::move(_LRTrmStr);
-}
-
-
-
-
-// bit status information
-template <typename BitSZ = unsigned int>
-struct bitInfo
-{
-	bitInfo(): X(0), _Alpha(0),numBits(0) {};
-
-	bitInfo(char const _C, const int _x, const BitSZ _bitSz)
-	{
-		this->X = _x;
-		this->_Alpha = _C;
-		this->numBits = _bitSz;
-	}
-
-	~bitInfo() = default;
-	
-	operator char() const {
-		return this->_Alpha;
-	}
-
-	operator int() const {
-		return this->numBits;
-	}
-
-	int X;  
-	char _Alpha;
-	BitSZ numBits;
-};
-
-
-// a data structure of a Pair of Bit and Byte
-struct BPAIR
-{
-	BPAIR() :_data(0), _val(0), bit_len(0) {};
-	BPAIR(unsigned char&& _a) : _data(_a), _val(0), bit_len(0) {};
-
-	BPAIR(intmax_t&& _v): _val(_v), _data(0), bit_len(len_bit(intmax_t(_val)))
-	{
-	};
-
-	BPAIR(unsigned char&& _a, intmax_t&& _v) : _data(_a), _val(_v), bit_len( len_bit(intmax_t(_val) ) )
-	{
-	};
-
-	BPAIR(intmax_t&& _v, unsigned char&& _a) :_data(_a), _val(_v), bit_len( len_bit(intmax_t(_val)) )
-	{
-	};
-
-	~BPAIR() = default;
-
-	BPAIR(BPAIR&& _mvBpa) noexcept
-	{
-		if (this == &_mvBpa) return;
-		this->_data = _mvBpa._data;
-		this->_val = _mvBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
-
-		_mvBpa._data = 0;
-		_mvBpa._val = 0;
-		_mvBpa.bit_len = 0;
-
-	}
-
-	BPAIR(const BPAIR& _rBpa)
-	{
-		if (this == &_rBpa) return;
-		this->_data = _rBpa._data;
-		this->_val = _rBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
-	}
-
-	const BPAIR& operator= (const BPAIR& _bpa)
-	{
-		if (this == &_bpa) return *this;
-		this->_data = _bpa._data;
-		this->_val = _bpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
-
-		return *this;
-	}
-
-	BPAIR&& operator= (BPAIR&& _rvBpa) noexcept
-	{
-		if (this == &_rvBpa) return std::move(*this);
-		this->_data = _rvBpa._data;
-		this->_val = _rvBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
-
-		_rvBpa._data = 0;
-		_rvBpa._val = 0;
-		_rvBpa.bit_len = 0;
-
-		return std::move(*this);
-	}
-
-	operator unsigned char() const {
-		return this->_data;
-	}
-
-
-	operator intmax_t() const {
-		return this->_val;
-	}
-
-	unsigned char _data; // byte
-	intmax_t _val , bit_len;  // encoded value & bit length
-};
-
-
-
-// Implementations to fixN Class..
-template < const unsigned BITS >
-fixN<BITS>::fixN(): _nVal(0){}
-
-
-template < const unsigned BITS >
-fixN<BITS>::fixN(const double x)
-{
-		*this = x;
-}
-
-
-template<const unsigned BITS>
-fixN<BITS>::fixN(const int x)
-{
-		*this = x;
-}
-
-
-template < const unsigned BITS >
-void fixN<BITS>::operator= (const double x)
-{
-	_nVal = (int)toFix(x);
-}
-
-
-template <const unsigned BITS >
-void fixN<BITS>::operator= (int x)
-{
-	_nVal = toFixInt(x);
-}
-	
-
-template <const unsigned BITS >
-const double fixN<BITS>::operator()()
-{
-	return toDouble(_nVal);
-}
-
-	
-template <const unsigned BITS >
-const int fixN<BITS>::operator()(const int c) const
-{
-	return fixtoInt(_nVal);
-}
-
-	
-template < const unsigned BITS >
-const double fixN<BITS>::decimal()
-{
-	return toDouble((_nVal & iXMask ));
-}
-
-
-template <const unsigned BITS >
-const double fixN<BITS>::rational()
-{
-	return  toDouble((_nVal & fXMask) );
-}
-
-	
-template <const unsigned BITS>
-const double fixN<BITS>::toFix(const double x)
-{
-	return x *(double)(1 << scale);
-}
-
-
-template <const unsigned BITS>
-const double fixN<BITS>::toDouble(const int x)
-{
-	return (double)x / (double)(1 << scale);
-}
-
-	
-template <const unsigned BITS>
-const int fixN<BITS>::toFixInt(int x)
-{
-		return x << scale;
-}
-
-
-template <const unsigned BITS>
-const int fixN<BITS>::fixtoInt(const int x)
-{
-		return x >> scale;
-}
-
-
-template <const unsigned BITS>
-fixN<BITS>::operator double() const
-{
-	return toDouble(_nVal);
-}
-
-
-template <const unsigned BITS>
-fixN<BITS>::operator int() const
-{
-	return toFixInt(_nVal);
-
-}
-
-
-template <typename _Ty>
-inline static _Ty&& num_of_dec(const _Ty& _v)
-{
-	using _Type = std::remove_reference_t<_Ty>;
-	static _Type _counter = 0 , _dec = 0;
-
-	_counter = 0; _dec = 0;
-
-	if ((_Ty)_v <= 0) return std::move(_counter);
-
-	_dec = _v;
-
-	while (_dec > 0)
-	{
-		++_counter;
-		_dec = (_Ty)std::lldiv(_dec, 10).quot;
-	}
-
-	return std::move(_counter);
-}
-
-
-inline static int64_t&& strtoint(std::string&& _sNum)
-{
-	const std::size_t _len = _sNum.size();
-	char* _sf = new char[_len];
-	std::string _sfs = "\0";
-	intmax_t _bv = 0;
-	static intmax_t _result = 0;
-
-	_result = 0;
-
-	std::memset(_sf, 0, _len);
-	std::strncpy(_sf, _sNum.data(), _len);
-
-	const intmax_t _iNum = strPos(_sNum.data(), "-");
-	intmax_t _maxPos = (intmax_t)(_len - 1), _c = 0, _Exp = 0;
-
-	if (_iNum >= 0)
-	{
-		_sf = std::strncpy(&_sf[1], &_sNum[1], _maxPos);
-		_sf[_maxPos] = 0;
-		--_maxPos;
-	}
-
-		for (intmax_t i = _maxPos; i >= 0; i--)
+		else if (_fq == _e.FrequencyData())
 		{
-			_c = _sf[i] ^ 0b00110000;
-			_bv = _bv + _c * (intmax_t)std::pow(10, _Exp++);
-		};
+			_Dir = R;
+			_recurr++;
+		}
+	  
+		_fq = _e.FrequencyData();
+
+		if (_recurr > 1)
+		{
+			_sameVal = ++_prevX;
+			_bt = _sameVal;
+			_recurr = 0;
+			goto filterPhase;
+		}
+		
+		_bt |=_Dir;
+
+	filterPhase: // "enforce unique mechanism" layer 1
+
+		_sameVal = _bt;
+		_prevX = _sameVal;
+
+		if (mix::generic::
+			vector_search(_vPair.begin(), _vPair.end(), _sameVal, bitLess(), _iGet))
+			//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
+		{
+			_sameVal = _iGet->_val;
+			_sameVal += ((_iGet - _vPair.begin()) / 2);
+			_bt = _sameVal;
+			_prevX = _sameVal;
+		}
+
+		_vPair.push_back(BPAIR{ UC(_e.dataValue()), intmax_t(_prevX) });
+		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
+		//std::stable_sort(_vPair.begin(), _vPair.end());
+		_bEncodeable = true;
+	}
+	_fq = 0;
 
 	
-	_result = ((_iNum) >= 0)? _bv - (2 * _bv) : _bv;
-	
-	_sfs.clear();
-	std::memset(_sf, 0, _len);
-	return std::move(_result);
+	return _bEncodeable;
 }
 
 
-inline static std::string&& inttostr(const intmax_t& nVal)
+
+
+inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _cmpRate = 0)
 {
-	// max. spaces for negative integer
-	const intmax_t nDigits = oneAdder( (unsigned int)num_of_dec((intmax_t)std::abs(nVal))); 
+	const size_t _TreeSizes = _fpNods.size();
 
-	// max. spaces for positive integer.
-	const intmax_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
+	const double _CompRate = (_TreeSizes > 5 && _cmpRate)? std::floor(_cmpRate * _TreeSizes) : _TreeSizes;
 
-	char _ch;  static std::string _ss = "\0";
-	intmax_t nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
+	const double _fCompRate = (_CompRate)? std::ceil((double)_TreeSizes / _CompRate) : 0;
+	const size_t _DivSize = (_fCompRate)? (size_t)_fCompRate : 1;
+	size_t _divSize = _DivSize;
+	int64_t _msk = 0, _BT = 2, _Dir = L;
+	bool _bSucceed = false;
 
-	std::string _tmpS = "\0";
+	//Clean();
 
-	_ss = "\0";
-
-	// if value is 0 (zero)
-	if (!nDiv) {
-		_ss = " ";
-		std::memset(_ss.data(), 0, 1);
-		_ss[0] = 48;
-		_ss[1] = 0;
-		return std::move(_ss);
-	}
-
-	// if value is negative
-	if (nVal < 0) {
-		_tmpS = repl_char(SPACE, nDigits);
-		_ss.assign(_tmpS);
-		std::memset(_ss.data(), 0, nDigits);
-		_ss[0] = '-';
-		decDigs = nDigits;
-		cnt++;
-	}
-	else
+	for (size_t t = 0; t < _TreeSizes; t += _DivSize)
 	{
-		_tmpS = repl_char(SPACE, nDecs);
-		_ss.assign(_tmpS);
-		std::memset(_ss.data(), 0, nDecs);
-		decDigs = nDecs;
-		cnt++;
+		if ( (_TreeSizes - t) <= _DivSize ) _divSize = 1;
+		_bSucceed = create_encoding(t, (( t + _divSize) >= _TreeSizes)? (t + _TreeSizes) : (t + _divSize), _msk, _fpNods);
+
+		if (!_bSucceed) break;
+	
+		_msk ^= _BT--;
+
+		if (_BT < 1) 
+			_BT = 2; 
+			
+
+		_Dir = _Dir ^ 1;
+		_msk |= _Dir;
+	}
+
+	// to encode the last left item in '_fpNods' vector
+	create_encoding(_TreeSizes - 1, _TreeSizes, _msk, _fpNods);
+
+	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
+	_TREE::enforce_unique(_vPair); 
+}
+
+
+
+
+inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
+{
+	int64_t _Addend = 0;
+	int64_t _MaxSz = (int64_t)_bPairs.size();
+
+	for (int64_t n = 0, m = 0; m < _MaxSz; m++)
+	{
+		_Addend = m;
+		_bPairs[m]._val += (_Addend + 1);
+		_Addend = 0;
+	}
+}
+
+
+
+static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector<unsigned char>& _hDatInfo)
+{
+	size_t f_size = 0;
+
+	if (!_fHandle) {
+		std::cerr << "\n Error saving header information to a File. \n";
+		return 0;
+	}
+
+	const size_t h_size = _hDatInfo.size();
+
+	if (!(f_size = std::fwrite(&h_size, sizeof(h_size), 1, _fHandle))) {
+		std::cerr << "\n Error saving number of records' size to file \n";
+		if (_fHandle) std::fclose(_fHandle);
+		return 0;
+	}
+
+	for (size_t z = 0; z < h_size; z++)
+	{
+		std::fputc(_hDatInfo[z], _fHandle);
+		++f_size;
+	}
+
+
+	return f_size;
+}
+
+
+
+
+// Read the encoded information data table from a file.
+static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<_Canonical>& CanInfo0 ,std::vector<_Canonical>& CanInfo1)
+{
+	intmax_t _x = 0;
+	Can_Bit cbi = {};
+	size_t _readSize = 0, infSize = 0;
+	std::FILE* _Fr = std::fopen(_inFile.data(), "rb");
+
+	if (!_Fr)
+	{
+		std::cerr << "\n Error read accesses to file. \n";
+		return 0;
+	}
+
+	// Read the records's size number
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header size information. \n";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
+
+	const size_t header_size = infSize;
+
+	vectorClean(CanInfo0);
+
+	// picking up the encoded chars ..
+	for (size_t f = 0; f < header_size; f++)
+	{
+		cbi._xData = std::fgetc(_Fr);
+		if (cbi._xData > 0)
+		{
+			CanInfo0.push_back(cbi); ++_readSize;
+		}
+		cbi = {};
+	}
+
+	// read the records' size
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header size information. \n";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
+
+	// picking up initial codes' length..
+	for (size_t r = 0; r < header_size; r++)
+	{
+		_x = std::fgetc(_Fr);
+		if (_x > 0)
+		{
+			CanInfo0[r]._bitLen = _x;
+			++_readSize;
+		}
+	}
+
+	// Reads up size information ..
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header info data. \n";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
+
+	const size_t cni_header_size = infSize;
+
+	cbi = {};
+
+	// picking up actual codes' length ..
+	for (size_t j = 0; j < cni_header_size; j++)
+	{
+		cbi._bitLen = std::fgetc(_Fr);
+		if (cbi._bitLen > 0) { CanInfo1.push_back(cbi); ++_readSize; }
+		cbi = {};
+	}
+
+	// Reads up size information ..
+	if (!std::fread(&infSize, sizeof(size_t), 1, _Fr))
+	{
+		std::cerr << "\n Error read header info data. \n";
+		if (_Fr) std::fclose(_Fr);
+		return 0;
+	}
+
+	// picking up actual codes' RLE of bit-lengths..
+	for (size_t g = 0; g < cni_header_size; g++)
+	{
+		_x = std::fgetc(_Fr);
+		if (_x > 0) {
+			CanInfo1[g]._rle_bit_len = _x; ++_readSize;
+		}
+	}
+
+	if (_Fr) std::fclose(_Fr);
+	return _readSize;
+}
+
+
+
+// Packed the raw data source and saves it to a file.
+static inline const intmax_t writePack(std::FILE*& _fSqz, const std::string& sqz_hex)
+{
+	if (!_fSqz) {
+		std::cerr << "\n\n Error Open Write-Accesses to File !\n";
+		return 0;
+	}
+
+	const size_t w_size = save_cni_bit(_fSqz, sqz_hex);
+
+	if (_fSqz) std::fclose(_fSqz);
+
+	return w_size;
+}
+
+
+
+// Read the packed data source into an int Vector.
+static inline const std::size_t readPack(std::string&& _SqzFile, std::vector<intmax_t>& vInts)
+{
+	int _x = 0;
+	size_t _totBytesRead = 0, h_size = 0;
+	std::FILE* _fHandle = std::fopen(_SqzFile.c_str(), "rb");
+
+	if (!_fHandle) {
+		std::cerr << "\n Error open Read-Accesses to File !\n\n";
+		return 0;
+	}
+
+	vectorClean(vInts);
+
+	if (!(_totBytesRead = std::fread(&h_size, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n encoded chars information read error ..";
+	else for (size_t i = 0; i < h_size; i++) _x = std::fgetc(_fHandle);
+ 
+
+	if (!(_totBytesRead = std::fread(&h_size, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n initial bit-lengths information read error ..";
+	else for (size_t i = 0; i < h_size; i++) _x = std::fgetc(_fHandle);
+
+
+	if (!(_totBytesRead = std::fread(&h_size, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n actual codes' length read error ..";
+	else for (size_t i = 0; i < h_size; i++) _x = std::fgetc(_fHandle);
+
+
+	if (!(_totBytesRead = std::fread(&h_size, sizeof(size_t), 1, _fHandle)))
+		std::cerr << "\n actual codes' RLE information read error ..";
+	else for (size_t i = 0; i < h_size; i++) _x = std::fgetc(_fHandle);
+
+
+	if (!(_totBytesRead += read_cni_bit(_fHandle, vInts)))
+	{
+		std::cerr << "\n Fatal !! corrupted packed symbols read ..";
+		std::cerr << "\n could not proceed ..\n";
+		if (_fHandle) std::fclose(_fHandle);
+		return 0;
+	}
+
+	
+return _totBytesRead;
+}
+
+
+
+// write the original uncompressed form of the data into a file.
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<UC>& raw_dat)
+{
+	size_t rawSize = 0;
+	std::FILE* FRaw = std::fopen(_OriginFile.data(), "wb");
+
+	if (!FRaw)
+	{
+		std::cerr << "\n Error Write-Accessed to File.";
+		return 0;
+	}
+
+	const size_t nSize = raw_dat.size();;
+
+	for (size_t s = 0; s < nSize; s++)
+	{
+		std::fputc(raw_dat[s], FRaw);
+		++rawSize;
+	}
+
+	if (FRaw) std::fclose(FRaw);
+	return rawSize;
+}
+
+
+
+// read the original data source from a file and populate the vector with the read data.
+static inline const std::size_t readOriginal(std::FILE*& _fHandle , std::vector<unsigned char>& _vecData, unsigned char*& _DataSrc)
+{
+	std::size_t _wordsRead = 0;
+	
+	if (!_fHandle)
+	{
+		std::cerr << "\n Error read source file.. !! " << "\n\n";
+		goto EndRead;
+	}
+
+	if (!_DataSrc) _DataSrc = new unsigned char[_ROWSZ];
+	
+	while (std::fgets((char*)_DataSrc, _ROWSZ, _fHandle))
+	{
+		for (size_t c = 0; c < _ROWSZ; c++) {
+			if (_DataSrc[c] > 0) {
+				_vecData.push_back(_DataSrc[c]);
+				++_wordsRead;
+			}
+		}
+
+		std::memset(_DataSrc, 0, _ROWSZ);
 	}
 	
 
-	while (nDiv > 0)
+EndRead:
+	return _wordsRead;
+}
+
+
+// generates a huffman encoding information ..
+static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
+											  std::vector<BPAIR>& CodInfo, 
+										      std::vector<_Canonical>& Cni_Info0, 
+											  std::vector<_Canonical>& Cni_Info1,
+											  std::vector<intmax_t>& PacResults,
+											  std::vector<intmax_t>& PacInts,
+										      const double& cmp_rate, 
+											  char&& _cCode = 'u')
+{
+	intmax_t SqzInt = 0;
+	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
+	std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
+	std::vector<node> PNodes = {};
+
+	Can_Bit cbi = {};
+
+	std::vector<_Canonical> CniBits = {};
+	std::vector<_Canonical>::iterator CBiT = {};
+
+	std::string xs_bit = "\0";
+
+	const double comp_ratio = (cmp_rate)? cmp_rate : COMP_RATE;
+
+	const size_t T_SIZE = _Src.size();
+
+	for (size_t t = 0; t < T_SIZE; t++)
 	{
-		_mod = nDiv % 10;
-		_ch = '0' + (char)_mod;
-		_ss[decDigs - cnt] = _ch;
-		nDiv /= 10; 
-		cnt++;
+		PNodes.push_back(node(UC(_Src[t])));
 	}
 
-	_ss[decDigs] = 0;
+	if (_cCode == 'D') {
+		PRINT("\nNodes data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+	}
+	RET;
+
+	for (const node& e : PNodes)
+	{
+		_pq.emplace(e);
+	}
+
+	PNodes.clear();
+
+	filter_pq_nodes(PNodes, _pq);
+
+	if (_cCode == 'D')
+	{
+		PRINT("\nFiltered Nodes Data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		RET;
+	}
+
+	for (const node& nod : PNodes)
+	{
+		_fpq.emplace(nod);
+	}
+
+	PNodes.clear();
+
+	for (node e = 0; !_fpq.empty(); )
+	{
+		e = _fpq.top(); _fpq.pop();
+		PNodes.push_back(e);
+	}
+
+	if (_cCode == 'D')
+	{
+		PRINT("\nFrequency nodes data..");
+		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		RET;
+	}
+
 	
-	return std::move(_ss);
+	_TREE::plot_tree(PNodes, comp_ratio);
+
+	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
+
+	vectorClean(Cni_Info0);
+
+	if (_cCode == 'D')
+	{
+		PRINT("\nGenerated Huffman Encoding Information. (BPAIR)");
+		PRINT("_xData <=> _val");
+		for (const auto& bp : CodInfo)
+		{
+			RPRINTC(bp._data); RPRINTC(bp._val); RET;
+		}
+	}
+
+	for (const BPAIR& bp : CodInfo)
+	{
+		cbi._xData = bp._data;
+		cbi._bitLen = bp.bit_len;
+		Cni_Info0.push_back(cbi);
+		cbi = {};
+	}
+
+	if (_cCode == 'D') {
+		PRINT("\nRaw Canonical Data Obtained from the Generated BPAIR. (Cni_Info0) ");
+		PRINT("_xData <=> _bitLen");
+		for (const auto& ce : Cni_Info0)
+		{
+			RPRINTC(ce._xData); RPRINTC(ce._bitLen); RET;
+		}
+	}
+	
+		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::NLess<char>());
+		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::NLess<intmax_t>());
+	
+	if (_cCode == 'D')
+	{
+		PRINT("\nSorted Canonical Encoding Information Data.. (sorted Cni_Info0) " );
+		PRINT("_xData <=> _bitLen");
+		for (const auto& _cb : Cni_Info0)
+		{
+			RPRINTC(_cb._xData); RPRINTC(_cb._bitLen); RET;
+		}
+
+		RET;
+	}
+
+	vectorClean(Cni_Info1);
+
+	_Gen_Canonical_Info(Cni_Info1, Cni_Info0); // obtaining codewords based on bit length info ..
+
+	cni_enforce_unique(Cni_Info1); // codewords data updated
+
+	if (_cCode == 'D') {
+		PRINT("\nCanonical Huffman Encoding Information Generated ! [ Cni_Info1 ] " );
+		PRINT("_xData <=> _codeWord <=> _bitLen");
+
+		for (const auto& ci : Cni_Info1)
+		{
+			RPRINTC(ci._xData); RPRINTC(ci._codeWord); RPRINTC(ci._bitLen);
+			RET;
+		}
+	}
+
+	cbi = {}; 
+
+	for (const _Canonical& cni : Cni_Info1)
+	{
+		cbi._xData = cni._xData;
+		cbi._codeWord = cni._codeWord;
+		cbi._bitLen = len_bit(intmax_t(cni._codeWord));
+		CniBits.push_back(cbi);
+		cbi = {};
+	}
+
+	cbi = {}; vectorClean(Cni_Info1);
+
+	for (const auto& _cnb : CniBits) {
+		cbi._xData = _cnb._xData;
+		cbi._codeWord = _cnb._codeWord;
+		cbi._bitLen = _cnb._bitLen;
+		Cni_Info1.push_back(cbi);
+		cbi = {};
+	}
+	
+	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
+
+	if (_cCode == 'D') {
+		PRINT(" \n Finalized Sorted(char) Canonical Encoding Information Generated .. [ Cni_Info1 ] ");
+		PRINT(" _xData <=> _codeWord <=> _bitLen ");
+		for (const auto& _cnb : CniBits) {
+			RPRINTC(_cnb._xData); RPRINTC(_cnb._codeWord); RPRINTC(_cnb._bitLen); RET;
+		}
+	}
+
+	RET;
+
+	// gathering source data..
+	for (size_t fz = 0; fz < T_SIZE; fz++)
+	{
+		char _ci = _Src[fz];
+
+		if (_ci > 0)
+		{
+			if (mix::generic::vector_search(CniBits.begin(), CniBits.end(), _ci, mix::generic::NLess<char>(), CBiT))
+			{
+				PacInts.push_back(CBiT->_codeWord);
+			}
+		}
+	}
+
+	if (_cCode == 'D') {
+		PRINT("\n Generated Code Symbols ..");
+		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
+	}
+
+		SqzInt = cni_bits_pack(PacResults,PacInts);
+
+		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
+	
+	
+	return SqzInt;
+}
+
+
+// Generate a header data information ..
+static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info, 
+										std::vector<_Canonical>& header1_info,
+										const std::vector<intmax_t>& pac_Ints,   // Code Symbols
+										const std::vector<_Canonical>& CniSrc,  // Cni_Info0
+										const std::vector<_Canonical>& CniInfo, // Cni_Info1
+										char&& _iDebug = 'u')
+{
+	size_t header0_size = 0, header1_size = 0, _vi = 0;
+	intmax_t _b = 0;
+	std::vector<node> _vNods;
+	node _e = 0;
+
+	Can_Bit cni_head0 = {}, cni_head1 = {};
+
+	 // constructs the bit-length & RLE of bit-length of the actual packed symbols..
+	for (const auto& _ci : pac_Ints) // Code Symbols
+	{
+		_b = len_bit(intmax_t(_ci));
+		// set up the frequency data for each bit length ..
+
+		if (_vNods.empty())
+		{
+			goto addNode;
+			continue;
+		}
+
+		_vi = _vNods.size();
+
+		if (_b == _vNods[_vi - 1].Value())
+		{
+			_b = _vNods[_vi - 1].FrequencyData();
+			_vNods[_vi - 1].setFrequencyData(intmax_t(++_b));
+			continue;
+		}
+		else goto addNode;
+		
+	addNode:
+			_e = node(UC(_b)); // '_e ' is a bit length node
+			_e.setFrequencyData(_e.FrequencyData() + 1);  // frequency of a particular bit length node
+			_vNods.push_back(_e);
+	}
+
+	// the required information (_bitLen & _rle_bit_len) for actual packed symbols is gathered.
+
+	const size_t _InfoSize = _vNods.size();
+
+	vectorClean(header1_info);
+
+	// writing actual code symbols length..
+	for (size_t d = 0; d < _InfoSize; d++)
+	{
+		_b = _vNods[d].Value();   // bit length info
+		if (_b) {
+			cni_head1._bitLen = _b;
+			header1_info.push_back(cni_head1);
+			++header1_size;
+			cni_head1 = {};
+		}
+	}
+
+	// writing RLE info for each actual code symbol length ..
+	for (size_t f = 0; f < _InfoSize; f++)
+	{
+		_b = _vNods[f].FrequencyData();
+
+		if (_b > 0)
+		{
+			header1_info[f]._rle_bit_len = _b;
+			++header1_size;
+		}
+	}
+
+	/* reconstructing information from the Initial huffman generated code symbols.. */
+	char _C = 0;
+	const size_t CndSize = CniSrc.size(); // from the 'Cni_Info0' data table
+
+	vectorClean(header0_info);
+
+	// acquiring the encoded character & the codeword for each encoded character..
+	for (size_t d = 0; d < CndSize; d++)
+	{
+		_C = CniSrc[d]._xData;
+		if (_C) {
+			cni_head0._xData = CniSrc[d]._xData; // encoded character
+			header0_info.push_back(cni_head0);
+			++header0_size;
+			cni_head0 = {};
+		}
+	}
+
+
+	// writing bit lengths info ..
+	for (size_t cx = 0; cx < CndSize; cx++)
+	{
+		_b = CniSrc[cx]._bitLen;
+		if (_b) {
+			header0_info[cx]._bitLen = _b;
+			++header0_size;
+		}
+	}
+
+
+	if (_iDebug == 'D')
+	{
+		PRINT("Header 0 : ");
+		RPRINTC("Data: "); RPRINTC("Bit Length: "); RET;
+		for (const auto& cn0 : header0_info)
+		{
+			RPRINTC(cn0._xData);  RPRINTC(cn0._bitLen); RET;
+		}
+
+		PRINT("\n\n");
+
+		PRINT("Header 1 : ");
+		RPRINTC("Bit Length: "); RPRINTC("RLE of Bit Length: "); RET;
+		for (const auto& cn1 : header1_info)
+		{
+			RPRINTC(cn1._bitLen); RPRINTC(cn1._rle_bit_len); RET;
+		}
+
+		RET;
+	}
+
+	return header0_size + header1_size;
+}
+
+
+static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, 
+									unsigned char* _cBuff)
+{
+	bool _bDone = 0;
+	UC _xt = 0;
+
+	std::string _sqz_hex = "\0";
+
+	std::vector<UC> _srcData = {}, xChars = {}, xBitLen = {},
+					_bit_len = {}, rle_bit = {};
+
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {};
+
+	std::vector<BPAIR> _CodeMap = {};
+	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {}, _CanInfo = {};
+	
+	std::FILE* _FO = std::fopen(_srcF.c_str(), "rb") , 
+			  *_FT = std::fopen(_destF.c_str(), "wb");
+
+	std::size_t F_SIZE = 0, HCN_SIZE = 0, PACKED_HEADER_SIZE = 0;
+	intmax_t _sqzNum = 0;
+
+	if (!_FO)
+	{
+		std::cerr << "\n Error Read Source File. " << "\n\n";
+		goto finishedDone;
+	}
+
+	if (!(F_SIZE = readOriginal(_FO, _srcData, _cBuff)) )
+	{
+		RET;
+		std::cerr << "\n Error read source file." << "\n\n";
+		goto finishedDone;
+	}
+	
+	
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _CanInfo, _pacRes,_pacInts, compRate);
+	// _srcData is fully filled with correct data
+	// _CodeMap is generated successfully
+	// _CanSrc is fetch back with the correct data values	
+	// _CanInfo is fully filled with correct data
+	// _pacInts is fully filled with correct values
+	/*
+		mix::generic::STL_Print(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
+		return 0;
+	*/ 
+	
+	/*_CanSrc  => Cni_Info0 in Gen_Encoding_Info() and
+	  _CanInfo => Cni_Info1 in Gen_Encoding_Info()
+	*/
+
+	for (const auto& _ei : _pacRes) _sqz_hex = concat_str((char*)_sqz_hex.c_str(), To_HexF<int>::eval(_ei).c_str());
+	
+	// _sqz_hex is assigned with the correct hex string pattern
+
+	vectorClean(CniHead0); vectorClean(CniHead1);
+
+	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo);
+	// CniHead0 & CniHead1 are fully filled with correct data
+
+	//PRINT(_sqzNum);
+
+	// Saving encoding information headers data ..
+	for (const auto& cn0 : CniHead0)
+	{
+		_xt = cn0._xData;
+		xChars.push_back(_xt);
+
+		_xt = (int)cn0._bitLen;
+		xBitLen.push_back(UC(_xt));
+
+		_xt = 0;
+	}
+
+	// saving encoded chars ..
+	if (!(F_SIZE = writePackInfo(_FT, xChars)))
+	{
+		std::cerr << "\n Error saving encoding characters ..";
+		std::cerr << "\n Could not proceed ..";
+		goto finishedDone;
+	}
+
+	// saving initial bit-lengths info ..
+	if (!(F_SIZE = writePackInfo(_FT, xBitLen)))
+	{
+		std::cerr << "\n Error saving initial codes' length ..";
+		std::cerr << "\n Could not proceed ..";
+		goto finishedDone;
+	}
+
+
+	for (const auto& cnf : CniHead1)
+	{
+		_xt = (int)cnf._bitLen;
+		_bit_len.push_back(UC(_xt));
+
+		_xt = (int)cnf._rle_bit_len;
+		rle_bit.push_back(UC(_xt));
+
+		_xt = 0;
+	}
+
+
+	// saving actual code symbols bit length info ..
+	if (!(F_SIZE = writePackInfo(_FT, _bit_len)))
+	{
+		std::cerr << "\n Error saving actual code symbols lengths ..";
+		std::cerr << "\n Could not proceed ..";
+		goto finishedDone;
+	}
+
+	// saving actual code symbols RLE information of bit-lengths..
+	if (!(F_SIZE = writePackInfo(_FT, rle_bit)))
+	{
+		std::cerr << "\n Error saving RLE of actual codes' length..";
+		std::cerr << "\n Could not proceed ..";
+		goto finishedDone;
+	}
+
+	
+	// writing packed data source into a file ( *.sqz ).
+	if ( !(_bDone = writePack(_FT, _sqz_hex)))
+	{
+		RET;
+		std::cerr << "\n Error writing compressed file !  \n\n";
+		goto finishedDone;
+	}
+
+
+finishedDone:
+	vectorClean(_srcData);
+	vectorClean(_pacInts);
+	vectorClean(_CodeMap);
+	vectorClean(_CanSrc);
+	vectorClean(CniHead0);
+	vectorClean(CniHead1);
+	vectorClean(xChars);
+	vectorClean(xBitLen);
+	
+	if (!_SystemFile.empty()) _SystemFile.clear();
+	if (_FO) std::fclose(_FO);
+	if (_FT) std::fclose(_FT);
+
+	_TREE::Clean();
+	F_SIZE = 0;
+	return _bDone;
+}
+
+
+
+static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile, 
+											const double& cmp_rate)
+{
+	UC _Bit = 0; Can_Bit _cbt;
+	std::vector<UC> _rawData, _BitL;
+	std::vector<Can_Bit> cnbt;
+	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
+	std::vector<intmax_t> _Codes;
+	intmax_t _SqzInt = 0, _bix = 0;
+	size_t _rawSize = 0, header_size = 0;
+	std::FILE* _FX = std::fopen(_packedFile.c_str(), "rb");
+	std::string _read_hex = "\0";
+	std::string::iterator hex_Itr;
+	char* _hex_End = (char*)"\0";
+
+	if (!_FX)
+	{
+		std::cerr << "\n Compressed Data Read Error !";
+		std::cerr << "\n Could not proceed ..";
+		goto EndPhase;
+	}
+
+
+	header_size = readPackInfo(_packedFile.c_str(), Cni_Head0, Cni_Head1);
+	// Cni_Head0 & Cni_Head1 are successfully fetched with correct data
+
+	if (!header_size)
+	{
+		std::cerr << "\n Header Info Data Read Error !";
+		std::cerr << "\n Could not proceed ..";
+		goto EndPhase;
+	}
+	
+	/*
+	   // Debugging Codes..
+	    
+	PRINT("\n Initial Huffman Information.. ");
+	RPRINTC("Data: "); RPRINTC("Bit length: "); RET;
+	for (const auto& cn0 : Cni_Head0)
+	{
+		RPRINTC(cn0._xData); RPRINTC(cn0._bitLen); RET;
+	}
+
+	PRINT("\n Actual Code Symbols Information.. ");
+	RPRINTC("Bit length: "); RPRINTC("RLE of Bit length: "); RET;
+	for (const auto& cn1 : Cni_Head1)
+	{
+		RPRINTC(cn1._bitLen); RPRINTC(cn1._rle_bit_len); RET;
+	}
+
+	RET;
+	goto EndPhase;
+	*/
+	
+
+	_Gen_Canonical_Info(Cni_Info, Cni_Head0);
+	cni_enforce_unique(Cni_Info); // Cni_Info successfully fetched with correct data
+	_SqzInt = readPack(_packedFile.c_str(), _Codes); // _Codes successfully fetched with correct data
+	
+	for (const auto& _e : _Codes) _read_hex = concat_str((char*)_read_hex.c_str(), To_HexF<int>::eval(_e).c_str());
+	// _read_hex is assigned with the correct hex digits pattern
+
+	_hex_End = (char*)rstr(_read_hex.c_str(), 1).c_str();
+	
+	_bix = strtoint(_hex_End);
+
+	_read_hex = rtrimx(_read_hex.c_str(), 1, '\0');
+
+	_read_hex = HxFs_To_Bin(_read_hex.c_str()); // _read_hex is assigned with the corret bits pattern
+
+	_read_hex = (char*)concat_str((char*)_read_hex.c_str(), bit_str(intmax_t(_bix)).c_str());
+
+	hex_Itr = trunc_left_zeroes(_read_hex); // hex_Itr is assigned with the correct truncated bits pattern
+
+	PRINT(hex_Itr._Ptr); RET;
+
+	goto EndPhase;
+
+	header_size = Cni_Head1.size();
+	// expands out RLE information into '_BitL' vector
+	for (size_t x = 0; x < header_size; x++)
+	{
+		_Bit = (int)Cni_Head1[x]._bitLen;
+		_bix = Cni_Head1[x]._rle_bit_len;
+
+		// t = 0 -> number of repeated bit-lengths..
+		for (intmax_t t = 0; t < _bix; t++)
+		{
+			_BitL.push_back(UC(_Bit));
+		}
+	} // _BitL is successfully fetched with correct data
+
+
+  /*
+		// Debugging codes..
+		PRINT(_SqzInt); RET;
+		PRINT(bit_str(intmax_t(_SqzInt))); RET;
+		goto EndPhase;
+
+		// '_SqzInt' and its evaluated bit string are come out to be correct
+  */
+
+/*  // Debugging codes.. 
+	RPRINTC("Data: "); RPRINTC("Code: "); RET;
+	for (const auto& _cni : Cni_Info)
+	{
+		RPRINTC(_cni._xData); RPRINTC(_cni._codeWord); RET;
+	}
+	goto EndPhase;
+
+	// Finalized 'Encoding Information Header' (Cni_Info) is successfully fetched with correct data
+*/
+
+	for (const auto& _ci : Cni_Info)
+	{
+		_cbt._xData = _ci._xData;
+		_cbt._codeWord = _ci._codeWord;
+
+		cnbt.push_back(_cbt);
+	}
+
+	PRINT("\n rematching code symbols with data ..");
+
+	if (!(_rawSize = ReSync_Int(_SqzInt, _BitL, cnbt, _rawData)))
+		std::cerr << "\n code symbols mismatched ..";
+
+
+	if (!(_rawSize = writeOriginal(_unPackedFile.c_str(), _rawData)))
+		std::cerr << "\n Error writing original data to a file.";
+
+EndPhase:
+	if (_FX) std::fclose(_FX);
+
+	vectorClean(_rawData);
+	vectorClean(Cni_Info);
+	vectorClean(_BitL);
+	vectorClean(_Codes);
+	vectorClean(Cni_Head0);
+	vectorClean(Cni_Head1);
+	vectorClean(cnbt);
+
+	return _rawSize;
 }
 
 
