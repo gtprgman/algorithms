@@ -997,16 +997,19 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 	intmax_t _x = 0;
 	intmax_t pac_bytes = 0, x_bits = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
+	const std::vector<intmax_t>::iterator _EndIter = _CodInts.end();
+	ptrdiff_t _IterDiff_t = 0;
 
-		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _CodInts.end(); _canIt++ )
+		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _EndIter; _canIt++ )
 		{
+			_IterDiff_t = _EndIter - _canIt;
 			_x <<= len_bit(intmax_t(*_canIt ));
-			if (!(*_canIt) ) continue;
+			if (!(*_canIt) && _IterDiff_t > 1) continue;
 			_x |= *_canIt;
 
-			x_bits += len_bit(intmax_t(_x));
+			x_bits += len_bit(intmax_t(_x)); 
 			
-			if (x_bits > 32 || (_CodInts.end() - _canIt) == 1 )
+			if (x_bits > 32 || _IterDiff_t == 1 )
 			{
 				_result.push_back(_x);
 				pac_bytes += x_bits / 8;
@@ -1948,5 +1951,6 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
+
 
 
