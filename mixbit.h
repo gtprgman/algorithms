@@ -93,8 +93,6 @@ struct _Canonical
 		return this->_xData;
 	}
 
-	
-	
 };
 
 
@@ -110,7 +108,6 @@ struct Can_Bit : virtual public _Canonical
 		return this->_codeWord;
 	}
 
-	
 };
 
 
@@ -1004,14 +1001,13 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 		{
 			_IterDiff_t = _EndIter - _canIt;
 			_x <<= len_bit(intmax_t(*_canIt ));
-			if (!(*_canIt) && _IterDiff_t > 1) continue;
 			_x |= *_canIt;
 
-			x_bits += len_bit(intmax_t(_x)); 
+			x_bits = len_bit(intmax_t(_x));  
 			
 			if (x_bits > 32 || _IterDiff_t == 1 )
 			{
-				_result.push_back(_x);
+				_result.push_back(_x); 
 				pac_bytes += x_bits / 8;
 
 				_x = 0;
@@ -1951,6 +1947,5 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
 
 
