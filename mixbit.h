@@ -25,9 +25,9 @@ enum class INT_HEX : std::int8_t
 
 
 // a list of constants in hexa digit { A .. F }
-constexpr std::initializer_list<const int8_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
-												   		(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
-													 };
+static constexpr std::initializer_list<const int8_t> HxC = { (int8_t)INT_HEX::A, (int8_t)INT_HEX::B, (int8_t)INT_HEX::C, 
+												   				(int8_t)INT_HEX::D, (int8_t)INT_HEX::E, (int8_t)INT_HEX::F 
+															};
 
 // return how much number of decimal digits which appeared in a constant integer '_v'.
 template <class _T> _T&& num_of_dec(const _T&);
@@ -610,6 +610,8 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 {
 	static std::string _repStr = "\0";
 
+	_repStr = "\0";
+
 	if (!_Count || (int64_t)_Count < 0) return std::move(_repStr);
 
 	char* _repC = new char[_Count];
@@ -776,23 +778,14 @@ struct To_HexF {
 		_hxs.clear(); 
 		_hxs = "\0";
 		int _bi = 0; char _xc = 0;
-		size_t _biSize = 0;
 
-		for (std::string::iterator _hexIt = _hexStr.begin(); _hexIt != _hexStr.end(); _hexIt++)
+		for (std::string::iterator _hexIt = _hexStr.begin(); _hexIt < _hexStr.end(); _hexIt++)
 		{
 			_xc = *_hexIt;
 			_bi = (HEX_INT(char(_xc)))? HEX_INT(char(_xc)) : chartoint(char(_xc));
-			_biSize = len_bit(int(_bi));
-			_biSize = (HEX_SIZE > _biSize)? HEX_SIZE - _biSize : 0;
 
-			_hxs = concat_str((char*)_hxs.c_str(), (_biSize)? // adding the prefix '0x..' to the digit
-													concat_str((char*)zero_bits(_biSize).c_str(),
-													bit_str(int(_bi)).c_str()) :
-				// direct attaches the bit string onto '_hxs'
-				bit_str(int(_bi)).c_str() );
-
-			
-			_xc = 0; _bi = 0; _biSize = 0;
+			_hxs = (char*)concat_str((char*)_hxs.c_str(), bit_str(int(_bi)).c_str());
+			_xc = 0; _bi = 0;
 		}
 		
 		return std::move(_hxs);
@@ -875,11 +868,14 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
 	using _Type = typename std::remove_reference_t<_Ty>;
 	static std::string _StrBin = "\0";
+	const size_t bit_width = len_bit(_Type(_Dx)); 
+	const size_t xZeroes = (HEX_SIZE > bit_width)? HEX_SIZE - bit_width : 0;
 
 	_StrBin = "\0";
 	_StrBin.clear();
 
 	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
+	_StrBin = concat_str( (char*)repl_char('0', xZeroes).c_str(), _StrBin.c_str());
 			
 	return std::move(_StrBin);
 }
@@ -1008,7 +1004,7 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 			if (x_bits > 32 || _IterDiff_t == 1 )
 			{
 				_result.push_back(_x); 
-				pac_bytes += x_bits / 8;
+				pac_bytes += std::lldiv(x_bits, 8).quot;
 
 				_x = 0;
 				x_bits = 0;
@@ -1947,5 +1943,7 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
+
+
 
 
