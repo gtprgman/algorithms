@@ -31,23 +31,41 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 	char _x = 0;
 	std::string bitX = "\0", sqz_hex = _SqzHex;
 	
-	std::string::iterator _bitter = sqz_hex.begin();
-	char* _pb = (char*)_bitter._Ptr; // points to the beginning of sqz_hex
+	const std::string::iterator _bitter = sqz_hex.begin();
+	const std::string::iterator _bitEnd = sqz_hex.end();
 
+	char *_pb = (char*)_bitter._Ptr, *_px = nullptr; // points to the beginning of sqz_hex
 	std::vector<intmax_t> _SqzCodes = {};
 	const size_t _BitL_Size = Bit_Len.size();
+	
 
 	// acquiring codes symbols from the read *.sqz data
 	for (size_t g = 0; g < _BitL_Size; g++) {
-		w = Bit_Len[g];
+		w = (int)Bit_Len[g];
 		bitX = lstr(_pb, w);
+		_px = (char*)bitX.begin()._Ptr;
+
+		if (w > 1 && bitX[0] == '0') /* the codeword '0' is only 1 bit wide, if it appeared in other bits pattern then it
+										must be cut off. */
+		{
+			for (std::string::iterator b_tr = bitX.begin(); b_tr < bitX.end(); b_tr++, _px++)
+			{
+				if (*b_tr == '0') continue;
+				else {
+					bitX.assign(_px); // bitX is reassigned with a part of its previous bit string
+					break;
+				}
+			}
+		}
+
 		bx = int_bit(bitX.c_str());
 		_SqzCodes.push_back(bx);
+		_px = nullptr;
 		
-		bx = 0; bitX.clear();
+		bx = 0; bitX.clear(); bitX = "\0";
 
-		_bitter += w; w = 0;
-		_pb = (char*)_bitter._Ptr;
+		if ((_bitEnd._Ptr - _pb) > 1) _pb += w;
+		w = 0;
 	}
 
 /*
@@ -57,7 +75,7 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 */
 
 /*
-	for (const auto& _cne : _CniHeader)
+	for (const auto& _cne : HeaderInfo)
 	{
 		RPRINTC(_cne._xData); RPRINTC(_cne._codeWord); RET;
 	}
@@ -77,7 +95,6 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 			++synced_size;
 			_x = 0;
 		}
-
 	}
 
 	//mix::generic::STL_Print(_Original.begin(), _Original.end(), RPRINTC<char>); RET;
@@ -1050,31 +1067,17 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	for (const auto& _e : _Codes) _read_hex = concat_str((char*)_read_hex.c_str(), To_HexF<int>::eval(_e).c_str());
 	// _read_hex is assigned with the correct hex digits pattern
 
-	PRINT(_read_hex); RET;
+		//PRINT(_read_hex); RET;
 	
-	_bitX = HxFs_To_Bin(_read_hex.c_str()); // _read_hex is assigned with the corret bits pattern
+		_bitX = HxFs_To_Bin(_read_hex.c_str()); // _bitX is assigned with the corret bits pattern
 
-	PRINT(_bitX); RET;
+		//PRINT(_bitX); RET;
 
-	hex_Itr = trunc_left_zeroes(_bitX); // hex_Itr is assigned with the correct truncated bits pattern
+		hex_Itr = trunc_left_zeroes(_bitX); // hex_Itr is assigned with the correct truncated bits pattern
 
-	PRINT(hex_Itr._Ptr); RET;
+		//PRINT(hex_Itr._Ptr); RET;
 
-	goto EndPhase;
-
-	/*
-		// Debugging Test Codes..
-
-		PRINT(hex_Itr._Ptr); RET;
-
-		_SqzInt = int_bit(hex_Itr._Ptr);
-
-		PRINT(_SqzInt); RET;
-
-		PRINT(hex_Itr._Ptr); RET;
-
-		goto EndPhase;
-	*/
+		_bitX = hex_Itr._Ptr;
 
 	header_size = Cni_Head1.size();
 	// expands out RLE information into '_BitL' vector
@@ -1090,15 +1093,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		}
 	} // _BitL is successfully fetched with correct data
 
-
-  /*
-		// Debugging codes..
-		PRINT(_SqzInt); RET;
-		PRINT(bit_str(intmax_t(_SqzInt))); RET;
-		goto EndPhase;
-
-		// '_SqzInt' and its evaluated bit string are come out to be correct
-  */
+	//mix::generic::STL_Print(_BitL.begin(), _BitL.end(), RPRINTC<intmax_t>); RET;
 
 /*  // Debugging codes.. 
 	RPRINTC("Data: "); RPRINTC("Code: "); RET;
@@ -1121,7 +1116,9 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	PRINT("\n rematching code symbols with data ..");
 
-	if (!(_rawSize = ReSync_Int(hex_Itr._Ptr, _BitL, cnbt, _rawData)))
+	_bitX = concat_str((char*)"0", _bitX.c_str());
+
+	if (!(_rawSize = ReSync_Int(_bitX, _BitL, cnbt, _rawData)))
 		std::cerr << "\n code symbols mismatched ..";
 
 
