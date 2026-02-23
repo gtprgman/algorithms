@@ -222,7 +222,7 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 
 	const double _CompRate = (_TreeSizes > 5 && _cmpRate)? std::floor(_cmpRate * _TreeSizes) : _TreeSizes;
 
-	const double _fCompRate = (_CompRate)? std::ceil((double)_TreeSizes / _CompRate) : 0;
+	const double _fCompRate = (_CompRate)? std::floor((double)_TreeSizes / _CompRate) : 0;
 	const size_t _DivSize = (_fCompRate)? (size_t)_fCompRate : 1;
 	size_t _divSize = _DivSize;
 	int64_t _msk = 0, _BT = 2, _Dir = L;
