@@ -26,8 +26,6 @@ be implemented in the any time of the future.
 		*/
 
 using UC = unsigned char;
-using UINT = unsigned int;
-using ULONG = unsigned long;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
@@ -76,20 +74,20 @@ inline void RET2() {
 
 
 template < class Ty >
-_NODISCARD constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>& _fwArgs) noexcept {
+_NODISCARD static constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>& _fwArgs) noexcept {
 	return static_cast<Ty&&>(_fwArgs);
 }
 
 
 template < class Ty >
-_NODISCARD constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>&& _fwArgs) noexcept {
+_NODISCARD static constexpr Ty&& _FORWRD(typename std::remove_reference_t<Ty>&& _fwArgs) noexcept {
 	static_assert(!std::is_lvalue_reference_v<Ty>, " can't forward object of a type specified by 'Ty' ");
 	return static_cast<Ty&&>(_fwArgs);
 }
 
 
 template < class Ty >
-_NODISCARD constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept {
+_NODISCARD static constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) noexcept {
 	return static_cast<std::remove_reference_t<Ty>&&>(_mvArgs);
 }
 
