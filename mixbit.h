@@ -10,7 +10,7 @@
 
 #ifndef MX_BIT
 	#define MX_BIT
-
+	#define UINT unsigned int
 #endif
 
 constexpr size_t HEX_SIZE = 4;
@@ -1943,7 +1943,5 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
-
 
 
