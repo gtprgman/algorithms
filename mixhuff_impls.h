@@ -16,7 +16,6 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 
 
 
-
 // ReSync the integers of *.sqz
 static inline const std::size_t ReSync_Int(const std::string& _SqzHex, 
 										   const std::vector<UC>& Bit_Len,
@@ -902,14 +901,14 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	for (const auto& _ei : _pacRes) _sqz_hex = concat_str((char*)_sqz_hex.c_str(), To_HexF<int>::eval(_ei).c_str());
 	
 	// _sqz_hex is assigned with the correct hex string pattern
-	//PRINT(_sqz_hex); RET;
+	//PRINT(_sqz_hex); RET; goto finishedDone;
 	
 	vectorClean(CniHead0); vectorClean(CniHead1);
 
-	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo);
+	HCN_SIZE = Gen_Cni_Header_Info(CniHead0,CniHead1, _pacInts, _CanSrc, _CanInfo );
 	// CniHead0 & CniHead1 are fully filled with correct data
 
-	//PRINT(_sqzNum);
+	//goto finishedDone;
 
 	// Saving encoding information headers data ..
 	for (const auto& cn0 : CniHead0)
@@ -1032,9 +1031,9 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
-	/*
+	
 	   // Debugging Codes..
-	    
+	/*
 	PRINT("\n Initial Huffman Information.. ");
 	RPRINTC("Data: "); RPRINTC("Bit length: "); RET;
 	for (const auto& cn0 : Cni_Head0)
@@ -1092,7 +1091,6 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 		//PRINT(_bitX); goto EndPhase;
 
-		
 	header_size = Cni_Head1.size();
 	// expands out RLE information into '_BitL' vector
 	for (size_t x = 0; x < header_size; x++)
