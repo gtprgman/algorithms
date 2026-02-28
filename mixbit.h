@@ -1023,21 +1023,18 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		return 0;
 	}
 	
-	int byte_value = 0;
+	int byte_value = 0, _xLen = 0;
 	size_t _bytesWritten = 0;
 
-	std::string::iterator _xIt;
 	std::string _hexF = _hex_str;
 	std::string _BitStr = "\0";
 
-	const size_t _hexSize = _hexF.size();
+	const std::string::iterator _hxEnd = _hexF.end();
 
-	_xIt = _hexF.begin();
-	char* _pHex = (char*)_xIt._Ptr;
-
-	for (size_t z = 0; z < _hexSize; z += 2)
+	for (std::string::iterator _hxIt = _hexF.begin(); _hxIt < _hxEnd; _hxIt += 2)
 	{
-		_BitStr = HxFs_To_Bin(lstr(_pHex, 2) );
+		_xLen = ((_hxEnd - _hxIt) > 1)? 2 : 1;
+		_BitStr = HxFs_To_Bin(lstr(_hxIt._Ptr, _xLen) );
 		byte_value = (int)int_bit(_BitStr.c_str());
 		std::fputc(byte_value, _fHandle);
 
@@ -1046,10 +1043,8 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		_BitStr = "\0";
 		byte_value = 0;
 
-		// update string iterator & pointer to hex string
-		_xIt += 2;
-		_pHex = (char*)_xIt._Ptr;
 		++_bytesWritten;
+		if (_xLen == 1) break;
 	}
 
 
