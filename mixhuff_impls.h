@@ -33,10 +33,11 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 	const std::string::iterator _bitter = sqz_hex.begin();
 	const std::string::iterator _bitEnd = sqz_hex.end();
 
-	char *_pb = (char*)_bitter._Ptr, *_px = nullptr; // points to the beginning of sqz_hex
+	char *_pb = (char*)_bitter._Ptr; // points to the beginning of sqz_hex
 	std::vector<intmax_t> _SqzCodes = {};
 	const size_t _BitL_Size = Bit_Len.size();
 	
+	bitX = "\0";
 
 	// acquiring codes symbols from the read *.sqz data
 	for (size_t g = 0; g < _BitL_Size; g++) 
@@ -56,7 +57,7 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 		
 		bx = 0; bitX.clear(); bitX = "\0";
 
-		if ((_bitEnd._Ptr - _pb) > 1) _pb += w; else ++_pb;
+		if ((_bitEnd._Ptr - _pb) > 1) _pb += w; else _pb += 0;
 		w = 0;
 	}
 
@@ -887,16 +888,18 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	// _pacInts is fully filled with correct values
 	/*
 		mix::generic::STL_Print(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
-		return 0;
-	*/ 
+		goto finishedDone;
+	*/
 	
 	/*_CanSrc  => Cni_Info0 in Gen_Encoding_Info() and
 	  _CanInfo => Cni_Info1 in Gen_Encoding_Info()
 	*/
-	
-	//mix::generic::STL_Print(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
-	/* _pacRes is fetched with correct packed values. */
-	//goto finishedDone;
+
+/*
+	mix::generic::STL_Print(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
+	_pacRes is fetched with correct packed values. 
+	goto finishedDone;  
+*/
 
 	for (const auto& _ei : _pacRes) _sqz_hex = concat_str((char*)_sqz_hex.c_str(), To_HexF<int>::eval(_ei).c_str());
 	
@@ -976,6 +979,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
+	//PRINT(_sqz_hex); RET;
 
 finishedDone:
 	vectorClean(_srcData);
@@ -1031,9 +1035,9 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
-	
-	   // Debugging Codes..
 	/*
+	   // Debugging Codes..
+
 	PRINT("\n Initial Huffman Information.. ");
 	RPRINTC("Data: "); RPRINTC("Bit length: "); RET;
 	for (const auto& cn0 : Cni_Head0)
@@ -1051,7 +1055,6 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	RET;
 	goto EndPhase;
 	*/
-	
 
 	_Gen_Canonical_Info(Cni_Info, Cni_Head0);
 	cni_enforce_unique(Cni_Info); // Cni_Info successfully fetched with correct data
@@ -1081,7 +1084,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	
 		_bitX = HxFs_To_Bin(_read_hex.c_str()); // _bitX is assigned with the corret bits pattern
 
-		//PRINT(_bitX); RET;
+		//PRINT(_bitX); RET; goto EndPhase;
 
 		hex_Itr = trunc_left_zeroes(_bitX);
 
@@ -1107,16 +1110,17 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	//mix::generic::STL_Print(_BitL.begin(), _BitL.end(), RPRINTC<intmax_t>); RET; goto EndPhase;
 
-/*  // Debugging codes.. 
+/*
+	// Debugging codes.. 
 	RPRINTC("Data: "); RPRINTC("Code: "); RET;
 	for (const auto& _cni : Cni_Info)
 	{
 		RPRINTC(_cni._xData); RPRINTC(_cni._codeWord); RET;
 	}
 	goto EndPhase;
-
-	// Finalized 'Encoding Information Header' (Cni_Info) is successfully fetched with correct data
 */
+	// Finalized 'Encoding Information Header' (Cni_Info) is successfully fetched with correct data
+
 
 	for (const auto& _ci : Cni_Info)
 	{
@@ -1129,6 +1133,8 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	PRINT("\n rematching code symbols with data ..");
 
 	if (_BitL[0] == 1) _bitX = concat_str((char*)"0", _bitX.c_str());
+
+	//PRINT(_bitX); RET;	goto EndPhase;
 
 	if (!(_rawSize = ReSync_Int(_bitX, _BitL, cnbt, _rawData)))
 		std::cerr << "\n code symbols mismatched ..";
