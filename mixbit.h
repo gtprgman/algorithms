@@ -800,11 +800,11 @@ private:
 		val_type _m64 = 0, _x64 = _i64;
 		static std::string _hxf = "\0";
 
-		_hxf = "\0";
 		_hxf.clear();
+		_hxf = "\0";
 		vectorClean(_x16c);
 
-		if (_x64 <= 0) return std::move(_hxf);
+		if (_x64 <= 0) return bit_str(0);
 
 		while (_x64 > 0)
 		{
@@ -873,6 +873,12 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 
 	_StrBin = "\0";
 	_StrBin.clear();
+
+	if (_Dx <= 0)
+	{
+		_StrBin = "0";
+		return std::move(_StrBin);
+	}
 
 	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
 	_StrBin = concat_str( (char*)repl_char('0', xZeroes).c_str(), _StrBin.c_str());
@@ -988,7 +994,7 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const std::vector<intmax_t>& _canVec)
 {
 	intmax_t _x = 0;
-	intmax_t pac_bytes = 0, x_bits = 0;
+	intmax_t pac_bytes = 0, i_bit = 0, x_bits = 0, max_bits = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
 	const std::vector<intmax_t>::iterator _EndIter = _CodInts.end();
 	ptrdiff_t _IterDiff_t = 0;
@@ -1000,14 +1006,16 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 			_x |= *_canIt;
 
 			x_bits = len_bit(intmax_t(_x));  
-			
-			if (x_bits > 32 || _IterDiff_t == 1 )
+			i_bit = (_IterDiff_t > 1)? *(_canIt + 1) : 0;
+			max_bits = x_bits + len_bit(intmax_t(i_bit));
+
+			if (max_bits > 32 || _IterDiff_t == 1 )
 			{
 				_result.push_back(_x); 
 				pac_bytes += std::lldiv(x_bits, 8).quot;
 
 				_x = 0;
-				x_bits = 0;
+				x_bits = 0; i_bit = 0; max_bits = 0;
 			}
 		}
 		
@@ -1028,6 +1036,8 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 
 	std::string _hexF = _hex_str;
 	std::string _BitStr = "\0";
+
+	_BitStr = "\0";
 
 	const std::string::iterator _hxEnd = _hexF.end();
 
