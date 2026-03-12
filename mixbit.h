@@ -1649,20 +1649,16 @@ struct bitInfo
 
 
 // a data structure of a Pair of Bit and Byte
+template <class T1 = unsigned char, class T2 = intmax_t>
 struct BPAIR
 {
 	BPAIR() :_data(0), _val(0), bit_len(0) {};
-	BPAIR(unsigned char&& _a) : _data(_a), _val(0), bit_len(0) {};
 
-	BPAIR(intmax_t&& _v): _val(_v), _data(0), bit_len(len_bit(intmax_t(_val)))
+	BPAIR(T2&& _v): _val(_v), _data(0), bit_len(len_bit(T2(_val)))
 	{
 	};
 
-	BPAIR(unsigned char&& _a, intmax_t&& _v) : _data(_a), _val(_v), bit_len( len_bit(intmax_t(_val) ) )
-	{
-	};
-
-	BPAIR(intmax_t&& _v, unsigned char&& _a) :_data(_a), _val(_v), bit_len( len_bit(intmax_t(_val)) )
+	BPAIR(T1&& _a, T2&& _v) : _data(_a), _val(_v), bit_len( len_bit(T2(_val) ) )
 	{
 	};
 
@@ -1673,7 +1669,7 @@ struct BPAIR
 		if (this == &_mvBpa) return;
 		this->_data = _mvBpa._data;
 		this->_val = _mvBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
+		this->bit_len = len_bit(T2(_val));
 
 		_mvBpa._data = 0;
 		_mvBpa._val = 0;
@@ -1686,7 +1682,7 @@ struct BPAIR
 		if (this == &_rBpa) return;
 		this->_data = _rBpa._data;
 		this->_val = _rBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
+		this->bit_len = len_bit(T2(_val));
 	}
 
 	const BPAIR& operator= (const BPAIR& _bpa)
@@ -1694,7 +1690,7 @@ struct BPAIR
 		if (this == &_bpa) return *this;
 		this->_data = _bpa._data;
 		this->_val = _bpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
+		this->bit_len = len_bit(T2(_val));
 
 		return *this;
 	}
@@ -1704,7 +1700,7 @@ struct BPAIR
 		if (this == &_rvBpa) return std::move(*this);
 		this->_data = _rvBpa._data;
 		this->_val = _rvBpa._val;
-		this->bit_len = len_bit(intmax_t(_val));
+		this->bit_len = len_bit(T2(_val));
 
 		_rvBpa._data = 0;
 		_rvBpa._val = 0;
@@ -1713,17 +1709,47 @@ struct BPAIR
 		return std::move(*this);
 	}
 
-	operator unsigned char() const {
+	operator T1() const  {
 		return this->_data;
 	}
 
 
-	operator intmax_t() const {
+	operator T2() const  {
 		return this->_val;
 	}
 
-	unsigned char _data; // byte
-	intmax_t _val , bit_len;  // encoded value & bit length
+	T2 operator()() const
+	{
+		return this->_val;
+	}
+
+	const bool operator < (const BPAIR& _otherBP)
+	{
+		return (this->_val < _otherBP._val);
+	}
+
+	const bool operator > (const BPAIR& _otherBP)
+	{
+		return (this->_val > _otherBP._val);
+	}
+
+	const bool operator <= (const BPAIR& _otherBP)
+	{
+		return (this->_val <= _otherBP._val);
+	}
+
+	const bool operator >= (const BPAIR& _otherBP)
+	{
+		return (this->_val >= _otherBP._val);
+	}
+
+	const bool operator == (const BPAIR& _otherBP)
+	{
+		return (this->_val == _otherBP._val);
+	}
+
+	T1 _data; // byte
+	T2 _val , bit_len;  // encoded value & bit length
 };
 
 
@@ -1948,5 +1974,6 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
+
 
 
