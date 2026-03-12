@@ -12,7 +12,7 @@ be implemented in the any time of the future.
 
 #ifndef REQUIRE_H
 #define REQUIRE_H
-		#include<ctime>
+		#include <ctime>
 		#include <iostream>
 		#include <array>
 		#include <vector>
@@ -93,19 +93,20 @@ _NODISCARD static constexpr std::remove_reference_t<Ty>&& _MOVE(Ty&& _mvArgs) no
 
 
 
-template < class _Ty >
+template < class _Ty  >
 struct _Instantiator;
 
 
 template < class Ty >
 struct _Instantiator {
 	
-	_Instantiator() { Ty(); };
+	typedef Ty Result;
+	
 
 	template < class... Types >
-	static Ty&& _Construct(Types&&... aArgs) {
-		static_assert(std::is_constructible<Ty, Types...>(), "could not instantiate from a class specified by 'Ty' ");
-		return _FORWRD<Ty>(Ty(_FORWRD<Types>(aArgs)...));
+	static inline constexpr Ty&& _Construct(Types&&... aArgs) {
+		static_assert(std::is_constructible<Ty, Types...>(), "could not instantiate from a type specified by 'Ty' ");
+		return _FORWRD<Ty&&>(Ty(_FORWRD<Types>(aArgs)...));
 	}
 
 };
@@ -835,7 +836,7 @@ namespace mix {
 		// comparer functor for int
 		struct numLess
 		{
-			const bool operator()(const int& _1st, const int& _2nd)
+			const bool operator()(const intmax_t& _1st, const intmax_t& _2nd)
 			{
 				return (_1st < _2nd);
 			}
@@ -858,7 +859,7 @@ namespace mix {
 		{
 			const bool operator()(const T& _1st, const T& _2nd)
 			{
-				return (_1st > _2nd);
+				return (_1st > _2nd );
 			}
 		};
 
@@ -922,7 +923,7 @@ namespace mix {
 
 		// prints out the content of any buffer
 		template <typename _T, class _FnPrint>
-		static inline void BUFF_Print(_T* _xBuffer, const std::size_t _maxBuf, const _FnPrint& _printFn)
+		static inline void BUFF_Print(_T* _xBuffer, const std::size_t& _maxBuf, const _FnPrint& _printFn)
 		{
 		
 			for (std::size_t _zi = 0; _zi < _maxBuf; _zi++)
@@ -931,15 +932,16 @@ namespace mix {
 
 
 		// fast sort algorithm performs on data elements in the Vector
-		template < class _Iter, class _Pred >
+		template < class _Iter, class _Other = typename _Iter::value_type, class _Pred >
 		inline void fast_sort(const _Iter& _First, const _Iter& _End,
 					_Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
 		{
 			if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
+			if (_First > _End) return;
 			
 			const std::ptrdiff_t _MaxSz = (_maxElems > 0)? _maxElems : (_End - _First) - 1;
 
-			typename _Iter::value_type _vTemp;
+			_Other _vTemp;
 
 			for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
 			{
@@ -954,6 +956,7 @@ namespace mix {
 					{
 						_vTemp = *(j + 1);
 						*(j + 1) = *j;
+					
 						*j = _vTemp;
 						++j;
 					}
@@ -964,11 +967,12 @@ namespace mix {
 
 		// Use threading processes to sort each subdivided section of a data set.
 		template <class _Iter, class _Pred >
-		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double _dvRatio, 
+		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double& _dvRatio, 
 				   _Pred _fCmp, const ptrdiff_t _maxElem = 0)
 		{
 			
 			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
+			if (_Begin > _End) return;
 
 			const std::ptrdiff_t _maxSz = (_maxElem > 0)? _maxElem : (_End - _Begin) - 1;
 
@@ -1002,6 +1006,29 @@ namespace mix {
 			_uT.release();
 		}
 
+		/*
+		  Filter the data elements of any STL-like container, so each element in the container is unique,
+		  much like stimulating the 'std::priority_queue', but this serves as a function template instead.
+		*/
+		template < class _T, class _Iter, class _Pred >
+		inline void STL_Priority_Queue(std::vector<_T>&  v_Result, const _Iter& _srcBegin, const _Iter& _srcEnd, _Pred _fCmp)
+		{
+			if (_srcBegin._Ptr == nullptr || _srcEnd._Ptr == nullptr) return;
+			if (_srcBegin > _srcEnd) return;
+
+			t_sort(_srcBegin, _srcEnd, 0.25, _fCmp);
+
+			if (!v_Result.empty()) v_Result.clear();
+
+			_T _elem = *_srcBegin; v_Result.push_back(_elem);
+
+			for (_Iter _t = _srcBegin; _t < _srcEnd; _t++)
+			{
+				if (_elem == *_t) continue;
+				_elem = *_t;
+				v_Result.push_back(_T(*_t) );
+			}
+		}
 
 	/*
 	 Perform binary search on the data elements in the vector, the user must specify
