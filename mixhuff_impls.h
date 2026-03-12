@@ -15,6 +15,152 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 									 in the command line */
 
 
+// Impl of struct node : 'mixhuff.h'
+node::node() :_data(0), _fdata(0)
+{
+
+}
+
+
+node::node(unsigned char&& _Val) : _data(_Val), _fdata(0)
+{
+
+}
+
+
+node::node(unsigned char&& _c, int64_t&& _fv) : _data(_c), _fdata(_fv)
+{
+
+}
+
+
+node::node(const node& rNod) {
+	if (this == &rNod) return;
+	this->_data = rNod._data;
+	this->_fdata = rNod._fdata;
+}
+
+
+node::node(node&& rvNod)
+{
+	if (this == &rvNod) return;
+	this->_data = rvNod._data;
+	this->_fdata = rvNod._fdata;
+	rvNod.~node();
+};
+
+
+
+const node& node::operator= (const node& rNod) {
+	if (this == &rNod) return (*this);
+
+	this->_data = rNod._data;
+	this->_fdata = rNod._fdata;
+
+	return (*this);
+}
+
+
+node&& node::operator= (node&& rvNod) noexcept {
+	if (this == &rvNod) return std::move(*this);
+
+	this->_data = rvNod._data;
+	this->_fdata = rvNod._fdata;
+
+	rvNod._data = 0;
+	rvNod._fdata = 0;
+
+	rvNod.~node();
+
+	return std::move(*this);
+}
+
+
+node::~node() {
+	this->_data = 0;
+	this->_fdata = 0;
+}
+
+
+void node::setData(unsigned char&& uc) {
+	this->_data = uc;
+}
+
+
+void node::setFrequencyData(int64_t&& fc) {
+	this->_fdata = fc;
+}
+
+
+// Get Accessor Methods..
+const int& node::Value() const {
+	return this->_data;
+}
+
+
+const unsigned char& node::dataValue() const {
+	return this->_data;
+}
+
+
+const int64_t& node::FrequencyData() const {
+	return this->_fdata;
+}
+
+// implicit conversion
+node::operator int() const {
+	return (int)this->_data;
+}
+
+node&& node::Release() const {
+	return node(*this);
+}
+
+
+const int& node::operator()()  const{
+	return (int)this->_data;
+}
+
+
+const bool node::operator < (const node& _other)
+{
+	return (this->_data < _other._data);
+}
+
+
+const bool node::operator > (const node& _other)
+{
+	return (this->_data > _other._data);
+}
+
+const bool node::operator <= (const node& _other)
+{
+	return (this->_data <= _other._data);
+}
+
+const bool node::operator >= (const node& _other)
+{
+	return (this->_data >= _other._data);
+}
+
+const bool node::operator == (const node& _other)
+{
+	return (this->_data == _other._data);
+}
+
+void node::Print() const {
+	RPRINT(this->_data); RPRINT("->"); RPRINT(this->_fdata);
+	RET;
+}
+
+
+
+// Impl of _TREE::plot_tree() : 'mixhuff.h'
+inline void _TREE::plot_tree(const std::vector<node>& _fpNods, const double& _compRate)
+{
+	schema_Iter(_fpNods, _compRate);
+}
+
 
 // ReSync the integers of *.sqz
 static inline const std::size_t ReSync_Int(const std::string& _SqzHex, 
@@ -96,18 +242,17 @@ static inline const std::size_t ReSync_Int(const std::string& _SqzHex,
 }
 
 
-
-static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_queue<node>& _Pqueue)
+// Impl of 'filter_pq_nodes' prototype : 'mixhuff.h'
+static inline void filter_pq_nodes(std::vector<node>& _target, std::vector<node>& _Pqueue)
 {
 	std::size_t _Cnt = 0;
 	node _nod = 0;
 	intmax_t _fqr = 0;
 
 
-	while (!_Pqueue.empty())
+	for (std::vector<node>::iterator _nt = _Pqueue.begin(); _nt < _Pqueue.end(); _nt++)
 	{
-		_nod = _Pqueue.top();
-		_Pqueue.pop();
+		_nod = *_nt;
 
 		if (_target.empty())
 		{
@@ -135,7 +280,7 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::priority_que
 }
 
 
-
+// impl of _TREE::create_encoding() : 'mixhuff.h'
 inline const bool _TREE::create_encoding(const size_t& _From, 
 										 const size_t& _To,
 										 int64_t& _bt,
@@ -144,7 +289,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 	node _e = '0'; bool _bEncodeable = false;
 	intmax_t _Dir = 0, _recurr = 0, _sameVal = 0, _prevX = 0;
 	static intmax_t _fq = 0;
-	std::vector<BPAIR>::iterator _iGet;
+	std::vector<BPAIR<unsigned char>>::iterator _iGet;
 	const size_t _LowerBound = _From, _UpperBound = _To;
 
 	if (_LowerBound > _Vn.size() || _UpperBound > _Vn.size()) return false;
@@ -186,7 +331,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 		_prevX = _sameVal;
 
 		if (mix::generic::
-			vector_search(_vPair.begin(), _vPair.end(), _sameVal, bitLess(), _iGet))
+			vector_search(_vPair.begin(), _vPair.end(), _sameVal, mix::generic::NLess<intmax_t>(), _iGet))
 			//if (std::binary_search(_vPair.begin(), _vPair.end(),_bpr))
 		{
 			_sameVal = _iGet->_val;
@@ -196,7 +341,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 		}
 
 		_vPair.push_back(BPAIR{ UC(_e.dataValue()), intmax_t(_prevX) });
-		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), bitLess());
+		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), mix::generic::NLess<intmax_t>());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 		_bEncodeable = true;
 	}
@@ -208,7 +353,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 
 
 
-
+// Impl of _TREE::schema_Iter() : 'mixhuff.h'
 inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _cmpRate = 0)
 {
 	const size_t _TreeSizes = _fpNods.size();
@@ -243,14 +388,14 @@ inline void _TREE::schema_Iter(const std::vector<node>& _fpNods, const double _c
 	// to encode the last left item in '_fpNods' vector
 	create_encoding(_TreeSizes - 1, _TreeSizes, _msk, _fpNods);
 
-	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, bitLess());
+	mix::generic::t_sort(_vPair.begin(), _vPair.end(), 0.25, mix::generic::numLess());
 	_TREE::enforce_unique(_vPair); 
 }
 
 
 
-
-inline void _TREE::enforce_unique(std::vector<BPAIR>& _bPairs)
+// Impl of _TREE::enforce_unique() : 'mixhuff.h'
+inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 {
 	int64_t _Addend = 0;
 	int64_t _MaxSz = (int64_t)_bPairs.size();
@@ -518,7 +663,7 @@ EndRead:
 
 // generates a huffman encoding information ..
 static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src, 
-											  std::vector<BPAIR>& CodInfo, 
+											  std::vector<BPAIR<unsigned char>>& CodInfo, 
 										      std::vector<_Canonical>& Cni_Info0, 
 											  std::vector<_Canonical>& Cni_Info1,
 											  std::vector<intmax_t>& PacResults,
@@ -527,8 +672,12 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 											  char&& _cCode = 'u')
 {
 	intmax_t SqzInt = 0;
-	std::priority_queue<node, std::vector<node>, std::less<node>> _pq = {};
-	std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
+	/*
+		std::priority_queue<node, std::vector<node>, bitLess> _pq = {};
+		std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
+	*/
+	std::vector<node> _pq, _fpq;
+
 	std::vector<node> PNodes = {};
 
 	Can_Bit cbi = {};
@@ -553,10 +702,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	RET;
 
-	for (const node& e : PNodes)
-	{
-		_pq.emplace(e);
-	}
+	mix::generic::STL_Priority_Queue(_pq, PNodes.begin(), PNodes.end(), mix::generic::numLess());
+
 
 	PNodes.clear();
 
@@ -571,15 +718,14 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	for (const node& nod : PNodes)
 	{
-		_fpq.emplace(nod);
+		_fpq.push_back(nod);
 	}
 
 	PNodes.clear();
 
-	for (node e = 0; !_fpq.empty(); )
+	for (const node& _e : _fpq )
 	{
-		e = _fpq.top(); _fpq.pop();
-		PNodes.push_back(e);
+		PNodes.push_back(_e);
 	}
 
 	if (_cCode == 'D')
@@ -606,7 +752,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		}
 	}
 
-	for (const BPAIR& bp : CodInfo)
+	for (const BPAIR<unsigned char>& bp : CodInfo)
 	{
 		cbi._xData = bp._data;
 		cbi._bitLen = bp.bit_len;
@@ -857,7 +1003,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	std::vector<intmax_t> _pacInts = {}, _pacRes = {};
 
-	std::vector<BPAIR> _CodeMap = {};
+	std::vector<BPAIR<unsigned char>> _CodeMap = {};
 	std::vector<_Canonical> CniHead0 = {}, CniHead1 = {}, _CanSrc = {}, _CanInfo = {};
 	
 	std::FILE* _FO = std::fopen(_srcF.c_str(), "rb") , 
@@ -1156,5 +1302,6 @@ EndPhase:
 
 	return _rawSize;
 }
+
 
 
