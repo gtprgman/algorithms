@@ -676,7 +676,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		std::priority_queue<node, std::vector<node>, bitLess> _pq = {};
 		std::priority_queue<node, std::vector<node>, fqLess> _fpq = {};
 	*/
-	std::vector<node> _pq, _fpq;
+	std::vector<node> _pq = {};
 
 	std::vector<node> PNodes = {};
 
@@ -702,41 +702,33 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	RET;
 
-	mix::generic::STL_Priority_Queue(_pq, PNodes.begin(), PNodes.end(), mix::generic::numLess());
+	mix::generic::STL_Priority_Queue(_pq, PNodes.begin(), PNodes.end(), mix::generic::NLess<node>());
 
+	_pq.clear();
+
+	filter_pq_nodes(_pq, PNodes);
 
 	PNodes.clear();
-
-	filter_pq_nodes(PNodes, _pq);
 
 	if (_cCode == 'D')
 	{
 		PRINT("\nFiltered Nodes Data..");
-		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		for (const auto& _e : _pq) RPRINTC(_e.dataValue());
 		RET;
-	}
-
-	for (const node& nod : PNodes)
-	{
-		_fpq.push_back(nod);
-	}
-
-	PNodes.clear();
-
-	for (const node& _e : _fpq )
-	{
-		PNodes.push_back(_e);
 	}
 
 	if (_cCode == 'D')
 	{
 		PRINT("\nFrequency nodes data..");
-		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
+		for (const auto& _e : _pq)
+		{
+			RPRINT(_e.dataValue()); RPRINT("=>"); RPRINT(_e.FrequencyData()); RET;
+		}
 		RET;
 	}
 
 	
-	_TREE::plot_tree(PNodes, comp_ratio);
+	_TREE::plot_tree(_pq, comp_ratio);
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
 
