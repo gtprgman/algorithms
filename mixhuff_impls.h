@@ -14,6 +14,8 @@ static std::string _SystemFile = "\0";
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
 									 in the command line */
 
+static const intmax_t writePack(std::FILE*&, const std::string&);
+
 
 // Impl of struct node : 'mixhuff.h'
 node::node() :_data(0), _fdata(0)
@@ -410,29 +412,40 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 
 
 
-static inline const size_t writePackInfo(std::FILE*& _fHandle, const std::vector<unsigned char>& _hDatInfo)
+static inline const intmax_t writePackInfo(std::FILE*& _fHandle, const std::vector<unsigned char>& _hDatInfo)
 {
-	size_t f_size = 0;
+	intmax_t f_size = 0;
+	int _dat = 0, _coeffcnt = 0;
+	std::vector<UC>& header_info = (std::vector<UC>&)_hDatInfo;
+	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {}, header_packed = {}, header_bit_packed = {};
+	std::string header_packed_hex = "\0", header_hex_bit = "\0";
 
 	if (!_fHandle) {
 		std::cerr << "\n Error saving header information to a File. \n";
 		return 0;
 	}
 
-	const size_t h_size = _hDatInfo.size();
-
-	if (!(f_size = std::fwrite(&h_size, sizeof(h_size), 1, _fHandle))) {
-		std::cerr << "\n Error saving number of records' size to file \n";
-		if (_fHandle) std::fclose(_fHandle);
-		return 0;
-	}
-
-	for (size_t z = 0; z < h_size; z++)
+	for (std::vector<UC>::iterator _ht = header_info.begin();
+				_ht < header_info.end(); _ht++)
 	{
-		std::fputc(_hDatInfo[z], _fHandle);
-		++f_size;
+		_dat = *_ht;
+		_coeffcnt = (_dat > 0)? _dat - 16 : _dat;
+		header_info_saved.push_back(int(_coeffcnt));
+		header_bit_info.push_back(len_bit(int(_coeffcnt)));
 	}
+	
+	cni_bits_pack(header_packed, header_info_saved);
+	cni_bits_pack(header_bit_packed, header_bit_info);
 
+	for (const auto& _hp : header_packed) 
+		header_packed_hex = concat_str((char*)header_packed_hex.c_str(), To_HexF<int>::eval(_hp).c_str());
+
+	for (const auto& _hx : header_bit_packed)
+		header_hex_bit = concat_str((char*)header_hex_bit.c_str(), To_HexF<int>::eval(_hx).c_str());
+
+
+	f_size += writePack(_fHandle, header_packed_hex);
+	f_size += writePack(_fHandle, header_hex_bit);
 
 	return f_size;
 }
@@ -702,13 +715,19 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	RET;
 
+	PRINT("\n Re-Ordering nodes elements ... "); 
 	mix::generic::STL_Priority_Queue(_pq, PNodes.begin(), PNodes.end(), mix::generic::NLess<node>());
 
 	_pq.clear();
 
+	PRINT("\n finished done.");
+
+	PRINT("\n Filtering nodes elements...");
 	filter_pq_nodes(_pq, PNodes);
 
 	PNodes.clear();
+
+	PRINT("\n finished done.");
 
 	if (_cCode == 'D')
 	{
@@ -727,8 +746,9 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		RET;
 	}
 
-	
+	PRINT("\n generating tree .. ");
 	_TREE::plot_tree(_pq, comp_ratio);
+	PRINT("\n finished done. ");
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
 
@@ -761,9 +781,11 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		}
 	}
 	
+	PRINT("\n Sorting encoding data elements .. ");
 		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::NLess<char>());
 		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::NLess<intmax_t>());
-	
+	PRINT("\n finished done. ");
+
 	if (_cCode == 'D')
 	{
 		PRINT("\nSorted Canonical Encoding Information Data.. (sorted Cni_Info0) " );
@@ -778,9 +800,13 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	vectorClean(Cni_Info1);
 
+	PRINT("\n Obtaining Code Words .. ");
 	_Gen_Canonical_Info(Cni_Info1, Cni_Info0); // obtaining codewords based on bit length info ..
+	PRINT("\n finished done. ");
 
+	PRINT("\n Enforcing the uniqueness among code words .. ");
 	cni_enforce_unique(Cni_Info1); // codewords data updated
+	PRINT("\n finished done. ");
 
 	if (_cCode == 'D') {
 		PRINT("\nCanonical Huffman Encoding Information Generated ! [ Cni_Info1 ] " );
@@ -814,7 +840,9 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		cbi = {};
 	}
 	
+	PRINT("\n Sorting nodes elements ..");
 	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
+	PRINT("\n finished done. ");
 
 	if (_cCode == 'D') {
 		PRINT(" \n Finalized Sorted(char) Canonical Encoding Information Generated .. [ Cni_Info1 ] ");
@@ -827,6 +855,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	RET;
 
 	// gathering source data..
+	PRINT("\n gathering source data ..");
+
 	for (size_t fz = 0; fz < T_SIZE; fz++)
 	{
 		char _ci = _Src[fz];
@@ -840,12 +870,16 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		}
 	}
 
+	PRINT("\n finished done. ");
+
 	if (_cCode == 'D') {
 		PRINT("\n Generated Code Symbols ..");
 		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
 	}
 
-		SqzInt = cni_bits_pack(PacResults,PacInts);
+	PRINT("\n packing bits .. ");
+	SqzInt = cni_bits_pack(PacResults,PacInts);
+	PRINT("\n finished done. ");
 
 		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
 	
@@ -897,7 +931,7 @@ static const size_t Gen_Cni_Header_Info(std::vector<_Canonical>& header0_info,
 			_vNods.push_back(_e);
 	}
 
-	// the required information (_bitLen & _rle_bit_len) for actual packed symbols is gathered.
+	// the required information (_bitLen & _rle_bit_len) for the actual packed symbols is gathered.
 
 	const size_t _InfoSize = _vNods.size();
 
@@ -1149,11 +1183,10 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
 	std::vector<intmax_t> _Codes;
 	intmax_t _SqzInt = 0, _bix = 0;
-	size_t _rawSize = 0, header_size = 0;
+	size_t _rawSize = 0, header_size = 0, bits_sizes = 0;
 	std::FILE* _FX = std::fopen(_packedFile.c_str(), "rb");
 	std::string _read_hex = "\0", _bitX = "\0";
-	std::string::iterator hex_Itr;
-	char* _hex_End = (char*)"\0";
+	char* _hex_Bits = nullptr; 
 
 	if (!_FX)
 	{
@@ -1220,17 +1253,17 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	//PRINT(_read_hex); RET; goto EndPhase;
 	
-		_bitX = HxFs_To_Bin(_read_hex.c_str()); // _bitX is assigned with the corret bits pattern
+	bits_sizes = (_read_hex.size() * 4) * sizeof(char);
 
-		//PRINT(_bitX); RET; goto EndPhase;
+	_hex_Bits = new char[bits_sizes]; 
 
-		hex_Itr = trunc_left_zeroes(_bitX);
+	_hex_Bits = (char*)HxFs_To_Bin(_read_hex.c_str()).c_str(); // _hex_Bits is pointed to the corret bits pattern.
 
-		_bitX = "\0";
+	//PRINT(_hex_Bits); RET; goto EndPhase;
+	
+	_hex_Bits = (char*)trunc_left_zeroes(_hex_Bits); // _hex_Bits is pointed to the correct truncated bits pattern.
 
-		_bitX = hex_Itr._Ptr; // hex_Itr is fethced with the correct truncated bits pattern
-
-		//PRINT(_bitX); goto EndPhase;
+	//PRINT(_hex_Bits); goto EndPhase;
 
 	header_size = Cni_Head1.size();
 	// expands out RLE information into '_BitL' vector
@@ -1270,19 +1303,21 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 
 	PRINT("\n rematching code symbols with data ..");
 
-	if (_BitL[0] == 1) _bitX = concat_str((char*)"0", _bitX.c_str());
+	if (_BitL[0] == 1) _hex_Bits = (char*)concat_str((char*)"0", _hex_Bits);
 
-	//PRINT(_bitX); RET;	goto EndPhase;
+	//PRINT(_hex_Bits); RET;	goto EndPhase;
 
-	if (!(_rawSize = ReSync_Int(_bitX, _BitL, cnbt, _rawData)))
+	if (!(_rawSize = ReSync_Int(_hex_Bits, _BitL, cnbt, _rawData)))
 		std::cerr << "\n code symbols mismatched ..";
-
 
 	if (!(_rawSize = writeOriginal(_unPackedFile.c_str(), _rawData)))
 		std::cerr << "\n Error writing original data to a file.";
 
 EndPhase:
 	if (_FX) std::fclose(_FX);
+	std::memset(_hex_Bits, '\0', std::strlen(_hex_Bits));
+
+	_hex_Bits = nullptr;
 
 	vectorClean(_rawData);
 	vectorClean(Cni_Info);
@@ -1294,6 +1329,5 @@ EndPhase:
 
 	return _rawSize;
 }
-
 
 
