@@ -194,7 +194,7 @@ inline static const int chartoint(const char&);
 inline static std::string&& alphaNum2Bin(char&&);
 
 // truncate any zeroes in the left end (MSB) of a bits pattern
-static inline std::string::iterator trunc_left_zeroes(const std::string&);
+static inline const char* trunc_left_zeroes(const char*);
 
 // convert a hex string evaluated by 'To_HexF' to its binary representation
 static std::string&& HxFs_To_Bin(std::string&&);
@@ -403,20 +403,14 @@ static inline int64_t&& get_n_of_msb(int64_t&& _Vx, int64_t&& N_Bits)
 }
 
 
-static inline std::string::iterator trunc_left_zeroes(const std::string& bit_str)
+static inline const char* trunc_left_zeroes(const char* bit_str)
 {
-	std::string& bits_pattern = (std::string&)bit_str;
-	std::string::iterator _xItr = bits_pattern.begin();
-	char* _pBit = (char*)_xItr._Ptr;
+	char* _pBit = (char*)bit_str;
 
-	while (*_pBit == '0')
-	{
-		++_xItr;
-		_pBit = (char*)_xItr._Ptr;
-	}
+	while (*_pBit == '0') ++_pBit;
 
-	_pBit = nullptr;
-	return _xItr;
+	
+	return _pBit;
 }
 
 
@@ -1974,6 +1968,5 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
 
 
