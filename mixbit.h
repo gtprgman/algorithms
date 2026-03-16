@@ -1028,7 +1028,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 	int byte_value = 0, _xLen = 0;
 	size_t _bytesWritten = 0;
 
-	std::string _hexF = _hex_str;
+	std::string& _hexF = (std::string&)_hex_str;
 	std::string _BitStr = "\0";
 
 	_BitStr = "\0";
@@ -1051,7 +1051,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		if (_xLen == 1) break;
 	}
 
-
+	std::fputc(EOF, _fHandle);
 	return _bytesWritten;
 }
 
@@ -1968,5 +1968,6 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
+
 
 
