@@ -15,8 +15,14 @@ constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are a
 									 in the command line */
 
 static const intmax_t writePack(std::FILE*&, const std::string&);
+
 static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
-static const size_t readPackInfo(const std::string&, std::vector<intmax_t>&, std::vector<intmax_t>&, std::vector<intmax_t>&);
+
+static const size_t readPackInfo(const std::string&, 
+								 std::vector<intmax_t>&, std::vector<intmax_t>&, 
+								 std::vector<intmax_t>&, std::vector<intmax_t>&,
+								 std::vector<intmax_t>&, std::vector<intmax_t>&
+								);
 
 // Impl of struct node : 'mixhuff.h'
 node::node() :_data(0), _fdata(0)
@@ -456,44 +462,60 @@ static inline const intmax_t writePackInfo(std::FILE*& _fHandle, const std::vect
 
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, 
-											std::vector<intmax_t>& _EncodedChars ,
-											std::vector<intmax_t>& _CodeWords, 
-											std::vector<intmax_t>& _ActualSymbols )
+											std::vector<intmax_t>& _EncodedChars ,std::vector<intmax_t>& _EncodedCharsBits,
+											std::vector<intmax_t>& _CodeWords,  std::vector<intmax_t>& _CodeBits,
+											std::vector<intmax_t>& _ActualSymbols , std::vector<intmax_t>& _ActualCodeBits )
 {
-	size_t tot_size = 0, _readSize = 0, _CharsSize = 0, _CodeSize = 0, _SymbolSize = 0;
+	size_t tot_size = 0, _readSize = 0,
+			_CharsSize = 0, _CodeSize = 0, _SymbolSize = 0,
+			_CharBitSize = 0, _CodeBitSize = 0, _SymbolBitSize = 0;
+
+
 	std::FILE* _Fi = std::fopen(_inFile.c_str(), "rb");
 
 	if (!_Fi)
 	{
 		std::cerr << "\n Error read header information from the file.";
 		std::cerr << "\n Could not proceed ..";
+		return 0;
 	}
-
 
 	if (!(_readSize = std::fread(&_CharsSize, sizeof(size_t), 1, _Fi)))
-	{
-		std::cerr << "\n Error read encoded chars information .. ";
-		return 0;
-	}
-	else readPack(_Fi, _EncodedChars); tot_size += _readSize;
+		std::cerr << "\n Error read encoded data lengths information .. ";
+	else readPack(_Fi, _EncodedChars); // reads up encoded chars from the file.
 
+	tot_size += _readSize; _readSize = 0;
+
+	if (!(_readSize = std::fread(&_CharBitSize, sizeof(size_t), 1, _Fi)))
+		std::cerr << "\n Error read encoded data bit-lengths information .. ";
+	else readPack(_Fi, _EncodedCharsBits);  // reads up encoded chars bit-lengths info  ..
+
+	tot_size += _readSize; _readSize = 0;
 
 	if (!(_readSize = std::fread(&_CodeSize, sizeof(size_t), 1, _Fi)))
-	{
-		std::cerr << "\n Error read CodeWords information .. ";
-		return 0;
-	}
-	else readPack(_Fi, _CodeWords); tot_size += _readSize;
+		std::cerr << "\n Error read codewords lengths information .. ";
+	else readPack(_Fi, _CodeWords); // reads up code words info ..
+	
+	tot_size += _readSize; _readSize = 0;
 
+	if (!(_readSize = std::fread(&_CodeBitSize, sizeof(size_t), 1, _Fi)))
+		std::cerr << "\n Error read codewords bit-lengths information .. ";
+	else readPack(_Fi, _CodeBits); // reads up codewords bit-lengths info ..
+
+	tot_size += _readSize; _readSize = 0;
 
 	if (!(_readSize = std::fread(&_SymbolSize, sizeof(size_t), 1, _Fi)))
-	{
-		std::cerr << "\n Error read actual code symbols information .. ";
-		return 0;
-	}
-	else readPack(_Fi, _ActualSymbols); tot_size += _readSize;
-	
-	
+		std::cerr << "\n Error read actual code symbol lengths information .. ";
+	else readPack(_Fi, _ActualSymbols); // reads up actual code symbols data ..
+
+	tot_size += _readSize; _readSize = 0;
+
+	if (!(_readSize = std::fread(&_SymbolBitSize, sizeof(size_t), 1, _Fi)))
+		std::cerr << "\n Error read actual code symbol bit-lengths information .. ";
+	else readPack(_Fi, _ActualCodeBits); // reads up actual code symbol bit-lengths information ..
+
+	tot_size += _readSize; _readSize = 0;
+
 	if (_Fi) std::fclose(_Fi);
 	return tot_size;
 }
@@ -534,7 +556,7 @@ static inline const std::size_t readPack(std::FILE*& _fHandle, std::vector<intma
 		return 0;
 	}
 
-	while ((_x = std::fgetc(_fHandle)) != EOF)
+	while ((_x = std::fgetc(_fHandle)) > EOF)
 	{
 		vInts.push_back(int(_x));
 		++_totBytesRead;
@@ -956,13 +978,13 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::vector<UC> _rawData, _BitL;
 	std::vector<Can_Bit> cnbt;
 	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
-	std::vector<intmax_t> _Codes, _Chars, _Actual;
+	std::vector<intmax_t> _Codes, _Chars, _Actual, _CodeBits, _CharBits, _ActualBits;
 	intmax_t _SqzInt = 0, _bix = 0;
 	size_t _rawSize = 0, header_size = 0, bits_sizes = 0;
 	std::string _read_hex = "\0", _bitX = "\0";
 	char* _hex_Bits = nullptr; 
 
-	header_size = readPackInfo(_packedFile, _Chars, _Codes, _Actual);
+	header_size = readPackInfo(_packedFile, _Chars, _CharBits, _Codes, _CodeBits, _Actual, _ActualBits);
 
 
 	if (!header_size)
@@ -977,6 +999,10 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	mix::generic::STL_Print(_Chars.begin(), _Chars.end(), RPRINTC<intmax_t>); RET;
 	mix::generic::STL_Print(_Codes.begin(), _Codes.end(), RPRINTC<intmax_t>); RET;
 	mix::generic::STL_Print(_Actual.begin(), _Actual.end(), RPRINTC<intmax_t>); RET;
+
+	mix::generic::STL_Print(_CharBits.begin(), _CharBits.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print(_CodeBits.begin(), _CodeBits.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print(_ActualBits.begin(), _ActualBits.end(), RPRINTC<intmax_t>); RET;
 
 	goto EndPhase;
 
@@ -1061,6 +1087,14 @@ EndPhase:
 	vectorClean(Cni_Head0);
 	vectorClean(Cni_Head1);
 	vectorClean(cnbt);
+	
+	vectorClean(_Chars);
+	vectorClean(_Codes);
+	vectorClean(_Actual);
+
+	vectorClean(_CharBits);
+	vectorClean(_CodeBits);
+	vectorClean(_ActualBits);
 
 	return _rawSize;
 }
