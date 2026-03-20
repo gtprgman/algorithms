@@ -988,7 +988,7 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const std::vector<intmax_t>& _canVec)
 {
 	intmax_t _x = 0;
-	intmax_t pac_bytes = 0, i_bit = 0, x_bits = 0, max_bits = 0;
+	intmax_t pac_bytes = 0, i_bit = 0, x_bits = 0, max_bits = 0, bit_len = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
 	const std::vector<intmax_t>::iterator _EndIter = _CodInts.end();
 	ptrdiff_t _IterDiff_t = 0;
@@ -996,7 +996,8 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _EndIter; _canIt++ )
 		{
 			_IterDiff_t = _EndIter - _canIt;
-			_x <<= len_bit(intmax_t(*_canIt ));
+			bit_len = (_IterDiff_t > 1)? len_bit(intmax_t(*(_canIt + 1))) : 0;
+			_x <<= bit_len;
 			_x |= *_canIt;
 
 			x_bits = len_bit(intmax_t(_x));  
@@ -1025,7 +1026,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		return 0;
 	}
 	
-	int byte_value = 0, _xLen = 0;
+	int _x = 0, byte_value = 0, _xLen = 0;
 	size_t _bytesWritten = 0;
 
 	std::string& _hexF = (std::string&)_hex_str;
@@ -1034,6 +1035,8 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 	_BitStr = "\0";
 
 	const std::string::iterator _hxEnd = _hexF.end();
+
+	while (std::feof(_fHandle)) _x = std::fgetc(_fHandle);
 
 	for (std::string::iterator _hxIt = _hexF.begin(); _hxIt < _hxEnd; _hxIt += 2)
 	{
@@ -1063,7 +1066,7 @@ static inline const intmax_t read_cni_bit(std::FILE*& _fHandle, std::vector<intm
 
 	if (!_fHandle) return 0;
 
-	while ((read_bit = std::fgetc(_fHandle)) > -1 )
+	while ((read_bit = std::fgetc(_fHandle)) > EOF )
 	{
 		Int_Bit.push_back(int(read_bit) );
 		++read_size;
@@ -1968,6 +1971,5 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
 
 
