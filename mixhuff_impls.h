@@ -27,6 +27,49 @@ static const size_t readPackInfo(	const std::string&,
 									std::vector<intmax_t>&
 								);
 
+
+template < class T = unsigned char, class _Iter = typename std::vector<T>::iterator, class _iType = typename _Iter::value_type>
+auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const std::vector<T>& DataSrc) {
+
+	intmax_t _dat = 0 , _i = 0;
+	std::vector<T>& DataX = (std::vector<T>&)DataSrc;
+	const _Iter& _Begin = DataX.begin(); const _Iter& _End = DataX.end();
+	const intmax_t size_max = DataSrc.size();
+	intmax_t data_len = 0;
+
+	for (_Iter _it = _Begin; _it < _End; _it++)
+	{
+		_dat = *_it - (size_max - _i++);
+		data_len = len_bit(int(_dat));
+
+		TransFormedX.push_back(_iType(_dat));
+		Bit_Length_Info.push_back(intmax_t(data_len));
+	}
+};
+
+template < class T = intmax_t, class _Iter = typename std::vector<T>::iterator, class TypeX = typename _Iter::value_type>
+auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, const std::vector<T>& XSrc) {
+
+	const _Iter& _Begin = (typename std::vector<T>::iterator&)XSrc.begin(); 
+	const _Iter& _End = (typename std::vector<T>::iterator&)XSrc.end();
+	const intmax_t max_size = XSrc.size();
+	intmax_t _dat = 0, bit_len = 0, _i = 0;
+
+	for (_Iter _t = _Begin; _t < _End; _t++)
+	{
+		_dat = *_t + (max_size - _i++);
+		bit_len = len_bit(intmax_t(_dat));
+
+		DataX.push_back(int(_dat));
+		BitXLen.push_back(intmax_t(bit_len));
+	}
+};
+
+
+
+
+
+
 // Impl of struct node : 'mixhuff.h'
 node::node() :_data(0), _fdata(0)
 {
@@ -555,17 +598,7 @@ static inline const std::size_t readPack(std::FILE*& _fHandle, std::vector<intma
 		return 0;
 	}
 
-	while (std::feof(_fHandle))
-	{
-		if (_x < BYTE)
-		{
-			_datX = std::fgetc(_fHandle);
-			++_x; continue;
-		}
-		else break;
-	}
-
-	while (!std::feof(_fHandle) )
+	while ( (_x = std::fgetc(_fHandle)) != EOF )
 	{
 		_x = std::fgetc(_fHandle);
 		vInts.push_back(int(_x));
