@@ -1031,12 +1031,10 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 
 	std::string& _hexF = (std::string&)_hex_str;
 	std::string _BitStr = "\0";
-
+	
 	_BitStr = "\0";
 
 	const std::string::iterator _hxEnd = _hexF.end();
-
-	while (std::feof(_fHandle)) _x = std::fgetc(_fHandle);
 
 	for (std::string::iterator _hxIt = _hexF.begin(); _hxIt < _hxEnd; _hxIt += 2)
 	{
@@ -1054,7 +1052,6 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		if (_xLen == 1) break;
 	}
 
-	std::fputc(EOF, _fHandle);
 	return _bytesWritten;
 }
 
