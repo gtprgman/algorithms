@@ -153,6 +153,13 @@ struct iList2 {
 
 	}
 
+	// Overloaded parameterized ctor
+	constexpr iList2(const std::vector<tElem>& v_list) noexcept {
+		const tElem* _begin = v_list.begin()._Ptr, *_end = v_list.end()._Ptr;
+		_mFirst = _begin;
+		_mLast = _end;
+	};
+
 	template < unsigned int Nx >
 	constexpr iList2(const std::array<tElem,Nx>& _arry) {
 		_mFirst = _arry.data();
@@ -885,15 +892,19 @@ namespace mix {
 
 
 		// display the content of any STL-like container
-		template < class _Iter, class _FnPrint >
-		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End, const _FnPrint& _printFn)
+		template < class T = intmax_t, class _Cont = std::vector<T>, class _Iter = typename _Cont::iterator,
+					class v_type = typename _Iter::value_type, class _Pointer = typename _Iter::pointer,class _FnPrint >
+		static inline void STL_Print(const _Pointer& _Begin, const _Pointer& _End, const _FnPrint& _printFn)
 		{
-			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
-			
+			const _Pointer _ptr0 = _Begin, _ptr1 = _End;
+
+			if ( _ptr0 < _Begin  || _ptr1 > _End ) return;
+			if (_ptr0 > _ptr1) return;
+
 			int _cnt = 0;
-			for (_Iter _p = _Begin; _p != _End; _p++, ++_cnt)
+			for (_Pointer _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
 			{
-				_printFn( *_p );
+				_printFn((v_type)*_p); ++_cnt;
 				if (_cnt > 79) RET;
 			}
 		}
