@@ -20,6 +20,7 @@ be implemented in the any time of the future.
 		#include <cstdarg>
 		#include <thread>
 		#include <initializer_list>
+		#include <list>
 		#include <forward_list>
 		/*
 			include any functional headers here..
@@ -134,10 +135,11 @@ template < class tElem  >
 struct iList2 {
 	using value_type = tElem;
 	using reference_const = const tElem&;
+	using pointer = tElem*;
 	using pointer_const = const tElem*;
 	using iterator = pointer_const;
 
-	constexpr iList2() noexcept :_mFirst(nullptr), _mLast(nullptr)
+	constexpr iList2() noexcept :  _mFirst(nullptr), _mLast(nullptr)
 	{};
 
 	
@@ -149,8 +151,9 @@ struct iList2 {
 
 	// overloaded parameterized ctor, not a copy ctor
 	constexpr iList2( const std::initializer_list<tElem>& rList ) noexcept {
-		*this = rList;
-
+		_mFirst = rList.begin();
+		_mLast = rList.end();
+		_miList = rList;
 	}
 
 	// Overloaded parameterized ctor
@@ -158,6 +161,7 @@ struct iList2 {
 		const tElem* _begin = v_list.begin()._Ptr, *_end = v_list.end()._Ptr;
 		_mFirst = _begin;
 		_mLast = _end;
+		_miList = (std::initializer_list<tElem>&)v_list;
 	};
 
 	template < unsigned int Nx >
@@ -174,7 +178,6 @@ struct iList2 {
 	}
 	
 	
-	
 	_NODISCARD constexpr iterator begin() const noexcept { return _mFirst;  }
 
 	_NODISCARD constexpr iterator end() const noexcept { return _mLast;  }
@@ -182,26 +185,33 @@ struct iList2 {
 	_NODISCARD constexpr std::size_t size() const noexcept {
 		return static_cast<std::size_t>(_mLast - _mFirst);
 	}
-
+	
+	template <class _Ty>
+	_NODISCARD constexpr _Ty _max() const noexcept
+	{
+		return std::max(_miList);
+	}
 
 	// overloaded assignment operator
 	constexpr const iList2<tElem>& operator=( const std::initializer_list<tElem>& rList ) noexcept {
 		_mFirst = rList.begin();  
 		_mLast = rList.end();
-
+		_miList = rList;
 		return *this;
 	}
 
-
+	
 	// move assignment
 	constexpr const iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
 		if (this == &rList2) return *this;
 
 		_mFirst = rList2._mFirst;
 		_mLast = rList2._mLast;
+		_miList = rList2._miList;
 
 		rList2._mFirst = nullptr;
 		rList2._mLast = nullptr;
+		rList2._miList = { nullptr, nullptr };
 
 		return *this;
 	}
@@ -217,7 +227,7 @@ struct iList2 {
 	
 private:
 	pointer_const _mFirst, _mLast;
-	
+	iList<tElem> _miList;
 };
 
 
@@ -892,19 +902,20 @@ namespace mix {
 
 
 		// display the content of any STL-like container
-		template < class T = intmax_t, class _Cont = std::vector<T>, class _Iter = typename _Cont::iterator,
-					class v_type = typename _Iter::value_type, class _Pointer = typename _Iter::pointer,class _FnPrint >
-		static inline void STL_Print(const _Pointer& _Begin, const _Pointer& _End, const _FnPrint& _printFn)
+		template <class _STL, class v_type = typename _STL::value_type,
+			class _Iter = typename _STL::iterator, class _Pointer = _Iter, class _FnPrint >
+		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End, const _FnPrint& _printFn)
 		{
-			const _Pointer _ptr0 = _Begin, _ptr1 = _End;
+			 const _Iter _ptr0 = _Begin, _ptr1 = _End;
 
 			if ( _ptr0 < _Begin  || _ptr1 > _End ) return;
 			if (_ptr0 > _ptr1) return;
 
 			int _cnt = 0;
-			for (_Pointer _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
+			for (_Iter _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
 			{
-				_printFn((v_type)*_p); ++_cnt;
+				_printFn(*_p); 
+				 ++_cnt;
 				if (_cnt > 79) RET;
 			}
 		}
