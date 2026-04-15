@@ -24,11 +24,11 @@ static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
 static const size_t readPackInfo(const std::string&, std::vector<intmax_t>&);
 
 
-
-template < class T = unsigned char, class val_type = typename std::initializer_list<T>::value_type >
-auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const std::initializer_list<T>& DataSrc)->decltype(void())
+// DataSource Type : std::initializer_list<T>; Storage Type : std::vector<intmax_t>
+template < class T = unsigned char, class val_type = typename iList2<T>::value_type >
+auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const iList2<T>& DataSrc)->decltype(void())
 	{
-		intmax_t _dat = 0, data_len = 0, maxOne = std::max(DataSrc);
+		intmax_t _dat = 0, data_len = 0, maxOne = DataSrc._max<T>();
 		std::initializer_list<T>& DataX = (std::initializer_list<T>&)DataSrc;
 		const val_type* _Begin = DataX.begin(), *_End = DataX.end();
 		const intmax_t halfMax = maxOne / 2;
@@ -49,17 +49,17 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 	};
 
 
-template < class T = intmax_t, class _Iter = typename std::vector<T>::iterator , 
-				class v_type = typename _Iter::value_type >
-auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, const std::vector<T>& XSrc) {
+// DataSource Type : std::vector<T>; Storage Type : std::vector<UC>
+template < class T = intmax_t, class _Iter = typename std::vector<T>::iterator>
+auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, const std::vector<T>& XSrc)->decltype(void()) {
 
-	const _Iter _Begin = XSrc.begin() + 1, _End = XSrc.end();
+	const _Iter& _Begin = (_Iter&)XSrc.begin() + 1, &_End = (_Iter&)XSrc.end();
 	intmax_t _dat = 0, bit_len = 0;
-	const intmax_t _i = XSrc[0];
+	const intmax_t halfedOne = XSrc[0];
 
 	for (_Iter _t = _Begin; _t < _End; _t++)
 	{
-		_dat = *_t + _i;
+		_dat = *_t + halfedOne;
 		bit_len = len_bit(intmax_t(_dat));
 
 		DataX.push_back((int)_dat);
@@ -527,12 +527,12 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<unsigned char>& _hDatInfo)
 {
 	intmax_t f_size = 0;
-	std::vector<UC>& header_info = (std::vector<UC>&)_hDatInfo;
+	iList2<UC> header_info = _hDatInfo;
 	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {}, header_packed = {}, header_bit_packed = {};
 	std::string header_packed_hex = "\0", header_hex_bit = "\0";
 
-	//DataParse<UC>(header_info_saved, header_bit_info, header_info);
-	
+
+	//DataParse<UC>(header_info_saved, header_bit_info, iList2);
 	cni_bits_pack(header_packed, header_info_saved);
 	cni_bits_pack(header_bit_packed, header_bit_info);
 
@@ -860,7 +860,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	if (_cCode == 'D') {
 		PRINT("\n Generated Code Symbols ..");
-		mix::generic::STL_Print(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
+		mix::generic::STL_Print<std::vector<intmax_t>>(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
 	}
 
 	PRINT("\n packing bits .. ");
@@ -1018,7 +1018,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	
 	   // Debugging Codes..
 
-	mix::generic::STL_Print(_MixData.begin(), _MixData.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print<std::vector<intmax_t>>(_MixData.begin(), _MixData.end(), RPRINTC<intmax_t>); RET;
 	
 
 	goto EndPhase;
