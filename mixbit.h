@@ -990,7 +990,7 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 	intmax_t _x = 0;
 	intmax_t pac_bytes = 0, i_bit = 0, x_bits = 0, max_bits = 0, bit_len = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
-	const std::vector<intmax_t>::iterator _EndIter = _CodInts.end();
+	const std::vector<intmax_t>::iterator& _EndIter = _CodInts.end();
 	ptrdiff_t _IterDiff_t = 0;
 
 		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _EndIter; _canIt++ )
