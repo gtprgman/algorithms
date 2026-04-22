@@ -24,7 +24,7 @@ static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
 static const size_t readPackInfo(const std::string&, std::vector<intmax_t>&);
 
 
-// DataSource Type : std::initializer_list<T>; Storage Type : std::vector<intmax_t>
+// DataSource Type : std::initializer_list<T>; Storage Type : Two std::vector<intmax_t>s
 template < class T = unsigned char, class val_type = typename iList2<T>::value_type >
 auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const iList2<T>& DataSrc)->decltype(void())
 	{
@@ -49,7 +49,7 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 	};
 
 
-// DataSource Type : std::vector<T>; Storage Type : std::vector<UC>
+// DataSource Type : std::vector<T>; Storage Type : std::vector<UC> , std::vector<intmax_t>
 template < class T = intmax_t, class _Iter = typename std::vector<T>::iterator>
 auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, const std::vector<T>& XSrc)->decltype(void()) {
 
@@ -66,6 +66,19 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 		BitXLen.push_back(intmax_t(bit_len));
 	}
 };
+
+
+// Storage Type: std::vector<UC> ; DataSource Type: std::string
+auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
+	{
+		int _xByte = 0;
+		const std::string::iterator& hex_begin = _hex.begin(), &hex_end = _hex.end();
+		for (std::string::iterator _hit = hex_begin; _hit < hex_end; _hit += 2)
+		{
+			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_hit._Ptr, 2)));
+			data_vector.push_back(_xByte);
+		}
+	};
 
 
 template <typename T>
@@ -524,23 +537,30 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 
 
 
-static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<unsigned char>& _hDatInfo)
+static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<UC>& _hDatInfo)
 {
 	intmax_t f_size = 0;
 	iList2<UC> header_info = _hDatInfo;
-	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {}, header_packed = {}, header_bit_packed = {};
+	std::vector<UC> header_data, header_bit_data;
+	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {};
 	std::string header_packed_hex = "\0", header_hex_bit = "\0";
 
+	DataParse<UC>(header_info_saved, header_bit_info, header_info);
 
-	//DataParse<UC>(header_info_saved, header_bit_info, iList2);
-	cni_bits_pack(header_packed, header_info_saved);
-	cni_bits_pack(header_bit_packed, header_bit_info);
+	header_packed_hex = combine_bits_to_hex(header_info_saved);
+	header_hex_bit = combine_bits_to_hex(header_bit_info);
 
-	header_packed_hex = combine_bits_to_hex(header_packed);
-	header_hex_bit = combine_bits_to_hex(header_bit_packed);
+	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
+	hex_to_bytes_vector(header_bit_data, header_hex_bit.c_str());
 
+/*
 	f_size += writePack(_SqzF.c_str(), header_packed_hex);
 	f_size += writePack(_SqzF.c_str(), header_hex_bit);
+*/
+	
+	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, "ab");
+	f_size += SaveTo<UC>(_SqzF.c_str(), header_bit_data, "ab");
+
 
 	return f_size;
 }
@@ -549,10 +569,16 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 // Read the encoded information data table from a file.
 static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<intmax_t>& data_vector)
 {
-	long tot_size = 0, read_size = 0;
+	intmax_t tot_size = 0, read_size = 0;
 	std::FILE* _fp = std::fopen(_inFile.c_str(), "rb");
 	
+	if (!_fp)
+	{
+		std::cerr << "Error opened 'read-access' to file. \n";
+		return 0;
+	}
 	
+	tot_size = readPack(_fp, data_vector);
 	if (_fp) std::fclose(_fp);
 	return tot_size;
 }
