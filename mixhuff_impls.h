@@ -70,20 +70,24 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 
 // Storage Type: std::vector<UC> ; DataSource Type: std::string
 auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
-	{
+{
 		int _xByte = 0, _nTaken = 0;
-		const std::string::iterator& hex_begin = _hex.begin(), &hex_end = _hex.end() - 1;
+		std::string::iterator ptr_hex;
+		const ptrdiff_t max_t = _hex.size();
 		ptrdiff_t iter_diff_t = 0;
 		
-		for (std::string::iterator _hit = hex_begin; _hit < hex_end; _hit += 2)
+		ptr_hex = _hex.begin();
+
+		for (ptrdiff_t _hit = 0; _hit < max_t; _hit += 2)
 		{
-			iter_diff_t = hex_end - _hit;
+			ptr_hex += _hit;
+			iter_diff_t = max_t - _hit;
 			_nTaken = (iter_diff_t > 1)? 2 : 1;
-			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_hit._Ptr, _nTaken)));
+			_xByte = (int)int_bit(HxFs_To_Bin(lstr(ptr_hex._Ptr, _nTaken)));
 			data_vector.push_back(_xByte);
 		}
-
-	};
+			
+};
 
 
 template <typename T>
