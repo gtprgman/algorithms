@@ -211,7 +211,7 @@ struct iList2 {
 
 		rList2._mFirst = nullptr;
 		rList2._mLast = nullptr;
-		rList2._miList = { nullptr, nullptr };
+		rList2._miList = std::initializer_list<tElem>{};
 
 		return *this;
 	}
@@ -914,7 +914,7 @@ namespace mix {
 			int _cnt = 0;
 			for (_Iter _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
 			{
-				_printFn(*_p); 
+				_printFn((v_type)*_p); 
 				 ++_cnt;
 				if (_cnt > 79) RET;
 			}
