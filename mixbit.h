@@ -462,6 +462,7 @@ template <const unsigned>
 struct fixN;
 
 
+
 // invert every bit in the bit array.
 inline static void invert_bits(bool _pb[], const unsigned nBits)
 {
@@ -994,12 +995,12 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 	ptrdiff_t _IterDiff_t = 0;
 
 	vectorClean(_result);
-	
+
 		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _EndIter; _canIt++ )
 		{
 			_IterDiff_t = _EndIter - _canIt;
 			bit_len = (_IterDiff_t > 1)? len_bit(intmax_t(*(_canIt + 1))) : len_bit(intmax_t(*_canIt));
-			_x <<= bit_len;
+			_x <<= (bit_len + 1);
 			_x |= *_canIt;
 
 			x_bits = len_bit(intmax_t(_x));  
@@ -1012,16 +1013,16 @@ static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const
 				pac_bytes += std::lldiv(x_bits, 8).quot;
 
 				_x = 0;
-				x_bits = 0; i_bit = 0; max_bits = 0;
+				x_bits = 0; i_bit = 0; max_bits = 0; bit_len = 0;
 			}
 		}
+		
+		if (_result.empty())
+		{
+			_result.push_back(_x);
+			pac_bytes += std::lldiv(x_bits, 8).quot;
+		}
 
-			if (_result.empty())
-			{
-				_result.push_back(_x);
-				pac_bytes += std::lldiv(x_bits, 8).quot;
-			}
-	
 		return pac_bytes;
 }
 
@@ -1976,7 +1977,6 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
 
 
 
