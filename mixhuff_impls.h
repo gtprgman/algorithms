@@ -69,8 +69,8 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 
 
 // Storage Type: std::vector<UC> ; DataSource Type: std::string
-auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
-{
+static constexpr auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
+	{
 		int _xByte = 0, _nTaken = 0;
 		std::string::iterator ptr_hex;
 		const ptrdiff_t max_t = _hex.size();
@@ -86,8 +86,21 @@ auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)-
 			_xByte = (int)int_bit(HxFs_To_Bin(lstr(ptr_hex._Ptr, _nTaken)));
 			data_vector.push_back(_xByte);
 		}
-			
-};
+	};
+
+
+static constexpr auto hex_to_ints_vector = [](std::vector<intmax_t>& v_target, std::string&& hex_str)
+	{
+		int _byte = 0;
+		const std::string::iterator& hex_begin = hex_str.begin(), & hex_end = hex_str.end();
+		vectorClean(v_target);
+		for (std::string::iterator pt = hex_begin; pt < hex_end; pt++)
+		{
+			_byte = (HEX_INT(char(*pt)) > 0)? HEX_INT(char(*pt)) : chartoint(*pt);
+			v_target.push_back(int(_byte));
+		}
+	};
+
 
 
 template <typename T>
@@ -116,7 +129,7 @@ auto SaveTo = [](std::string&& _File_, std::vector<T>& _Source, std::string&& w_
 
 
 
-auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data, std::string&& r_mode)->decltype(size_t())
+static constexpr auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data, std::string&& r_mode)->decltype(size_t())
 	{
 		int _c = 0; size_t read_size = 0;
 		std::FILE* _fi = std::fopen(_File.c_str(), r_mode.c_str());
@@ -548,29 +561,24 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 
 static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<UC>& _hDatInfo)
 {
-	intmax_t f_size = 0;
+	intmax_t f_size = -1;
 	iList2<UC> header_info = _hDatInfo;
 	std::vector<UC> header_data, header_bit_data;
-	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {};
+	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {}, header_info_packed = {}, header_bit_packed = {};
 	std::string header_packed_hex = "\0", header_hex_bit = "\0";
 
 	DataParse<UC>(header_info_saved, header_bit_info, header_info);
 
-	header_packed_hex = combine_bits_to_hex(header_info_saved);
-	header_hex_bit = combine_bits_to_hex(header_bit_info);
+	cni_bits_pack(header_info_packed, header_info_saved);
+	cni_bits_pack(header_bit_packed, header_bit_info);
 
-	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
-	hex_to_bytes_vector(header_bit_data, header_hex_bit.c_str());
-
-/*
-	f_size += writePack(_SqzF.c_str(), header_packed_hex);
-	f_size += writePack(_SqzF.c_str(), header_hex_bit);
-*/
+	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
 	
+/*
 	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, "ab");
 	f_size += SaveTo<UC>(_SqzF.c_str(), header_bit_data, "ab");
 
-
+*/
 	return f_size;
 }
 
@@ -990,6 +998,9 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
+	mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET;
+	goto finishedDone;
+
 	// saving code symbols ..
 	if (!(F_SIZE = writePackInfo(_destF.c_str(), xCode)))
 	{
@@ -1141,5 +1152,7 @@ EndPhase:
 	
 	return _rawSize;
 }
+
+
 
 
