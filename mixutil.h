@@ -33,6 +33,12 @@ using LONGFLOAT = long double;
 typedef LongRange LINT;
 typedef LONGFLOAT LFLOAT;
 
+template < class T >
+struct junk_store
+{
+	T _value;
+	bool _saved;
+};
 
 #define RET std::cout << "\n";
 
@@ -153,16 +159,16 @@ struct iList2 {
 	constexpr iList2( const std::initializer_list<tElem>& rList ) noexcept {
 		_mFirst = rList.begin();
 		_mLast = rList.end();
-		_miList = rList;
 	}
 
 	// Overloaded parameterized ctor
 	constexpr iList2(const std::vector<tElem>& v_list) noexcept {
 		const tElem* _begin = v_list.begin()._Ptr, *_end = v_list.end()._Ptr;
+		const ptrdiff_t max_size = _end - _begin;
 		_mFirst = _begin;
 		_mLast = _end;
-		_miList = (std::initializer_list<tElem>&)v_list;
 	};
+
 
 	template < unsigned int Nx >
 	constexpr iList2(const std::array<tElem,Nx>& _arry) {
@@ -186,40 +192,48 @@ struct iList2 {
 		return static_cast<std::size_t>(_mLast - _mFirst);
 	}
 	
-	template <class _Ty>
-	_NODISCARD constexpr _Ty _max() const noexcept
+	_NODISCARD constexpr tElem _max() const noexcept
 	{
-		return std::max(_miList);
+		tElem _v = 0, _Min = 0, _Max = 0;
+		ptrdiff_t iter_diff_t = 0;
+
+		for (pointer _t = (pointer)_mFirst; _t < (pointer)_mLast; _t++)
+		{
+			iter_diff_t = _mLast - _t;
+			_v = *_t; _Min = (iter_diff_t > 1)? *(_t + 1) : *_t;
+			_Max = std::max(_Max, _Min);
+		}
+
+
+		return _Max;
 	}
 
 	// overloaded assignment operator
-	constexpr const iList2<tElem>& operator=( const std::initializer_list<tElem>& rList ) noexcept {
-		_mFirst = rList.begin();  
+	constexpr const iList2<tElem>& operator=(const std::initializer_list<tElem>& rList) noexcept {
+		_mFirst = rList.begin();
 		_mLast = rList.end();
-		_miList = rList;
 		return *this;
-	}
+	};
 
 	
 	// move assignment
-	constexpr const iList2<tElem>& operator= ( iList2<tElem>&& rList2 ) {
+	constexpr const iList2<tElem>& operator= (iList2<tElem>&& rList2) {
 		if (this == &rList2) return *this;
 
 		_mFirst = rList2._mFirst;
 		_mLast = rList2._mLast;
-		_miList = rList2._miList;
 
 		rList2._mFirst = nullptr;
 		rList2._mLast = nullptr;
-		rList2._miList = std::initializer_list<tElem>{};
 
 		return *this;
-	}
+	};
 
-	_NODISCARD constexpr const value_type operator[](const unsigned int _idx) noexcept {
+	_NODISCARD constexpr const value_type operator[](const unsigned int& _idx) noexcept {
 		return *(_mFirst + _idx);
 	}
 
+	
 	// disable copy & copy assignment
 	iList2( iList2<tElem>& ) = delete;
 	constexpr iList2( const iList2<tElem>& ) = delete;
@@ -227,7 +241,7 @@ struct iList2 {
 	
 private:
 	pointer_const _mFirst, _mLast;
-	iList<tElem> _miList;
+	std::vector<tElem> vec_elems;
 };
 
 
@@ -367,6 +381,49 @@ struct type_aspect_if< Ty, true >
 
 namespace mix {
 
+	namespace data {
+
+		class Bucket {
+		public:
+			Bucket() :_data("empty"), _msize(sizeof(Bucket)) {};
+
+			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
+
+			};
+
+			// overloaded copy-ctor
+			Bucket(Bucket const& rBuck) : _msize(sizeof(rBuck)) {
+				if (this == &rBuck) return;
+				*this = rBuck;
+			}
+
+			~Bucket() {}
+
+			// assignment operator
+			const Bucket& operator= (const Bucket& rBuck) {
+				if (this == &rBuck) return *this;
+
+				this->_data = rBuck._data;
+				this->_msize = sizeof(rBuck);
+
+				return *this;
+			}
+
+			void set(std::string const& uStr) { _data = uStr; }
+
+			std::size_t const& size(void) const { return _msize; }
+			std::string const& data(void) const { return _data; }
+
+
+		private:
+			std::size_t _msize;
+			std::string _data;
+		};
+
+		
+	}; // end of data namespace
+
+
 	struct nullType {
 		using value_type = std::nullptr_t;
 
@@ -396,9 +453,10 @@ namespace mix {
 	template <class P >
 	struct ptrTraits
 	{ 
+	private:
 		using type = typename std::remove_reference_t<P>; 
 		using rootType = std::conditional_t<std::is_pointer_v<type>, type*, type>;
-
+	public:
 		enum {
 			isPointer = _BOOLC(std::is_pointer_v<rootType>),
 			isReference = _BOOLC(std::is_reference_v<rootType>)
@@ -571,47 +629,7 @@ namespace mix {
 	}
 
 
-	namespace data {
-		
-		class Bucket  {
-		public:
-			Bucket() :_data("empty"), _msize(sizeof(Bucket)) { };
-
-			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
-
-			};
-
-			// overloaded copy-ctor
-			Bucket(Bucket const& rBuck): _msize(sizeof(rBuck)) {
-				if (this == &rBuck) return;
-				*this = rBuck;
-			}
-
-			~Bucket() {}
-
-			// assignment operator
-			const Bucket& operator= (const Bucket& rBuck) {
-				if (this == &rBuck) return *this;
-
-				this->_data = rBuck._data;
-				this->_msize = sizeof(rBuck);
-
-				return *this;
-			}
-
-			void set(std::string const& uStr) { _data = uStr; }
-
-			std::size_t const& size(void) const { return _msize; }
-			std::string const& data(void) const { return _data; }
-
-
-		private:
-			std::size_t _msize;
-			std::string _data;
-		};
-
-
-	}; // end of data namespace
+	
 
 
 	
@@ -1051,6 +1069,38 @@ namespace mix {
 				v_Result.push_back(_T(*_t) );
 			}
 		}
+
+	template < class _STL, class val_type = typename _STL::value_type, class _Iter = typename _STL::iterator >
+	auto STL_Max_Value = [](const _Iter& _Begin, const _Iter& _End) -> decltype(val_type())
+		{
+			junk_store<val_type> _is_pushed = { 0,false };
+			val_type _vt = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
+			iList2<val_type> _internal_list;
+			std::vector<val_type> _internal_vector;
+
+			for (_Iter& _it = (_Iter&)_Begin; _it < (_Iter&)_End; _it++)
+			{
+					iter_diff_p = _End - _it;
+					_vt = *_it;
+					_vMax = std::max(_vt, (iter_diff_p > 1)? *(_it + 1) : _vt);
+
+					if (_vMax == _is_pushed._value)
+					{
+						_is_pushed = {0,false};
+						continue;
+					}
+
+					_is_pushed._value = _vMax;
+					_is_pushed._saved = true;
+					_internal_vector.push_back(_is_pushed._value);
+			}
+		/*
+			mix::generic::STL_Print<std::vector<val_type>>(_internal_vector.begin(), _internal_vector.end(), RPRINTC<val_type>);
+			RET;
+		*/
+			_internal_list = _internal_vector;
+			return _internal_list._max();
+		};
 
 	/*
 	 Perform binary search on the data elements in the vector, the user must specify
