@@ -28,9 +28,8 @@ static const size_t readPackInfo(const std::string&, std::vector<intmax_t>&);
 template < class T = unsigned char, class val_type = typename iList2<T>::value_type >
 auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const iList2<T>& DataSrc)->decltype(void())
 	{
-		intmax_t _dat = 0, data_len = 0, maxOne = DataSrc._max<T>();
-		std::initializer_list<T>& DataX = (std::initializer_list<T>&)DataSrc;
-		const val_type* _Begin = DataX.begin(), *_End = DataX.end();
+		intmax_t _dat = 0, data_len = 0, maxOne = DataSrc._max();
+		const val_type* _Begin = DataSrc.begin(), *_End = DataSrc.end();
 		const intmax_t halfMax = maxOne / 2;
 
 		_dat = halfMax; data_len = len_bit(intmax_t(_dat));
@@ -43,7 +42,7 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 			_dat = *_it - halfMax;
 			data_len = len_bit(intmax_t(_dat));
 
-			TransFormedX.push_back(val_type(_dat));
+			TransFormedX.push_back(intmax_t(_dat));
 			Bit_Length_Info.push_back(intmax_t(data_len));
 		}
 	};
@@ -573,6 +572,7 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 	cni_bits_pack(header_bit_packed, header_bit_info);
 
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print<std::vector<intmax_t>>(header_bit_packed.begin(), header_bit_packed.end(), RPRINTC<intmax_t>); RET;
 	
 /*
 	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, "ab");
