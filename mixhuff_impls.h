@@ -71,18 +71,16 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 static constexpr auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
 	{
 		int _xByte = 0, _nTaken = 0;
-		std::string::iterator ptr_hex;
-		const ptrdiff_t max_t = _hex.size();
+		const std::string::iterator _Begin = _hex.begin(), _End = _hex.end();
 		ptrdiff_t iter_diff_t = 0;
 		
-		ptr_hex = _hex.begin();
+		data_vector.clear();
 
-		for (ptrdiff_t _hit = 0; _hit < max_t; _hit += 2)
+		for (std::string::iterator _hit = _Begin; _hit < _End; _hit += 2)
 		{
-			ptr_hex += _hit;
-			iter_diff_t = max_t - _hit;
-			_nTaken = (iter_diff_t > 1)? 2 : 1;
-			_xByte = (int)int_bit(HxFs_To_Bin(lstr(ptr_hex._Ptr, _nTaken)));
+			iter_diff_t = _End - _hit;
+			_nTaken = (iter_diff_t > 0)? 2 : 1;
+			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_hit._Ptr, _nTaken)));
 			data_vector.push_back(_xByte);
 		}
 	};
@@ -91,7 +89,7 @@ static constexpr auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std
 static constexpr auto hex_to_ints_vector = [](std::vector<intmax_t>& v_target, std::string&& hex_str)
 	{
 		int _byte = 0;
-		const std::string::iterator& hex_begin = hex_str.begin(), & hex_end = hex_str.end();
+		const std::string::iterator& hex_begin = hex_str.begin(), &hex_end = hex_str.end();
 		vectorClean(v_target);
 		for (std::string::iterator pt = hex_begin; pt < hex_end; pt++)
 		{
@@ -101,7 +99,7 @@ static constexpr auto hex_to_ints_vector = [](std::vector<intmax_t>& v_target, s
 	};
 
 
-
+// DataSource: std::vector<T>;
 template <typename T>
 auto SaveTo = [](std::string&& _File_, std::vector<T>& _Source, std::string&& w_mode)->decltype(size_t())
 	{
@@ -128,6 +126,7 @@ auto SaveTo = [](std::string&& _File_, std::vector<T>& _Source, std::string&& w_
 
 
 
+// Storage: std::vector<UC>;
 static constexpr auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data, std::string&& r_mode)->decltype(size_t())
 	{
 		int _c = 0; size_t read_size = 0;
@@ -571,14 +570,29 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 	cni_bits_pack(header_info_packed, header_info_saved);
 	cni_bits_pack(header_bit_packed, header_bit_info);
 
+/*
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_bit_packed.begin(), header_bit_packed.end(), RPRINTC<intmax_t>); RET;
-	
-/*
-	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, "ab");
-	f_size += SaveTo<UC>(_SqzF.c_str(), header_bit_data, "ab");
-
 */
+	header_packed_hex = combine_bits_to_hex(header_info_packed);
+	header_hex_bit = combine_bits_to_hex(header_bit_packed);
+
+	/*
+		PRINT(header_packed_hex);
+		PRINT(header_hex_bit);
+		return 0;
+	*/
+
+	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
+	hex_to_bytes_vector(header_bit_data, header_hex_bit.c_str());
+
+	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, APPEND_MODE);
+	f_size += SaveTo<UC>(_SqzF.c_str(), header_bit_data, APPEND_MODE);
+
+	mix::generic::STL_Print<std::vector<UC>>(header_data.begin(), header_data.end(), RPRINTC<int>); RET;
+	mix::generic::STL_Print<std::vector<UC>>(header_bit_data.begin(), header_bit_data.end(), RPRINTC<int>); RET;
+
+
 	return f_size;
 }
 
@@ -928,9 +942,9 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	std::string _sqz_hex = "\0", _sqz_code_len = "\0";
 
-	std::vector<UC> _srcData = {}, xChars = {}, xCode = {}, xActual = {};
+	std::vector<UC> _srcData = {}, xChars = {}, xCode = {};
 
-	std::vector<intmax_t> _pacInts = {}, _pacRes = {};
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, xActual = {}, _sqzPac = {};
 
 	std::vector<BPAIR<unsigned char>> _CodeMap = {};
 	std::vector<_Canonical> _CanSrc = {}, _CanInfo = {};
@@ -975,7 +989,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 */
 	//for (const auto& _ei : _pacRes) _sqz_hex = concat_str((char*)_sqz_hex.c_str(), To_HexF<int>::eval(_ei).c_str());
 
-	for (const auto& _i : _pacInts) xActual.push_back((int)_i);
+	for (const auto& _i : _pacInts) xActual.push_back(_i);
 
 	// Saving encoding information headers data ..
 	for (const auto& cn : _CanInfo)
@@ -998,7 +1012,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-	mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET;
+	// writePackInfo() has tested succeed..
 	goto finishedDone;
 
 	// saving code symbols ..
@@ -1009,14 +1023,18 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
+	cni_bits_pack(_sqzPac, xActual);
+	_sqz_hex = "\0"; _sqz_hex = combine_bits_to_hex(_sqzPac);
+
+	
 	// writing packed data source into a file ( *.sqz ).
-	if ( !(_bDone = writePackInfo(_destF.c_str(), xActual)))
+	if ( !(_bDone = writePack(_destF.c_str(), _sqz_hex)))
 	{
 		std::cerr << "\n Error writing compressed file !  \n\n";
 		goto finishedDone;
 	}
 
-	//PRINT(_sqz_hex); RET;
+	PRINT(_sqz_hex); RET;
 
 finishedDone:
 	vectorClean(_srcData);
