@@ -1047,7 +1047,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 
 	for (std::string::iterator _hxIt = _hexF.begin(); _hxIt < _hxEnd; _hxIt += 2)
 	{
-		_xLen = ((_hxEnd - _hxIt) > 1)? 2 : 1;
+		_xLen = ((_hxEnd - _hxIt) >= 2)? 2 : 1;
 		_BitStr = HxFs_To_Bin(lstr(_hxIt._Ptr, _xLen) );
 		byte_value = (int)int_bit(_BitStr.c_str());
 		std::fputc(byte_value, _fHandle);
