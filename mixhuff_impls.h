@@ -21,7 +21,7 @@ static const size_t writePack(const std::string&, const std::string&);
 
 static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
 
-static const size_t readPackInfo(const std::string&, std::vector<intmax_t>&);
+static const size_t readPackInfo(const std::string&, std::vector<UC>&);
 
 
 // DataSource Type : std::initializer_list<T>; Storage Type : Two std::vector<intmax_t>s
@@ -39,7 +39,7 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 
 		for (val_type* _it = (val_type*)_Begin; _it < _End; _it++)
 		{
-			_dat = *_it - halfMax;
+			_dat = (*_it > halfMax)? *_it - halfMax : *_it;
 			data_len = len_bit(intmax_t(_dat));
 
 			TransFormedX.push_back(intmax_t(_dat));
@@ -58,7 +58,7 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 
 	for (_Iter _t = _Begin; _t < _End; _t++)
 	{
-		_dat = *_t + halfedOne;
+		_dat = (*_t > halfedOne)? *_t + halfedOne : *_t;
 		bit_len = len_bit(intmax_t(_dat));
 
 		DataX.push_back((int)_dat);
@@ -67,21 +67,27 @@ auto DataReParse = [](std::vector<UC>& DataX, std::vector<intmax_t>& BitXLen, co
 };
 
 
-// Storage Type: std::vector<UC> ; DataSource Type: std::string
+// Storage Type: std::vector<UC> ; DataSource Type: std::string&&
 static constexpr auto hex_to_bytes_vector = [](std::vector<UC>& data_vector, std::string&& _hex)->decltype(void())
 	{
-		int _xByte = 0, _nTaken = 0;
+		int _xByte = 0;
+		size_t _nTaken = 0;
 		const std::string::iterator _Begin = _hex.begin(), _End = _hex.end();
+		const char* _p0 = _Begin._Ptr, *_p1 = _End._Ptr;
+
+		const ptrdiff_t max_elems = _p1 - _p0;
 		ptrdiff_t iter_diff_t = 0;
 		
 		data_vector.clear();
 
-		for (std::string::iterator _hit = _Begin; _hit < _End; _hit += 2)
+		for (char* _pt = (char*)_p0; _pt < (char*)_p1; _pt += 2)
 		{
-			iter_diff_t = _End - _hit;
-			_nTaken = (iter_diff_t > 0)? 2 : 1;
-			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_hit._Ptr, _nTaken)));
+			iter_diff_t = _p1 - _pt;
+			_nTaken = (iter_diff_t >= 2)? 2 : 1;
+			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_pt, _nTaken)));
 			data_vector.push_back(_xByte);
+
+			if (iter_diff_t < 2) break;
 		}
 	};
 
@@ -113,6 +119,8 @@ auto SaveTo = [](std::string&& _File_, std::vector<T>& _Source, std::string&& w_
 
 		const size_t buf_size = _Source.size();
 
+		//std::fwrite(&buf_size, sizeof(buf_size), 1, _ff);
+
 		for (size_t _m = 0; _m < buf_size; _m++)
 		{
 			data_unit = (unsigned char)_Source[_m];
@@ -140,7 +148,7 @@ static constexpr auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data
 
 		while ( !std::feof(_fi) ) {
 			_c = std::fgetc(_fi);
-			if (_c > 0) v_data.push_back((char)_c);
+			if (_c > 0) v_data.push_back(_c);
 			++read_size;
 		}
 
@@ -297,7 +305,8 @@ inline void _TREE::plot_tree(const std::vector<node>& _fpNods, const double& _co
 }
 
 
-static inline const char* combine_bits_to_hex(const std::vector<intmax_t>& bits_src)
+template <typename T>
+static inline const char* combine_bits_to_hex(const std::vector<T>& bits_src)
 {
 	char* _str = nullptr;
 
@@ -559,6 +568,7 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 
 static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<UC>& _hDatInfo)
 {
+	UC _delim = '~'; // 126
 	intmax_t f_size = -1;
 	iList2<UC> header_info = _hDatInfo;
 	std::vector<UC> header_data, header_bit_data;
@@ -583,40 +593,34 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 		return 0;
 	*/
 
-	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
-	hex_to_bytes_vector(header_bit_data, header_hex_bit.c_str());
+	hex_to_bytes_vector(header_data, header_packed_hex.c_str()); header_data.push_back(_delim);
+	hex_to_bytes_vector(header_bit_data, header_hex_bit.c_str()); header_bit_data.push_back(_delim);
 
 	f_size += SaveTo<UC>(_SqzF.c_str(), header_data, APPEND_MODE);
 	f_size += SaveTo<UC>(_SqzF.c_str(), header_bit_data, APPEND_MODE);
 
-	mix::generic::STL_Print<std::vector<UC>>(header_data.begin(), header_data.end(), RPRINTC<int>); RET;
-	mix::generic::STL_Print<std::vector<UC>>(header_bit_data.begin(), header_bit_data.end(), RPRINTC<int>); RET;
-
+	/*
+		mix::generic::STL_Print<std::vector<UC>>(header_data.begin(), header_data.end(), RPRINTC<int>); RET;
+		mix::generic::STL_Print<std::vector<UC>>(header_bit_data.begin(), header_bit_data.end(), RPRINTC<int>); RET;
+	*/
 
 	return f_size;
 }
 
 
 // Read the encoded information data table from a file.
-static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<intmax_t>& data_vector)
+static inline const std::size_t readPackInfo(const std::string& _inFile, std::vector<UC>& data_vector)
 {
 	intmax_t tot_size = 0, read_size = 0;
-	std::FILE* _fp = std::fopen(_inFile.c_str(), "rb");
-	
-	if (!_fp)
-	{
-		std::cerr << "Error opened 'read-access' to file. \n";
-		return 0;
-	}
-	
-	tot_size = readPack(_fp, data_vector);
-	if (_fp) std::fclose(_fp);
+	tot_size = ReadFrom(_inFile.c_str(), data_vector, READ_BINARY);
+
+
 	return tot_size;
 }
 
 
 
-// Packed the raw data source and saves it to a file.
+// Save the packed data bits to a file.
 static inline const size_t writePack(const std::string& _fSqz, const std::string& sqz_hex)
 {
 	std::FILE* _fW = std::fopen(_fSqz.c_str(), "ab");
@@ -1013,7 +1017,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	}
 
 	// writePackInfo() has tested succeed..
-	goto finishedDone;
 
 	// saving code symbols ..
 	if (!(F_SIZE = writePackInfo(_destF.c_str(), xCode)))
@@ -1064,7 +1067,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	std::vector<UC> _rawData, _BitL;
 	std::vector<Can_Bit> cnbt;
 	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
-	std::vector<intmax_t> _MixData;
+	std::vector<UC> _MixData;
 	intmax_t _SqzInt = 0, _bix = 0;
 	size_t _rawSize = 0, header_size = 0, bits_sizes = 0;
 	std::string _read_hex = "\0", _bitX = "\0";
@@ -1082,7 +1085,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	
 	   // Debugging Codes..
 
-	mix::generic::STL_Print<std::vector<intmax_t>>(_MixData.begin(), _MixData.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print<std::vector<UC>>(_MixData.begin(), _MixData.end(), RPRINTC<int>); RET;
 	
 
 	goto EndPhase;
