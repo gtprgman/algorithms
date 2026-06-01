@@ -5,8 +5,15 @@ struct BNode;
 struct AVL;
 struct _Dealloc;
 
+#ifndef MX_BIT
+	using UINT = unsigned int;
+#endif
 
-using UINT = unsigned int;
+#ifndef REQUIRE_H
+	#define RET std::cout << "\n"
+	#define PRINT(_data_) std::cout << _data_ << RET
+#endif
+
 using PNODE = struct BNode*;
 
 
@@ -35,8 +42,6 @@ static BNode* const treeAdd(BNode* const, int const);
 #if !defined(TREE_DIRS)
 #define TREE_DIRS
 
-#define ISNULL(x) (nullptr == x)
-
 #define C_ASSERT(x) (nullptr != x)
 
 #define P_ASSERT(x) ( (nullptr != x)? (x->Value() > 0) : 0 )
@@ -45,11 +50,12 @@ static BNode* const treeAdd(BNode* const, int const);
 
 #define MIN(n1, n2) ( (n1 < n2)? n1 : n2 )
 
-#define NULLP(p) p = nullptr
-
-#define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
-
-#define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr;
+#ifndef REQUIRE_H
+	#define ISNULL(x) (nullptr == x)
+	#define NULLP(p) p = nullptr
+	#define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
+	#define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr;
+#endif
 
 #define FREE1M(p) if C_ASSERT(p) delete p;
 
@@ -59,6 +65,7 @@ static BNode* const treeAdd(BNode* const, int const);
 #define FREE3M(p1,p2,p3) if C_ASSERT(p1) delete p1; \
 			if C_ASSERT(p2) delete p2; \
 			if C_ASSERT(p3) delete p3;
+
 
 #define IS_EMPTY(x) ( -1 == x->Value() )
 
@@ -154,11 +161,6 @@ static BNode* const treeAdd(BNode* const, int const);
 #define DEL(_root, _Val) _root->Find(_Val)->Remove();
 
 #define TEXT_ALLOC(_txt) new char[std::strlen(_txt)*CHRSZ];
-
-
-// debugging macros
-#define RET std::cout << "\n\n"
-#define PRINT(_Text) std::cout << (_Text) << "\n";
 
 // get the height of the left branches
 #define L_HEIGHT(x) std::cout << "L_HEIGHT: " << x->LCount() << "\n";
@@ -271,7 +273,10 @@ private:
 #if !defined(_DEALLOC_H)
 #define _DEALLOC_H
 	#include <memory>
-	#include <vector>
+
+	#ifndef REQUIRE_H
+		#include <vector>
+	#endif
 
 static struct _Dealloc {
 	void push(BNode* _pDel) {
@@ -875,5 +880,7 @@ void inline BNode::Collect() {
 
 	NULLP(_gRoot);
 }
+
+
 
 #endif // end of #PNOD Impl
