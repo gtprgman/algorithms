@@ -218,7 +218,7 @@ static BNode* const treeAdd(BNode* const, int const);
 // Macros for Garbage Collector Working..
 
 // evaluate the deleted status of a node
-#define DELETED(_p) P_ASSERT(_p)? (_p->_deletion < 0) : -1
+#define DELETED(_p) P_ASSERT(_p)? (_p->_deletion < 0) : 0
 
 // collect the specified node to the garbage list
 #define COLLECT(_p) {\
@@ -272,11 +272,11 @@ private:
 // BNode Garbage Collector's Design & Impl
 #if !defined(_DEALLOC_H)
 #define _DEALLOC_H
-	#include <memory>
 
-	#ifndef REQUIRE_H
+#ifndef REQUIRE_H
+		#include <memory>
 		#include <vector>
-	#endif
+#endif
 
 static struct _Dealloc {
 	void push(BNode* _pDel) {
@@ -545,7 +545,7 @@ struct BNode {
 		// IF current node has no parent, then perhaps it is the root node
 		if (!P_ASSERT(this->Parent())) return (this);
 		// avoid deleting the root node
-		/* it best recommends to use any automatic garbage collector like
+		/* it would be better to opt for an automatic garbage collector like
 		   smart pointers to automatically invalidate any held resources by the head
 		   pointer.
 		*/
