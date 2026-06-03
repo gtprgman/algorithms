@@ -66,9 +66,8 @@ inline void RET2() {
 	p1 = nullptr; \
 	p2 = nullptr; \
 }
-
-
 #endif
+
 
 
 #if !defined(MIX_C)
@@ -77,6 +76,12 @@ inline void RET2() {
 	#define _BOOLC(_ty) std::bool_constant<_ty>::value
 #endif
 
+
+
+#if !defined(MIX_TREE)
+#define MIX_TREE
+	#include "C:\PROJECTS\MIXUTIL\Libs\mixtree.h"
+#endif
 
 
 
@@ -1046,62 +1051,74 @@ namespace mix {
 			_uT.release();
 		}
 
-		/*
-		  Filter the data elements of any STL-like container, so each element in the container is unique,
-		  much like stimulating the 'std::priority_queue', but this serves as a function template instead.
-		*/
-		template < class _T, class _Iter, class _Pred >
-		inline void STL_Priority_Queue(std::vector<_T>&  v_Result, const _Iter& _srcBegin, const _Iter& _srcEnd, _Pred _fCmp)
-		{
-			if (_srcBegin._Ptr == nullptr || _srcEnd._Ptr == nullptr) return;
-			if (_srcBegin > _srcEnd) return;
 
-			t_sort(_srcBegin, _srcEnd, 0.25, _fCmp);
-
-			if (!v_Result.empty()) v_Result.clear();
-
-			_T _elem = *_srcBegin; v_Result.push_back(_elem);
-
-			for (_Iter _t = _srcBegin; _t < _srcEnd; _t++)
+		template < class _T, class _STL, class _Pred >
+		auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp = std::less<_T>() ) -> decltype(_T())
 			{
-				if (_elem == *_t) continue;
-				_elem = *_t;
-				v_Result.push_back(_T(*_t) );
-			}
-		}
+				using _Iter = typename _STL::iterator;
 
-	template < class _STL, class val_type = typename _STL::value_type, class _Iter = typename _STL::iterator >
-	auto STL_Max_Value = [](const _Iter& _Begin, const _Iter& _End) -> decltype(val_type())
-		{
-			junk_store<val_type> _is_pushed = { 0,false };
-			val_type _vt = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
-			iList2<val_type> _internal_list;
-			std::vector<val_type> _internal_vector;
+				junk_store<_T> _is_pushed = { 0,false };
+				_T _vt = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
+				iList2<_T> _internal_list;
+				const _Iter& _Begin = (_Iter&)Source_List.begin(), &_End = (_Iter&)Source_List.end();
 
-			for (_Iter& _it = (_Iter&)_Begin; _it < (_Iter&)_End; _it++)
-			{
+				Result_List = {}; _internal_list = {};
+
+				for (_Iter& _it = (_Iter&)_Begin; _it < (_Iter&)_End; _it++)
+				{
 					iter_diff_p = _End - _it;
 					_vt = *_it;
-					_vMax = std::max(_vt, (iter_diff_p > 1)? *(_it + 1) : _vt);
+					_vMax = std::max(_vt, (iter_diff_p > 1)? *(_it + 1) : _vt, _fCmp);
 
 					if (_vMax == _is_pushed._value)
 					{
-						_is_pushed = {0,false};
+						_is_pushed = { 0,false };
 						continue;
 					}
 
 					_is_pushed._value = _vMax;
 					_is_pushed._saved = true;
-					_internal_vector.push_back(_is_pushed._value);
-			}
-		/*
-			mix::generic::STL_Print<std::vector<val_type>>(_internal_vector.begin(), _internal_vector.end(), RPRINTC<val_type>);
-			RET;
-		*/
-			_internal_list = _internal_vector;
-			return _internal_list._max();
-		};
+					Result_List.push_back(_is_pushed._value);
+				}
+				/*
+					mix::generic::STL_Print<std::vector<val_type>>(_internal_vector.begin(), _internal_vector.end(), RPRINTC<val_type>);
+					RET;
+				*/
+				_internal_list = Result_List;
+				return _internal_list._max();
+			};
 
+
+
+		/*
+		  Filter the data elements of any STL-like container, so each element in the container is unique,
+		  much like stimulating the 'std::priority_queue', but this serves as a templated lambda function instead.
+		*/
+		template < class _T, class _STL, class _Pred >
+		auto STL_Priority_Queue = [](_STL& v_Result, const _STL& v_Source, _Pred _fCmp = std::less<_T>() )
+			{
+				using _IterP = typename _STL::iterator;
+				BNode* root_node = nullptr;
+				_STL _Temp = {};
+
+				v_Result = {}; STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, std::less<_T>());
+
+				root_node = ALLOC_N(91); BNode::setTopRoot(&root_node);
+
+				const _IterP& _BeginP = (_IterP&)_Temp.begin(), &_EndP = (_IterP&)_Temp.end();
+				
+				for (_IterP& _ip = (_IterP&)_BeginP; _ip < (_IterP&)_EndP; _ip++)
+				{
+					if ( !root_node->Find((int)*_ip) ) {
+						v_Result.push_back(int(*_ip) );
+						root_node->Add(ALLOC_N((int)*_ip));
+					}
+				}
+				BNode::Collect();
+				_Temp = {};
+			};
+
+	
 	/*
 	 Perform binary search on the data elements in the vector, the user must specify
 	 a comparer functor that operates on data in the vector and provides a comparison result to the
@@ -1156,6 +1173,7 @@ namespace mix {
   } // End of generic namespace
 
 };
+
 
 
 
