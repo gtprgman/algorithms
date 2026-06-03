@@ -1053,7 +1053,7 @@ namespace mix {
 
 
 		template < class _T, class _STL, class _Pred >
-		auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp = std::less<_T>() ) -> decltype(_T())
+		auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp ) -> decltype(_T())
 			{
 				using _Iter = typename _STL::iterator;
 
@@ -1095,13 +1095,13 @@ namespace mix {
 		  much like stimulating the 'std::priority_queue', but this serves as a templated lambda function instead.
 		*/
 		template < class _T, class _STL, class _Pred >
-		auto STL_Priority_Queue = [](_STL& v_Result, const _STL& v_Source, _Pred _fCmp = std::less<_T>() )
+		auto STL_Priority_Queue = [](_STL& v_Result, const _STL& v_Source, _Pred _fCmp )
 			{
 				using _IterP = typename _STL::iterator;
 				BNode* root_node = nullptr;
 				_STL _Temp = {};
 
-				v_Result = {}; STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, std::less<_T>());
+				v_Result = {}; STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, _fCmp);
 
 				root_node = ALLOC_N(91); BNode::setTopRoot(&root_node);
 
