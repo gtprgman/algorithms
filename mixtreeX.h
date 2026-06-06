@@ -95,7 +95,9 @@ constexpr P treeAdd(P const, int const);
 #ifndef TREE_DIRS
 #define TREE_DIRS
 
-#define ISNULL(x) (nullptr == x)
+#ifndef REQUIRE_H
+	#include "C:\PROJECTS\MIXUTIL\Libs\mixutil.h"
+#endif
 
 #define C_ASSERT(x) (nullptr != x)
 
@@ -104,12 +106,6 @@ constexpr P treeAdd(P const, int const);
 #define MAX(n1, n2) ( (n1 > n2)? n1 : n2 )
 
 #define MIN(n1, n2) ( (n1 < n2)? n1 : n2 )
-
-#define NULLP(p) p = nullptr
-
-#define NULL2P(p1,p2) p1 = nullptr; p2 = nullptr;
-
-#define NULL3P(p1,p2,p3) p1 = nullptr; p2= nullptr; p3 = nullptr;
 
 #define FREE1M(p) if C_ASSERT(p) delete p;
 
@@ -995,7 +991,7 @@ constexpr inline void AVL<typename P>::L_TURNS() {
 // evaluate the deleted status of a node.
 template <class T, typename P = BNode<T>* >
 constexpr bool DELETED(P const _p ) {
-	return P_ASSERT(_p)? (_p->_deletion < 0) : -1;
+	return P_ASSERT(_p)? (_p->_deletion < 0) : 0;
 }
 
 
@@ -1053,3 +1049,4 @@ inline void BNode<T>::Dispose() {
 }
 
 #endif // end of #PNOD Impl
+
