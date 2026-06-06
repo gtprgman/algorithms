@@ -27,6 +27,7 @@ be implemented in the any time of the future.
 		*/
 
 using UC = unsigned char;
+using SIGNLESS = unsigned int;
 using LongRange = long long;
 using LONGFLOAT = long double;
 
@@ -1051,7 +1052,7 @@ namespace mix {
 			_uT.release();
 		}
 
-
+		// NB: The content in the _STL should not be in an exact sorted order (unsorted) to produce the desired outcome.
 		template < class _T, class _STL, class _Pred >
 		auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp ) -> decltype(_T())
 			{
@@ -1069,7 +1070,7 @@ namespace mix {
 					iter_diff_p = _End - _it;
 					_vt = *_it;
 					_vMax = std::max(_vt, (iter_diff_p > 1)? *(_it + 1) : _vt, _fCmp);
-
+					
 					if (_vMax == _is_pushed._value)
 					{
 						_is_pushed = { 0,false };
@@ -1101,7 +1102,8 @@ namespace mix {
 				BNode* root_node = nullptr;
 				_STL _Temp = {};
 
-				v_Result = {}; STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, _fCmp);
+				v_Result = {}; v_Result.push_back(v_Source[0]);
+				STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, _fCmp);
 
 				root_node = ALLOC_N(91); BNode::setTopRoot(&root_node);
 
