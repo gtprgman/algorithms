@@ -115,6 +115,8 @@ private:
 std::vector<BPAIR<unsigned char>> _TREE::_vPair = {};
 
 
+
+
 // Extracts nodes information from the vector
 inline static void NPRINT(const std::vector<node>& _vn)
 {
@@ -126,6 +128,16 @@ inline static void NPRINT(const std::vector<node>& _vn)
 }
 
 #endif
+
+
+struct fq_greater
+{
+	const bool operator() (const node& nod1, const node& nod2) const
+	{
+		return (nod1.FrequencyData() > nod2.FrequencyData());
+	}
+};
+
 
 
 #ifndef MX_HUFF_IMPLS
