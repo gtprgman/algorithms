@@ -8,7 +8,7 @@
 
 
 static constexpr size_t _ROWSZ = 80;
-static constexpr int _DELIM = '~'; // 126
+static constexpr int _DELIM = '#'; // 35
 static std::string _SystemFile = "\0";
 
 static constexpr const char* APPEND_MODE = "ab";
@@ -91,10 +91,12 @@ static auto hex_to_bytes_vector = [](std::vector<intmax_t>& data_vector, std::st
 			iter_diff_t = _p1 - _pt;
 			_nTaken = (iter_diff_t >= 2)? 2 : 1;
 			_xByte = (int)int_bit(HxFs_To_Bin(lstr(_pt, _nTaken)));
-			data_vector.push_back(_xByte); data_vector.push_back(_DELIM);
+			data_vector.push_back(_xByte);
 
 			if (iter_diff_t < 2) break;
 		}
+		
+		data_vector.push_back(_DELIM);
 	};
 
 
@@ -592,7 +594,7 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 		return 0;
 	*/
 
-	hex_to_bytes_vector(header_data, header_packed_hex.c_str()); 
+	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
 
 	f_size = SaveTo(_SqzF.c_str(), header_data, APPEND_MODE);
 
@@ -926,10 +928,12 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	std::string _sqz_hex = "\0", _sqz_code_len = "\0";
 
-	std::vector<UC> _srcData = {}, xChars = {}, xRLE_Info = {};
+	std::vector<UC> _srcData = {}, xChars = {};
 
-	std::vector<node>  xBitLength = {}, xRLE_BitLen = {};
-	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, _sqzPac = {};
+	std::vector<node>  xBitLength = {};
+
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, _sqzPac = {},
+							xBit_Length = {};
 
 	std::vector<BPAIR<unsigned char>> _CodeMap = {};
 	std::vector<_Canonical> _CanSrc = {}, _CanInfo = {};
@@ -981,38 +985,27 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		bit_len = 0; 
 	}
 
-	filter_pq_nodes(xRLE_BitLen, xBitLength);
-
-	_sqzNum = xRLE_BitLen.size();
-
-	for (size_t _z = 0; _z < (size_t)_sqzNum; _z++)
-	{
-		_CanSrc[_z]._rle_bit_len = xRLE_BitLen[_z].FrequencyData();
-		xRLE_Info.push_back((int)xRLE_BitLen[_z].FrequencyData());
-	}
-
-    
+	for (const auto& _nc : xBitLength) xBit_Length.push_back(_nc.Value());
 	
+	xBit_Length.push_back(_DELIM); 
+
+
 	// saving encoded chars ..
 	if (!(F_SIZE = writePackInfo(_destF.c_str(), xChars)))
 	{
 		std::cerr << "\n Error saving encoded characters ..";
 		std::cerr << "\n Could not proceed ..";
 		goto finishedDone;
-	}
+	};
 
 	// writePackInfo() has tested succeed..
 
-	
-	
-
-	if (!_sqzNum)
+	if ( !(F_SIZE = SaveTo(_destF.c_str(), xBit_Length, APPEND_MODE)) )
 	{
-		std::cerr << "Error writing code words data..";
+		std::cerr << "Error saving bits length information ..";
 		std::cerr << "Could not proceed .. ";
 		goto finishedDone;
 	}
-
 
 
 	// writing packed data source into a file ( *.sqz ).
@@ -1022,18 +1015,18 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-	PRINT(_sqz_hex); RET;
+	//PRINT(_sqz_hex); RET;
 
 finishedDone:
+
 	vectorClean(_srcData);
 	vectorClean(_pacInts);
 	vectorClean(_CodeMap);
 	vectorClean(_CanSrc);
 	vectorClean(xChars);
-	vectorClean(xRLE_Info);
 	vectorClean(_pacRes);
-	vectorClean(xRLE_BitLen);
-
+	vectorClean(xBit_Length);
+	vectorClean(_sqzPac);
 	vectorClean(xBitLength);
 	vectorClean(_CanInfo);
 
@@ -1050,7 +1043,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 											const double& cmp_rate)
 {
 	UC _Bit = 0; Can_Bit _cbt;
-	std::vector<UC> _rawData, _BitL;
+	std::vector<UC> _rawData, _alphaX, _BitL;
 	std::vector<Can_Bit> cnbt;
 	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
 	std::vector<UC> _MixData;
@@ -1069,84 +1062,26 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
-	   // Debugging Codes..
+	/* Debugging Codes..
+		mix::generic::STL_Print<std::vector<UC>>(_MixData.begin(), _MixData.end(), RPRINTC<int>); RET;
+		goto EndPhase;
+	*/
 
-	mix::generic::STL_Print<std::vector<UC>>(_MixData.begin(), _MixData.end(), RPRINTC<int>); RET;
-	
+	for (const auto& _c : _MixData)
+	{
+		if (_c != '#') _alphaX.push_back(_c);
+		else break;
+	}
+
+	mix::generic::STL_Print<std::vector<UC>>(_alphaX.begin(), _alphaX.end(), RPRINTC<int>); RET;
 
 	goto EndPhase;
 
-	
-
-	
-
-	//for (const auto& _e : _Codes) _read_hex = concat_str((char*)_read_hex.c_str(), To_HexF<int>::eval(_e).c_str());
-	// _read_hex is assigned with the correct hex digits pattern
-
-	//PRINT(_read_hex); RET; goto EndPhase;
-	
-	bits_sizes = (_read_hex.size() * 4) * sizeof(char);
-
-	_hex_Bits = new char[bits_sizes]; 
-
-	_hex_Bits = (char*)HxFs_To_Bin(_read_hex.c_str()).c_str(); // _hex_Bits is pointed to the corret bits pattern.
-
-	//PRINT(_hex_Bits); RET; goto EndPhase;
-	
-	_hex_Bits = (char*)trunc_left_zeroes(_hex_Bits); // _hex_Bits is pointed to the correct truncated bits pattern.
-
-	//PRINT(_hex_Bits); goto EndPhase;
-
-	header_size = Cni_Head1.size();
-	// expands out RLE information into '_BitL' vector
-	for (size_t x = 0; x < header_size; x++)
-	{
-		_Bit = (int)Cni_Head1[x]._bitLen;
-		_bix = Cni_Head1[x]._rle_bit_len;
-
-		// t = 0 -> number of repeated bit-lengths..
-		for (intmax_t t = 0; t < _bix; t++)
-		{
-			_BitL.push_back(UC(_Bit));
-		}
-	} // _BitL is successfully fetched with correct data
-
-	//mix::generic::STL_Print(_BitL.begin(), _BitL.end(), RPRINTC<intmax_t>); RET; goto EndPhase;
-
-/*
-	// Debugging codes.. 
-	RPRINTC("Data: "); RPRINTC("Code: "); RET;
-	for (const auto& _cni : Cni_Info)
-	{
-		RPRINTC(_cni._xData); RPRINTC(_cni._codeWord); RET;
-	}
-	goto EndPhase;
-*/
-	// Finalized 'Encoding Information Header' (Cni_Info) is successfully fetched with correct data
-
-
-	for (const auto& _ci : Cni_Info)
-	{
-		_cbt._xData = _ci._xData;
-		_cbt._codeWord = _ci._codeWord;
-
-		cnbt.push_back(_cbt);
-	}
-
-	PRINT("\n rematching code symbols with data ..");
-
-	if (_BitL[0] == 1) _hex_Bits = (char*)concat_str((char*)"0", _hex_Bits);
-
-	//PRINT(_hex_Bits); RET;	goto EndPhase;
-
-	if (!(_rawSize = ReSync_Int(_hex_Bits, _BitL, cnbt, _rawData)))
-		std::cerr << "\n code symbols mismatched ..";
 
 	if (!(_rawSize = writeOriginal(_unPackedFile.c_str(), _rawData)))
 		std::cerr << "\n Error writing original data to a file.";
 
 EndPhase:
-	std::memset(_hex_Bits, '\0', std::strlen(_hex_Bits));
 
 	_hex_Bits = nullptr;
 
