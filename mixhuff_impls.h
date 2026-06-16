@@ -586,7 +586,7 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 /*
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
 */
-	header_packed_hex = combine_bits_to_hex(header_info_packed);
+	header_packed_hex = combine_bits_to_hex(header_info_saved);
 
 	/*
 		PRINT(header_packed_hex);
@@ -881,7 +881,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		}
 	}
 
-	RET;
+	RET; PacInts = {};
 
 	// gathering source data..
 	PRINT("\n gathering source data ..");
@@ -905,6 +905,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		PRINT("\n Generated Code Symbols ..");
 		mix::generic::STL_Print<std::vector<intmax_t>>(PacInts.begin(), PacInts.end(), RPRINTC<intmax_t>); RET;
 	}
+
+	PacResults = {};
 
 	PRINT("\n packing bits .. ");
 	SqzInt = int_bit(cni_bits_pack(PacResults,PacInts));
@@ -972,6 +974,15 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 */
 	
 	// Saving encoding information headers data ..
+
+	/* Debug Actions .. [ CRUCIAL ! ]
+	PRINT("Encoded '*.sqz' data ..");
+	mix::generic::STL_Print<std::vector<intmax_t>>(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
+
+	PRINT("Packed '*.sqz' data values .. ");
+	mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
+
+	*/
 	_pacInts = {};
 
 	for (const auto& cn : _CanInfo)
@@ -983,14 +994,18 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		_sqzNum = cn._codeWord;
 		_pacInts.push_back(_sqzNum);
 
-		bit_len = (int)len_bit(int64_t(cn._codeWord));
-		xBit_Length.push_back(int(bit_len) );
-
-		bit_len = 0; 
 	}
 
-	xBit_Length.push_back(_DELIM); _pacInts.push_back(_DELIM);
+	_pacInts.push_back(_DELIM);
 
+	/*  Debug Actions .. [ CRUCIAL ! ]
+
+	mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET;
+	mix::generic::STL_Print<std::vector<intmax_t>>(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
+	mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
+
+	goto finishedDone;
+	*/
 
 	// saving encoded chars ..
 	if (!(F_SIZE = writePackInfo(_destF.c_str(), xChars)))
@@ -1009,14 +1024,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		goto finishedDone;
 	}
 
-	if ( !(F_SIZE = SaveTo(_destF.c_str(), xBit_Length, APPEND_MODE)) )
-	{
-		std::cerr << "Error saving bits length information ..";
-		std::cerr << "Could not proceed .. ";
-		goto finishedDone;
-	}
-
-
+	
 	// writing packed data source into a file ( *.sqz ).
 	if ( !(F_SIZE = SaveTo(_destF.c_str(), _pacRes, APPEND_MODE)))
 	{
@@ -1051,16 +1059,18 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 											const double& cmp_rate)
 {
 	UC _Bit = 0; Can_Bit _cbt;
-	std::vector<UC> _rawData, _alphaX, _BitL;
+	std::vector<UC> _rawData, _alphaX, _MixData;
 	std::vector<Can_Bit> cnbt;
-	std::vector<_Canonical> Cni_Info, Cni_Head0, Cni_Head1;
-	std::vector<UC> _MixData;
+	std::vector<_Canonical> Cni_Info;
+
+	
 	intmax_t _SqzInt = 0, _bix = 0;
 	size_t _rawSize = 0, header_size = 0, bits_sizes = 0;
 	std::string _read_hex = "\0", _bitX = "\0";
 	char* _hex_Bits = nullptr; 
 
 	header_size = readPackInfo(_packedFile, _MixData);
+	const std::vector<UC>::iterator& _MBegin = _MixData.begin(), &_MEnd = _MixData.end();
 
 
 	if (!header_size)
@@ -1070,18 +1080,15 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
-	/* Debugging Codes..
-		mix::generic::STL_Print<std::vector<UC>>(_MixData.begin(), _MixData.end(), RPRINTC<int>); RET;
-		goto EndPhase;
-	*/
-
-	for (const auto& _c : _MixData)
+	
+	/* Debug Action .. */
+	for (std::vector<UC>::iterator _mt = _MBegin; _mt < _MEnd; _mt++)
 	{
-		if (_c != '#') _alphaX.push_back(_c);
-		else break;
+		if (*_mt == 35) continue;
+		_alphaX.push_back(*_mt);
 	}
 
-	mix::generic::STL_Print<std::vector<UC>>(_alphaX.begin(), _alphaX.end(), RPRINTC<int>); RET;
+	mix::generic::STL_Print<std::vector<intmax_t>>(_alphaX.begin(), _alphaX.end(), RPRINTC<intmax_t>); RET;
 
 	goto EndPhase;
 
@@ -1095,9 +1102,7 @@ EndPhase:
 
 	vectorClean(_rawData);
 	vectorClean(Cni_Info);
-	vectorClean(_BitL);
-	vectorClean(Cni_Head0);
-	vectorClean(Cni_Head1);
+	
 	vectorClean(cnbt);
 	
 	return _rawSize;
