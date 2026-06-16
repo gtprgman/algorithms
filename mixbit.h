@@ -239,7 +239,7 @@ static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
 // packing a bit series from one vector into another result vector
-static const intmax_t cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
+static std::string&& cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
 
 // saves a packed canonical bit to a one specified file
 static const size_t save_cni_bit(std::FILE*&, const std::string&);
@@ -986,44 +986,33 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const intmax_t cni_bits_pack(std::vector<intmax_t>& _result, const std::vector<intmax_t>& _canVec)
+static inline std::string&& cni_bits_pack(std::vector<intmax_t>& _Result, const std::vector<intmax_t>& _canVec)
 {
-	intmax_t _x = 0;
-	intmax_t pac_bytes = 0, i_bit = 0, x_bits = 0, max_bits = 0, bit_len = 0;
+	int bit_val = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
-	const std::vector<intmax_t>::iterator& _EndIter = _CodInts.end();
-	ptrdiff_t _IterDiff_t = 0;
+	const std::vector<intmax_t>::iterator& _Begin = _CodInts.begin(), &_EndIter = _CodInts.end();
+	static std::string bits_pack;
 
-	vectorClean(_result);
+	bits_pack = "\0"; _Result = {};
 
-		for (std::vector<intmax_t>::iterator _canIt = _CodInts.begin(); _canIt < _EndIter; _canIt++ )
-		{
-			_IterDiff_t = _EndIter - _canIt;
-			bit_len = (_IterDiff_t > 1)? len_bit(intmax_t(*(_canIt + 1))) : len_bit(intmax_t(*_canIt));
-			_x <<= (bit_len + 1);
-			_x |= *_canIt;
+	for (std::vector<intmax_t>::iterator _canIt = _Begin; _canIt < _EndIter; _canIt++)
+	{
+		bits_pack = concat_str(bits_pack.data(), bit_str(*_canIt).c_str());
+	}
 
-			x_bits = len_bit(intmax_t(_x));  
-			i_bit = (_IterDiff_t > 1)? *(_canIt + 1) : 0;
-			max_bits = x_bits + len_bit(intmax_t(i_bit));
+	std::string::iterator _st; ptrdiff_t _st_diff_t = 0;
+	const std::string::iterator& _msb = bits_pack.begin(), &_lsb = bits_pack.end();
 
-			if (max_bits >= 32 || _IterDiff_t == 1 )
-			{
-				_result.push_back(_x); 
-				pac_bytes += std::lldiv(x_bits, 8).quot;
-
-				_x = 0;
-				x_bits = 0; i_bit = 0; max_bits = 0; bit_len = 0;
-			}
-		}
+	for (_st = _msb; _st < _lsb; _st += (_st_diff_t >= BYTE)? BYTE : 0)
+	{
+		bit_val = (int)int_bit(lstr(_st._Ptr, ((_lsb - _st) >= BYTE)? BYTE : (_lsb - _st)).c_str());
+		_Result.push_back(int(bit_val));
+		_st_diff_t = _lsb - _st;
 		
-		if (_result.empty())
-		{
-			_result.push_back(_x);
-			pac_bytes += std::lldiv(x_bits, 8).quot;
-		}
+		if (_st_diff_t < BYTE) break;
+	}
 
-		return pac_bytes;
+	return std::move(bits_pack);
 }
 
 
