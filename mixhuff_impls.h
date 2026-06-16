@@ -18,7 +18,7 @@ static constexpr const char* READ_BINARY = "rb";
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
 									 in the command line */
 
-static const size_t writePack(const std::string&, const std::string&);
+//static const size_t writePack(const std::string&, const std::string&);
 
 static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
 
@@ -581,7 +581,7 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 
 	DataParse<UC>(header_info_saved, header_bit_info, header_info);
 
-	cni_bits_pack(header_info_packed, header_info_saved);
+	//cni_bits_pack(header_info_packed, header_info_saved);
 
 /*
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
@@ -617,7 +617,7 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 }
 
 
-
+/*
 // Save the packed data bits to a file.
 static inline const size_t writePack(const std::string& _fSqz, const std::string& sqz_hex)
 {
@@ -634,7 +634,7 @@ static inline const size_t writePack(const std::string& _fSqz, const std::string
 	if (_fW) std::fclose(_fW);
 	return w_size;
 }
-
+*/
 
 
 // Read the packed data source into an int Vector.
@@ -907,7 +907,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 
 	PRINT("\n packing bits .. ");
-	SqzInt = cni_bits_pack(PacResults,PacInts);
+	SqzInt = int_bit(cni_bits_pack(PacResults,PacInts));
 	RPRINT(" finished done. \n");
 
 		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
@@ -930,7 +930,6 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	std::vector<UC> _srcData = {}, xChars = {};
 
-	std::vector<node>  xBitLength = {};
 
 	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, _sqzPac = {},
 							xBit_Length = {};
@@ -973,21 +972,24 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 */
 	
 	// Saving encoding information headers data ..
-	for (const auto& cn : _CanSrc)
+	_pacInts = {};
+
+	for (const auto& cn : _CanInfo)
 	{
 		_xt = cn._xData;
 		xChars.push_back(_xt);
-		_xt = 0;
+		_xt = 0; _sqzNum = 0;
 
-		bit_len = (int)cn._bitLen;
-		xBitLength.push_back(int(bit_len) );
+		_sqzNum = cn._codeWord;
+		_pacInts.push_back(_sqzNum);
+
+		bit_len = (int)len_bit(int64_t(cn._codeWord));
+		xBit_Length.push_back(int(bit_len) );
 
 		bit_len = 0; 
 	}
 
-	for (const auto& _nc : xBitLength) xBit_Length.push_back(_nc.Value());
-	
-	xBit_Length.push_back(_DELIM); 
+	xBit_Length.push_back(_DELIM); _pacInts.push_back(_DELIM);
 
 
 	// saving encoded chars ..
@@ -1000,6 +1002,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	// writePackInfo() has tested succeed..
 
+	if (!(F_SIZE = SaveTo(_destF.c_str(), _pacInts, APPEND_MODE)))
+	{
+		std::cerr << "Error code words information ..";
+		std::cerr << "Could not proceed .. ";
+		goto finishedDone;
+	}
+
 	if ( !(F_SIZE = SaveTo(_destF.c_str(), xBit_Length, APPEND_MODE)) )
 	{
 		std::cerr << "Error saving bits length information ..";
@@ -1009,13 +1018,13 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 
 	// writing packed data source into a file ( *.sqz ).
-	if ( !(_bDone = writePack(_destF.c_str(), _sqz_hex)))
+	if ( !(F_SIZE = SaveTo(_destF.c_str(), _pacRes, APPEND_MODE)))
 	{
-		std::cerr << "\n Error writing compressed file !  \n\n";
+		std::cerr << "\n Error writing packed integers to file !  \n\n";
 		goto finishedDone;
 	}
 
-	//PRINT(_sqz_hex); RET;
+
 
 finishedDone:
 
@@ -1027,7 +1036,6 @@ finishedDone:
 	vectorClean(_pacRes);
 	vectorClean(xBit_Length);
 	vectorClean(_sqzPac);
-	vectorClean(xBitLength);
 	vectorClean(_CanInfo);
 
 	if (!_SystemFile.empty()) _SystemFile.clear();
