@@ -248,7 +248,7 @@ static const size_t save_cni_bit(std::FILE*&, const std::string&);
 static const intmax_t read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
 
 // the max. number of bits evaluated by 'BIT_TOKEN()'
-unsigned int MAX_BIT = 0;
+uint64_t MAX_BIT = 0;
 
 
 constexpr int64_t&& HI_HEX(int64_t&& _rbx)
@@ -424,7 +424,7 @@ constexpr uint64_t&& BIT_TOKEN(int64_t&& nBits)
 	else if (nBits > DWORD && nBits <= QWORD) MAX_BIT = QWORD;
 	else MAX_BIT = MULTIWORDS;
 
-	return MAX_BIT;
+	return std::move(MAX_BIT);
 }
 
 
@@ -864,7 +864,7 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 	using _Type = typename std::remove_reference_t<_Ty>;
 	static std::string _StrBin = "\0";
 	const size_t bit_width = len_bit(_Type(_Dx)); 
-	const size_t xZeroes = (HEX_SIZE > bit_width)? HEX_SIZE - bit_width : 0;
+	const size_t exact_bit_length = proper_bits(_Type(_Dx));
 
 	_StrBin = "\0";
 	_StrBin.clear();
@@ -875,8 +875,20 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 		return std::move(_StrBin);
 	}
 
+	auto xZeroes = [&bit_width, &_Dx, &exact_bit_length](size_t&& bit_len)
+		{
+			size_t Oxx = 0;
+			constexpr uint64_t FFh = 4;
+
+			Oxx = (FFh > bit_width)? FFh - bit_width :
+					(FFh < bit_width)? exact_bit_length - bit_width : 0;
+		
+			return Oxx;
+		};
+
+	const size_t zero_bits = xZeroes(size_t(bit_width));
 	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
-	_StrBin = concat_str( (char*)repl_char('0', xZeroes).c_str(), _StrBin.c_str());
+	_StrBin = concat_str( (char*)repl_char('0', zero_bits).c_str(), _StrBin.c_str() );
 			
 	return std::move(_StrBin);
 }
@@ -1076,9 +1088,9 @@ static inline const intmax_t read_cni_bit(std::FILE*& _fHandle, std::vector<intm
 static inline uint64_t&& proper_bits(int64_t&& _n)
 {
 	const int64_t _nBits = num_of_bits<int64_t>::eval(int64_t(_n) );
-	const int64_t _maxBits = BIT_TOKEN(int64_t(_nBits) );
+	MAX_BIT = BIT_TOKEN(int64_t(_nBits));;
 
-	return _maxBits;
+	return std::move(MAX_BIT);
 }
 
 
