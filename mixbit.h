@@ -886,9 +886,9 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 			return Oxx;
 		};
 
-	const size_t zero_bits = xZeroes(size_t(bit_width));
+	const size_t n_Zeros = xZeroes(size_t(bit_width));
 	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
-	_StrBin = concat_str( (char*)repl_char('0', zero_bits).c_str(), _StrBin.c_str() );
+	_StrBin = concat_str( (char*)repl_char('0', n_Zeros).c_str(), _StrBin.c_str() );
 			
 	return std::move(_StrBin);
 }
