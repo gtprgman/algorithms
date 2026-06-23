@@ -18,11 +18,11 @@ static constexpr const char* READ_BINARY = "rb";
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
 									 in the command line */
 
-//static const size_t writePack(const std::string&, const std::string&);
-
 static const size_t readPack(std::FILE*&, std::vector<intmax_t>&);
 
 static const size_t readPackInfo(const std::string&, std::vector<UC>&);
+
+typedef std::string&& (*Func)(const char*, const size_t&); // for used by 'lstr()' & 'rstr()'
 
 
 /* DataSource Type : std::initializer_list<T>; Storage Type : Two std::vector<intmax_t>s
@@ -581,12 +581,12 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 
 	DataParse<UC>(header_info_saved, header_bit_info, header_info);
 
-	//cni_bits_pack(header_info_packed, header_info_saved);
+	cni_bits_pack(header_info_packed, header_info_saved);
 
 /*
 	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
 */
-	header_packed_hex = combine_bits_to_hex(header_info_saved);
+	header_packed_hex = combine_bits_to_hex(header_info_packed);
 
 	/*
 		PRINT(header_packed_hex);
@@ -617,25 +617,6 @@ static inline const std::size_t readPackInfo(const std::string& _inFile, std::ve
 }
 
 
-/*
-// Save the packed data bits to a file.
-static inline const size_t writePack(const std::string& _fSqz, const std::string& sqz_hex)
-{
-	std::FILE* _fW = std::fopen(_fSqz.c_str(), "ab");
-
-	if (!_fW)
-	{
-		std::cerr << "\n Error opened 'write-access' to file. ";
-		return 0;
-	}
-
-	const size_t w_size = save_cni_bit(_fW, sqz_hex);
-
-	if (_fW) std::fclose(_fW);
-	return w_size;
-}
-*/
-
 
 // Read the packed data source into an int Vector.
 static inline const std::size_t readPack(std::FILE*& _SqzF, std::vector<intmax_t>& vInts)
@@ -663,10 +644,19 @@ return _totBytesRead;
 
 
 // write the original uncompressed form of the data into a file.
-static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<UC>& raw_dat)
+static inline const std::size_t writeOriginal(const std::string& _OriginFile, const std::vector<UC>& sqz_dat, 
+												const std::vector<Can_Bit>& Ref_Table)
 {
+	int code_bit = 0, data_value = 0;
+	std::string data_bits = "\0";
 	size_t rawSize = 0;
+
+	std::vector<UC> data_storage = {};
+	std::vector<Can_Bit>& Cross_Ref = (std::vector<Can_Bit>&)Ref_Table;
+	std::vector<Can_Bit>::iterator CanItem;
+
 	std::FILE* FRaw = std::fopen(_OriginFile.data(), "wb");
+	Func _FuncList[2] = { lstr, rstr };
 
 	if (!FRaw)
 	{
@@ -674,12 +664,30 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 		return 0;
 	}
 
-	const size_t nSize = raw_dat.size();;
+	const size_t nSize = sqz_dat.size();;
 
-	for (size_t s = 0; s < nSize; s++)
+	for (size_t _t = 0; _t < nSize; _t++)
 	{
-		std::fputc(raw_dat[s], FRaw);
-		++rawSize;
+		data_value = sqz_dat[_t];
+		data_bits = bit_str(int(data_value));
+
+		for (int _i = 0; _i < 1; _i++)
+		{
+			code_bit = (int)int_bit(_FuncList[_i](data_bits.c_str(), 4));
+			if (mix::generic::vector_search(Cross_Ref.begin(), Cross_Ref.end(), code_bit, mix::generic::numLess(), CanItem))
+			{
+				data_storage.push_back(UC(CanItem->_xData));
+			}
+		}
+		data_bits = "\0"; data_value = 0; code_bit = 0;
+	}
+
+	const size_t data_sizes = data_storage.size();
+
+	for (size_t _x = 0; _x < data_sizes; _x++)
+	{
+		std::fputc(data_storage[_x], FRaw);
+		rawSize += sizeof(data_storage[_x]);
 	}
 
 	if (FRaw) std::fclose(FRaw);
@@ -743,12 +751,14 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	const size_t T_SIZE = _Src.size();
 
+	PRINT("\n acquiring data ..");
 	for (size_t t = 0; t < T_SIZE; t++)
 	{
 		PNodes.push_back(node(UC(_Src[t])));
 	}
 
 	if (_cCode == 'D') {
+		RET;
 		PRINT("\nNodes data..");
 		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
 	}
@@ -861,7 +871,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	for (const _Canonical& cni : Cni_Info1)
 	{
 		cbi._xData = cni._xData;
-		cbi._codeWord = cni._codeWord;
+		cbi._codeWord = (cni._codeWord)? cni._codeWord : 1;
 		cbi._bitLen = len_bit(intmax_t(cni._codeWord));
 		CniBits.push_back(cbi);
 		cbi = {};
@@ -924,17 +934,14 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 									unsigned char* _cBuff)
 {
 	UC _xt = 0;
-	int bit_len = 0;
+	int bit_code = 0;
 	bool _bDone = 0;
 	intmax_t _sqzNum = 0;
 
 	std::string _sqz_hex = "\0", _sqz_code_len = "\0";
 
 	std::vector<UC> _srcData = {}, xChars = {};
-
-
-	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, _sqzPac = {},
-							xBit_Length = {};
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, code_ints = {};
 
 	std::vector<BPAIR<unsigned char>> _CodeMap = {};
 	std::vector<_Canonical> _CanSrc = {}, _CanInfo = {};
@@ -983,28 +990,32 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
 
 	*/
-	_pacInts = {};
 
 	for (const auto& cn : _CanInfo)
 	{
 		_xt = cn._xData;
 		xChars.push_back(_xt);
-		_xt = 0; _sqzNum = 0;
+		_xt = 0; 
 
-		_sqzNum = cn._codeWord;
-		_pacInts.push_back(_sqzNum);
-
+		bit_code = (cn._codeWord)? (int)cn._codeWord : (int)1;
+		code_ints.push_back(int(bit_code) );
+		_xt = 0;
 	}
 
-	_pacInts.push_back(_DELIM);
+	code_ints.push_back(_DELIM);
 
-	/*  Debug Actions .. [ CRUCIAL ! ]
+	/*  Debug Actions .. [ CRUCIAL ! ] 
 
-	mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET;
-	mix::generic::STL_Print<std::vector<intmax_t>>(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET;
-	mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET;
+		PRINT("Encoded Chars ..");
+		mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET2();
 
-	goto finishedDone;
+		PRINT("Code Words .. ");
+		mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET2();
+
+		PRINT("Packed Integers ..");
+		mix::generic::STL_Print<std::vector<intmax_t>>(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET2();
+
+		goto finishedDone;
 	*/
 
 	// saving encoded chars ..
@@ -1017,22 +1028,21 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	// writePackInfo() has tested succeed..
 
-	if (!(F_SIZE = SaveTo(_destF.c_str(), _pacInts, APPEND_MODE)))
+	if (!(F_SIZE = SaveTo(_destF.c_str(), code_ints, APPEND_MODE)))
 	{
-		std::cerr << "Error code words information ..";
+		std::cerr << "\n Error saving code words ..";
+		std::cerr << "\n Could not proceed ..";
+		goto finishedDone;
+	};
+
+	if (!(F_SIZE = SaveTo(_destF.c_str(), _pacRes, APPEND_MODE)))
+	{
+		std::cerr << "Error saving packed data information ..";
 		std::cerr << "Could not proceed .. ";
 		goto finishedDone;
 	}
 
 	
-	// writing packed data source into a file ( *.sqz ).
-	if ( !(F_SIZE = SaveTo(_destF.c_str(), _pacRes, APPEND_MODE)))
-	{
-		std::cerr << "\n Error writing packed integers to file !  \n\n";
-		goto finishedDone;
-	}
-
-
 
 finishedDone:
 
@@ -1042,8 +1052,7 @@ finishedDone:
 	vectorClean(_CanSrc);
 	vectorClean(xChars);
 	vectorClean(_pacRes);
-	vectorClean(xBit_Length);
-	vectorClean(_sqzPac);
+	vectorClean(code_ints);
 	vectorClean(_CanInfo);
 
 	if (!_SystemFile.empty()) _SystemFile.clear();
@@ -1058,16 +1067,11 @@ finishedDone:
 static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile, 
 											const double& cmp_rate)
 {
-	UC _Bit = 0; Can_Bit _cbt;
+	Can_Bit _cbt;
+	size_t raw_size = 0, header_size = 0, info_sizes = 0;
 	std::vector<UC> _rawData, _alphaX, _MixData;
+	std::vector<int64_t> Encoded_Chars, Encoded_Bit_Len;
 	std::vector<Can_Bit> cnbt;
-	std::vector<_Canonical> Cni_Info;
-
-	
-	intmax_t _SqzInt = 0, _bix = 0;
-	size_t _rawSize = 0, header_size = 0, bits_sizes = 0;
-	std::string _read_hex = "\0", _bitX = "\0";
-	char* _hex_Bits = nullptr; 
 
 	header_size = readPackInfo(_packedFile, _MixData);
 	const std::vector<UC>::iterator& _MBegin = _MixData.begin(), &_MEnd = _MixData.end();
@@ -1080,33 +1084,95 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	}
 	
-	
-	/* Debug Action .. */
-	for (std::vector<UC>::iterator _mt = _MBegin; _mt < _MEnd; _mt++)
+
+		for (std::vector<UC>::iterator _mt = _MBegin; _mt < _MEnd; _mt++)
+		{
+			_alphaX.push_back(*_mt);
+
+			if (*(_mt + 1) == 35)
+			{
+				_mt += 2; // skip the '#' sign
+				for (_mt = _mt; _mt < _MEnd; _mt++)
+				{
+					_rawData.push_back(*_mt);
+				}
+				break;
+			}
+		}
+
+	/* Debug Actions ..  [CRUCIAL !]  
+		PRINT("Parsed Encoded Chars Symbols .. ");
+		mix::generic::STL_Print<std::vector<intmax_t>>(_alphaX.begin(), _alphaX.end(), RPRINTC<intmax_t>); RET2();
+
+		PRINT("Code Words & Packed Integers Symbols .. ");
+		mix::generic::STL_Print<std::vector<UC>>(_rawData.begin(), _rawData.end(), RPRINTC<int>); RET2();
+		goto EndPhase;
+	*/
+
+	DataReParse<UC>(Encoded_Chars, Encoded_Bit_Len, _alphaX);
+
+	 /* Debug Actions ..  [CRUCIAL !]  
+		mix::generic::STL_Print<std::vector<intmax_t>>(Encoded_Chars.begin(), Encoded_Chars.end(), RPRINTC<intmax_t>); RET2();
+		goto EndPhase;
+	*/
+
+	_cbt = {};
+
+	for (const auto& _xc : Encoded_Chars)
 	{
-		if (*_mt == 35) continue;
-		_alphaX.push_back(*_mt);
+		_cbt._xData = (int)_xc;
+		cnbt.push_back(_cbt);
+		_cbt = {};
 	}
 
-	mix::generic::STL_Print<std::vector<intmax_t>>(_alphaX.begin(), _alphaX.end(), RPRINTC<intmax_t>); RET;
+	info_sizes = cnbt.size();
 
-	goto EndPhase;
+	for (size_t _t = 0; _t < info_sizes; _t++)
+	{
+		if (_rawData[_t] == 35) break;
+		else cnbt[_t]._codeWord = _rawData[_t];
+	}
+
+	/* Debug Actions .. [CRUCIAL !] 
+		for (const auto& _cni : Cni_Info)
+		{
+			RPRINTC(_cni._xData); RPRINTC("=>"); RPRINTC(_cni._codeWord); RET;
+		}
+
+		goto EndPhase;
+    */
+
+	header_size = _rawData.size() - info_sizes; _MixData = {};
+
+	// acquiring packed integers symbols ..
+	for (size_t _k = info_sizes + 1; _k < (header_size + info_sizes); _k++)
+	{
+		if (_rawData[_k] == 35) continue;
+		_MixData.push_back(_rawData[_k]);
+	}
+
+	/* Debug Actions .. 
+		mix::generic::STL_Print<std::vector<UC>>(_MixData.begin(), _MixData.end(), RPRINTC<int>); RET2();
+		goto EndPhase;
+	*/
 
 
-	if (!(_rawSize = writeOriginal(_unPackedFile.c_str(), _rawData)))
+	if (!(raw_size = writeOriginal(_unPackedFile.c_str(), _MixData, cnbt)))
 		std::cerr << "\n Error writing original data to a file.";
 
+
 EndPhase:
-
-	_hex_Bits = nullptr;
-
 	vectorClean(_rawData);
-	vectorClean(Cni_Info);
-	
+	vectorClean(_alphaX);
+	vectorClean(Encoded_Chars);
+	vectorClean(Encoded_Bit_Len);
+	vectorClean(_MixData);
 	vectorClean(cnbt);
 	
-	return _rawSize;
+	return raw_size;
 }
+
+
 
 
 
