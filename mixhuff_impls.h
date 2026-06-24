@@ -153,7 +153,7 @@ static auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data, std::str
 
 		while ( !std::feof(_fi) ) {
 			_c = std::fgetc(_fi);
-			if (_c > 0) v_data.push_back(_c);
+			if (_c > 0) v_data.push_back(UC(_c));
 			++read_size;
 		}
 
@@ -664,23 +664,27 @@ static inline const std::size_t writeOriginal(const std::string& _OriginFile, co
 		return 0;
 	}
 
-	const size_t nSize = sqz_dat.size();;
+	const size_t nSize = sqz_dat.size();
 
 	for (size_t _t = 0; _t < nSize; _t++)
 	{
 		data_value = sqz_dat[_t];
 		data_bits = bit_str(int(data_value));
 
-		for (int _i = 0; _i < 1; _i++)
+		for (int _i = 0; _i <= 1; _i++)
 		{
-			code_bit = (int)int_bit(_FuncList[_i](data_bits.c_str(), 4));
-			if (mix::generic::vector_search(Cross_Ref.begin(), Cross_Ref.end(), code_bit, mix::generic::numLess(), CanItem))
+			code_bit = (int)int_bit(_FuncList[_i](data_bits.c_str(), HEX_SIZE));
+			if (mix::generic::vector_search(Cross_Ref.begin(), Cross_Ref.end(), (int64_t)code_bit, mix::generic::numLess(), CanItem))
 			{
-				data_storage.push_back(UC(CanItem->_xData));
+				data_storage.push_back(int(CanItem->_xData));
 			}
+			code_bit = 0;
+			if ((nSize - _t) <= 1) break;
 		}
 		data_bits = "\0"; data_value = 0; code_bit = 0;
 	}
+
+	//mix::generic::STL_Print<std::vector<UC>>(data_storage.begin(), data_storage.end(), RPRINTC<int>); RET;
 
 	const size_t data_sizes = data_storage.size();
 
@@ -754,7 +758,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	PRINT("\n acquiring data ..");
 	for (size_t t = 0; t < T_SIZE; t++)
 	{
-		PNodes.push_back(node(UC(_Src[t])));
+		PNodes.push_back(node(int(_Src[t])));
 	}
 
 	if (_cCode == 'D') {
@@ -770,7 +774,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	
 	//mix::generic::STL_Print<std::vector<node>>(_pq.begin(), _pq.end(), RPRINTC<char>); RET;
 
-	mix::generic::STL_Priority_Queue<node, std::vector<node>, fq_greater>(PNodes, _pq, fq_greater());
+	mix::generic::STL_Priority_Queue<node, std::vector<node>, std::less<node>>(PNodes, _pq, std::less<node>());
 	// PNodes is now a frequency filtered nodes vector
 	
 	_pq.clear();
@@ -1133,14 +1137,15 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		else cnbt[_t]._codeWord = _rawData[_t];
 	}
 
-	/* Debug Actions .. [CRUCIAL !] 
-		for (const auto& _cni : Cni_Info)
+	/* Debug Actions .. [CRUCIAL !]  
+		for (const auto& _cni : cnbt)
 		{
 			RPRINTC(_cni._xData); RPRINTC("=>"); RPRINTC(_cni._codeWord); RET;
 		}
 
 		goto EndPhase;
-    */
+	*/
+    
 
 	header_size = _rawData.size() - info_sizes; _MixData = {};
 
@@ -1157,7 +1162,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 	*/
 
 
-	if (!(raw_size = writeOriginal(_unPackedFile.c_str(), _MixData, cnbt)))
+	if ( !(raw_size = writeOriginal(_unPackedFile.c_str(), _MixData, cnbt)) )
 		std::cerr << "\n Error writing original data to a file.";
 
 
@@ -1171,8 +1176,6 @@ EndPhase:
 	
 	return raw_size;
 }
-
-
 
 
 
