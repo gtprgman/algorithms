@@ -1101,11 +1101,12 @@ namespace mix {
 				using _IterP = typename _STL::iterator;
 				BNode* root_node = nullptr;
 				_STL _Temp = {};
+				_T _Max;
 
 				v_Result = {}; v_Result.push_back(v_Source[0]);
-				STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, _fCmp);
+				_Max = STL_Max_Value<_T, _STL, _Pred>(_Temp, v_Source, _fCmp);
 
-				root_node = ALLOC_N(91); BNode::setTopRoot(&root_node);
+				root_node = ALLOC_N(_Max); BNode::setTopRoot(&root_node); 
 
 				const _IterP& _BeginP = (_IterP&)_Temp.begin(), &_EndP = (_IterP&)_Temp.end();
 				
