@@ -100,6 +100,14 @@ struct _Canonical
 // a data structure representing a subset of _Canonical
 struct Can_Bit : virtual public _Canonical
 {
+	Can_Bit() : _Canonical() {};
+
+	Can_Bit(char&& _Chr, int64_t&& _Code)
+	{
+		this->_xData = _Chr;
+		this->_codeWord = _Code;
+	}
+
 	operator char() {
 		return this->_xData;
 	}
