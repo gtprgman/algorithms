@@ -1,11 +1,9 @@
 /* Using GPL v. 3.0 License */
 #pragma once
 
-
 #ifndef REQUIRE_H
 	#include "mixutil.h"
 #endif
-
 
 #ifndef MX_BIT
 	#include "mixbit.h"
@@ -15,10 +13,7 @@
 static LONGFLOAT CSIZE = 0.00;
 
 
-// Forward Declaration of Any Immediate Required Elements..
-struct node;
 
-	
 constexpr int R = 0;
 constexpr int L = 1;
 constexpr int ROOT = -1;
@@ -67,22 +62,6 @@ private:
 
 
 
-#ifndef HUFF_TREE
-#define HUFF_TREE
-	
-	#ifndef REQUIRE_H
-		#include <vector>
-	#endif
-
-struct h_tree
-{
-	node* _Left;
-	node* _Right;
-	intmax_t _Freq;
-};
-
-
-
 struct _TREE {
 
 	// get the encoded bits of data from a Vector 
@@ -127,27 +106,35 @@ inline static void NPRINT(const std::vector<node>& _vn)
 	}
 }
 
-#endif
 
 
-struct fq_greater
+struct fq_less
 {
 	const bool operator() (const node& nod1, const node& nod2) const
 	{
-		return (nod1.FrequencyData() > nod2.FrequencyData());
+		return (nod1.FrequencyData() < nod2.FrequencyData());
+	}
+};
+
+struct fq_greater
+{
+	const bool operator() (const node& nod_1, const node& nod_2)
+	{
+		return (nod_1.FrequencyData() > nod_2.FrequencyData());
+	}
+};
+
+
+struct fq_equal
+{
+	const bool operator() (const node& A, const node& B)
+	{
+		return (A.FrequencyData() == B.FrequencyData());
 	}
 };
 
 
 
-#ifndef MX_HUFF_IMPLS
-
-/* Filters priority queue nodes and compute the frequency of each node */
-inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>&);
-
-#include "mixhuff_impls.h"
-
-#endif
 
 
 	
