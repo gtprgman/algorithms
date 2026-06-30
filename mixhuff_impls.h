@@ -3,7 +3,10 @@
 
 #ifndef MX_HUFF_IMPLS
 	#define MX_HUFF_IMPLS
+	#include "C:\PROJECTS\MIXUTIL\Libs\mixhuff.h"
 
+	/* Filters priority queue nodes and compute the frequency of each node */
+	inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>&);
 #endif
 
 
@@ -14,6 +17,7 @@ static std::string _SystemFile = "\0";
 static constexpr const char* APPEND_MODE = "ab";
 static constexpr const char* WRITE_BINARY = "wb";
 static constexpr const char* READ_BINARY = "rb";
+
 
 constexpr double COMP_RATE = 0.52; /* 0.52 is the default value, the users are allowed to tweak it
 									 in the command line */
@@ -774,7 +778,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	
 	//mix::generic::STL_Print<std::vector<node>>(_pq.begin(), _pq.end(), RPRINTC<char>); RET;
 
-	mix::generic::STL_Priority_Queue<node, std::vector<node>, std::less<node>>(PNodes, _pq, std::less<node>());
+	//mix::generic::STL_Priority_Queue<node, std::vector<node>, std::less<node>>(PNodes, _pq, std::less<node>());
 	// PNodes is now a frequency filtered nodes vector
 	
 	_pq.clear();
