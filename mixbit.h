@@ -1,10 +1,8 @@
 #pragma once
 /* Using License: GPL .v .3.0 */
 
-#ifndef HUFF_TREE
-	#ifndef REQUIRE_H
+#ifndef REQUIRE_H
 		#include <vector>	 
-	#endif
 #endif
 
 
@@ -1986,6 +1984,7 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
+
 
 
 
