@@ -81,7 +81,7 @@ inline void RET2() {
 
 #if !defined(MIX_TREE)
 #define MIX_TREE
-	#include "C:\PROJECTS\MIXUTIL\Libs\mixtree.h"
+	//#include "C:\PROJECTS\MIXUTIL\Libs\mixtree.h"
 #endif
 
 
@@ -207,11 +207,24 @@ struct iList2 {
 		{
 			iter_diff_t = _mLast - _t;
 			_v = *_t; _Min = (iter_diff_t > 1)? *(_t + 1) : *_t;
-			_Max = std::max(_Max, _Min);
+			_Max = std::max(_Max, _Min, std::less<tElem>());
 		}
-
-
 		return _Max;
+	}
+
+
+	_NODISCARD constexpr tElem _min() const noexcept
+	{
+		tElem _y = 0, _min = 0, _max = 0;
+		ptrdiff_t yter_diff_t = 0;
+
+		for (pointer _yt = (pointer)_mFirst; _yt < (pointer)_mLast; _yt++)
+		{
+			yter_diff_t = _mLast - _yt;
+			_y = *_yt; _min = (yter_diff_t > 1)? *(_yt + 1) : *_yt;
+			_min = std::min(_y, _min, std::less<tElem>());
+		}
+		return _min;
 	}
 
 	// overloaded assignment operator
@@ -247,7 +260,6 @@ struct iList2 {
 	
 private:
 	pointer_const _mFirst, _mLast;
-	std::vector<tElem> vec_elems;
 };
 
 
@@ -385,774 +397,924 @@ struct type_aspect_if< Ty, true >
 
 	
 
-namespace mix {
+	namespace mix {
 
-	namespace data {
+		namespace data {
 
-		class Bucket {
-		public:
-			Bucket() :_data("empty"), _msize(sizeof(Bucket)) {};
+			class Bucket {
+			public:
+				Bucket() :_data("empty"), _msize(sizeof(Bucket)) {};
 
-			Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
+				Bucket(std::string const& _uStr) :_data(_uStr), _msize(sizeof(Bucket)) {
 
-			};
+				};
 
-			// overloaded copy-ctor
-			Bucket(Bucket const& rBuck) : _msize(sizeof(rBuck)) {
-				if (this == &rBuck) return;
-				*this = rBuck;
-			}
-
-			~Bucket() {}
-
-			// assignment operator
-			const Bucket& operator= (const Bucket& rBuck) {
-				if (this == &rBuck) return *this;
-
-				this->_data = rBuck._data;
-				this->_msize = sizeof(rBuck);
-
-				return *this;
-			}
-
-			void set(std::string const& uStr) { _data = uStr; }
-
-			std::size_t const& size(void) const { return _msize; }
-			std::string const& data(void) const { return _data; }
-
-
-		private:
-			std::size_t _msize;
-			std::string _data;
-		};
-
-		
-	}; // end of data namespace
-
-
-	struct nullType {
-		using value_type = std::nullptr_t;
-
-		nullType(): _nan(nullptr) {};
-		nullType(std::nullptr_t const): _nan(std::nullptr_t()) {}
-		
-		_NODISCARD operator value_type() const {
-			return _nan;
-		}
-
-		_NODISCARD operator nullType() const noexcept {
-			return _nan;
-		}
-
-		_NODISCARD std::nullptr_t const operator()() const noexcept {
-			return _nan;
-		}
-		
-
-	private:
-		value_type _nan;
-	};
-	
-	
-	
-	
-	template <class P >
-	struct ptrTraits
-	{ 
-	private:
-		using type = typename std::remove_reference_t<P>; 
-		using rootType = std::conditional_t<std::is_pointer_v<type>, type*, type>;
-	public:
-		enum {
-			isPointer = _BOOLC(std::is_pointer_v<rootType>),
-			isReference = _BOOLC(std::is_reference_v<rootType>)
-		};
-	};
-
-	
-	
-	template <>
-	struct ptrTraits<std::nullptr_t> {
-		using type = nullType;
-	};
-
-
-	template < class P >
-	struct ptrTraits<P*> {
-		using type = typename P*;
-		using rootType = typename P;
-		enum {
-			isPointer = _BOOLC(std::is_pointer_v<type>), 
-			isConstant = _BOOLC(std::is_const_v<rootType>),
-			isArray = _BOOLC(std::is_array_v<type>)
-		};
-	};
-
-	
-	
-	template < class P , ptrdiff_t Nx >
-	struct ptrTraits<P[Nx]> {
-		using type = typename P[Nx];
-		using rootType = typename P;
-		enum { isPointer = _BOOLC(std::is_pointer_v<type>), 
-		       isConstant = _BOOLC(std::is_const_v<rootType>), 			 
-		       isArray = _BOOLC(std::is_array_v<type> ), count = Nx, 
-		       size = (unsigned int)(Nx * sizeof(P)) };
-	};
-	
-	
-	
-	template < class P >
-	struct ptrTraits<P[]> {
-		using type = typename P[];
-		using rootType = typename P;
-		enum { isPointer = _BOOLC(std::is_pointer_v<type>), 
-		       isConstant = _BOOLC(std::is_const_v<rootType> ), 
-		       isArray = _BOOLC(std::is_array_v<type>) };
-	};
-
-	
-	
-	template < class P >
-	struct ptrTraits<const P*> {
-		using type = const typename P*;
-		using rootType = const typename P;
-		enum { isPointer = _BOOLC(std::is_pointer_v<type> ), 
-		       isConstant = _BOOLC(std::is_const_v<rootType> ), 
-		       isArray = _BOOLC(std::is_array_v<type> ) };
-	};
-
-	
-	
-	template < class P >
-	struct ptrTraits<P* const> {
-		using type = typename P* const;
-		using rootType = typename P;
-		enum { isPointer = _BOOLC(std::is_pointer_v<type> ), 
-		       isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type> ) };
-	};
-	
-	
-	
-	template < class P >
-	struct ptrTraits<const P* const> {
-		using type = const typename P* const;
-		using rootType = const typename P;
-		enum {isPointer = _BOOLC(std::is_pointer_v<type> ), 
-		      isConstant = _BOOLC(std::is_const_v<rootType> ), 
-		      isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type> ) };
-	};
-	
-	
-	
-
-	template < class ret, class entity >
-	struct ptrTraits< ret(_cdecl entity::*)() > {
-		using type = ret(_cdecl entity::*)();
-		using resultType = typename ret;
-		using rootType = typename entity;
-		enum {isPointerToMember = _BOOLC(std::is_member_pointer_v<type> ) };
-	};
-	
-	
-	
-	template < class ret, class entity >
-	struct ptrTraits < ret(_cdecl entity::*)(...) > {
-		using type = ret(_cdecl entity::*)(...);
-		using resultType = typename ret;
-		using rootType = typename entity;
-		enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type> ) };
-	};
-	
-	
-	template< class ret, class entity, class... argsT >
-	struct ptrTraits < ret (_cdecl entity::*)(argsT&&...) > {
-		using type = ret (_cdecl entity::* )(argsT&&...);
-		using resultType = typename ret;
-		using rootType = typename entity;
-		enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type> ) };
-	};
-	
-	
-	
-	template < class ret >
-	struct ptrTraits< ret(_cdecl *)()> {
-		using type = ret(_cdecl *)();
-		using resultType = typename ret;
-		enum { isFunctionPointer = _BOOLC(true) };
-	};
-	
-	
-	template < class ret >
-	struct ptrTraits< ret(_cdecl*)(...) > {
-		using type = ret(_cdecl*)(...);
-		using resultType = typename ret;
-		enum { isFunctionPointer = _BOOLC(true) };
-	};
-	
-	
-	
-	template < class ret, class... ArgsT >
-	struct ptrTraits< ret(_cdecl*)(ArgsT&&...) > {
-		using type = ret(_cdecl*)(ArgsT&&...);
-		using resultType = typename ret;
-		enum { isFunctionPointer = _BOOLC(true) };
-	};
-	
-	
-	template < class P >
-	struct _init_p {
-
-		using value_type = typename std::remove_pointer_t<P>;
-		using list_iterator = typename iList<value_type>::iterator;
-		using LIST = iList<value_type>;
-
-		static inline void initialize(P _p, LIST const& _ls) {
-			for (list_iterator _it = _ls.begin(); _it != _ls.end(); _it++)
-				*_p++ = *_it;
-		}
-
-	};
-	
-	
-	/*
-	  this one is credited to: https://www.cppstories.com/2024/unroll-templates-lambdas-and-fold/
-	*/
-	namespace auto_looper
-	{
-		template <class Fn, std::size_t... I>
-		void loopsn(const Fn& _fn, const std::index_sequence<I...>&)
-		{
-			(_fn(I), ...);
-		}
-
-		template <const size_t N, class Fn >
-		void forLoop(const Fn& _fnc)
-		{
-			loopsn(_fnc,std::make_index_sequence<N>());
-		}
-
-	}
-
-
-	
-
-
-	
-	constexpr const bool isRange(int8_t const& _C, std::initializer_list<int8_t const> const& _vals) {
-		bool isElem = false;
-
-		for (auto const& _c : _vals) {
-			if (_C == _c) {
-				isElem = true; break;
-			}
-
-		};
-		return isElem;
-	}
-
-	
-	
-	
-	namespace ptr_type {
-
-		// Deleter Object for UNIQUE_ARRAY<Ty>
-		template < class Ty >
-		struct unique_array_del;
-
-
-		template < class Ty >
-		struct unique_array_del<Ty*>  // Ty = Ty*
-		{
-			bool operator()(Ty* _uty) {
-				static_assert(sizeof(_uty) > 0, "unknown parameter type for '_uty' ");
-				delete[] _uty;
-				return(nullptr == _uty);
-			}
-		};
-
-
-		//Deleter Object for SHARED_ARRAY<Ty>
-
-		template < class Ty >
-		struct shared_array_del {};
-
-		template < class Ty >
-		struct shared_array_del<Ty*> {
-			bool operator()(Ty* _uty) {
-				static_assert(sizeof(_uty) > 0, "invalid parameter type for '_uty' ");
-				delete[] _uty;
-				return(nullptr == _uty);
-			}
-		};
-
-
-		
-
-		// a single unique pointer type
-		template < class Ty, class Del1X = std::default_delete<Ty> >
-		using uniqueP = std::unique_ptr<Ty, Del1X>;
-
-		// a single shared pointer type
-		template < class Ty >
-		using shareP = std::shared_ptr<Ty>;
-
-		// a shared pointer to array
-		template <class Ty >
-		using SHARED_ARRAY = std::shared_ptr<Ty[]>;
-
-		// a unique pointer to array
-		template <class Ty, class DelX = std::default_delete<Ty[]> >
-		using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
-		
-		template < class _Ty >
-		using S_ARRAY = std::shared_ptr<_Ty[]>;
-
-		template< class _Ty, class _Dx = std::default_delete<_Ty[]> >
-		using U_ARRAY = std::unique_ptr<_Ty[], decltype(_Dx()) >;
-		
-		// wrapper of std::make_unique<Ty>
-		template < class _Ty, class... _Types >
-		constexpr mix::ptr_type::uniqueP<_Ty> _MAKE_U(_Types&&... aArgs) {
-			return std::make_unique<_Ty>(aArgs...);
-		}
-
-		// wrapper of std::make_shared<Ty>
-		template < class _Ty, class... _Types >
-		constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
-			return std::make_shared<_Ty>(aArgs...);
-		}
-
-		
-		
-	} // end of ptr_type namespace
-
-
-
-
-	namespace smart_ptr {
-
-		// a single unique factory
-
-		template < class Ty, class delTy = std::default_delete<Ty>, class... Types >
-		constexpr ptr_type::uniqueP<Ty, delTy> up_create(Types&&... _u) {
-			return std::make_unique<Ty>((_u)...);
-		}
-
-		// a single shared factory with default deleter
-		template < class Ty, class... Types >
-		constexpr const ptr_type::shareP<Ty> sp_create(Types&&... _a) {
-			return std::make_shared<Ty>((_a)...);
-		}
-
-		// overloaded of a single shared factory with user custom deleter
-		template < class Ty, class TyDel = std::default_delete<Ty>, class... Types >
-		constexpr const ptr_type::shareP<Ty> sp_create(int, Types&&... _a) {
-			return std::shared_ptr<Ty>(new Ty((_a)...), TyDel());
-		}
-
-		// unique array factory
-		template < class Ty, class DelX = std::default_delete<Ty[]>, std::size_t SZ = 1 >
-		class unique_array_ptr
-		{
-		public:
-			constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
-
-			constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& create(std::size_t const SIZE = SZ) {
-				_msize = SIZE;
-				Ty* _ptr = new Ty[SIZE];
-				_mpUnique.reset(_ptr);
-				_ptr = nullptr;
-				return std::move(_mpUnique);
-			}
-
-			constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& initialize(std::initializer_list<Ty> const& ls)
-			{
-				std::size_t k = 0;
-				ptr_type::UNIQUE_ARRAY<Ty, DelX>&& unp = create(_msize);
-
-				for (auto const& v : ls) {
-					unp[k++] = v;
-					if (k > _msize) break;
+				// overloaded copy-ctor
+				Bucket(Bucket const& rBuck) : _msize(sizeof(rBuck)) {
+					if (this == &rBuck) return;
+					*this = rBuck;
 				}
 
-				return std::move(unp);
-			}
+				~Bucket() {}
 
-		private:
-			std::size_t _msize;
-			ptr_type::UNIQUE_ARRAY<Ty, DelX> _mpUnique;
-		};
+				// assignment operator
+				const Bucket& operator= (const Bucket& rBuck) {
+					if (this == &rBuck) return *this;
 
+					this->_data = rBuck._data;
+					this->_msize = sizeof(rBuck);
 
-		// shared array factory
-		template <class Ty, class DelY = std::default_delete<Ty[]> >
-		struct Alloc_Share
-		{
-			constexpr Alloc_Share() : shr(nullptr) {};
+					return *this;
+				}
 
-			constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ](), DelY()) {}
+				void set(std::string const& uStr) { _data = uStr; }
 
-			constexpr Alloc_Share<Ty>&& shared_create(std::size_t const SZ) {
-				return std::forward<Alloc_Share<Ty>&&>(Alloc_Share<Ty>(SZ));
-			}
+				std::size_t const& size(void) const { return _msize; }
+				std::string const& data(void) const { return _data; }
 
 
-			template < std::size_t SZ >
-			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
-			{
-				va_list vl;
-				va_start(vl, init);
-
-				for (std::size_t i = init; i < SZ; i++)
-					shr[i] = va_arg(vl, Ty);
-
-				va_end(vl);
-
-				return shr;
-			}
-
-			// overloaded ' Alloc_Share<Ty>::initialize() ' by std::initializer_list<Ty> parameter type.
-			constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
-			{
-				std::size_t i = 0;
-
-				for (auto const& v : lst)
-					shr[i++] = v;
-
-				return shr;
+			private:
+				std::size_t _msize;
+				std::string _data;
 			};
 
-			const ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
 
-			const ptr_type::SHARED_ARRAY<Ty>& operator()() {
-				return get_shared();
+		}; // end of data namespace
+
+
+		struct nullType {
+			using value_type = std::nullptr_t;
+
+			nullType() : _nan(nullptr) {};
+			nullType(std::nullptr_t const) : _nan(std::nullptr_t()) {}
+
+			_NODISCARD operator value_type() const {
+				return _nan;
 			}
+
+			_NODISCARD operator nullType() const noexcept {
+				return _nan;
+			}
+
+			_NODISCARD std::nullptr_t const operator()() const noexcept {
+				return _nan;
+			}
+
 
 		private:
-			ptr_type::SHARED_ARRAY<Ty> shr;
-
+			value_type _nan;
 		};
 
 
 
-	} // end of smart_ptr namespace
 
-	// an iterator for the print function of any primitive types.
-	template < class P >
-	void FOR_EACH_PRINT(P& begin, P& end) {
-	   for (; begin != end; begin++)
-		std::cout << *begin << ", ";
-		
-	};
-
-	// an iterator for the print function of any Buckets' types.
-	template <>
-	void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket*& begin, mix::data::Bucket*& end) {
-		for (; begin != end; begin++)
-			std::cout << begin->data() << ", ";
-	}
-
-
-
-	// a printer function for any standard primitive types
-	template <class PTR >
-	constexpr void smart_print(PTR const& begin, PTR const& end)
-	{
-		FOR_EACH_PRINT(begin, end);
-	}
-
-	 
-	// an overloaded printer function for any Buckets' types
-	template <mix::data::Bucket*>
-	constexpr void smart_print(const mix::data::Bucket*& begin, const mix::data::Bucket*& end)
-	{
-		FOR_EACH_PRINT(begin, end);
-	}
-
-
-
-	namespace generic
-	{
-		// comparer functor for int
-		struct numLess
+		template <class P >
+		struct ptrTraits
 		{
-			const bool operator()(const intmax_t& _1st, const intmax_t& _2nd)
-			{
-				return (_1st < _2nd);
-			}
+		private:
+			using type = typename std::remove_reference_t<P>;
+			using rootType = std::conditional_t<std::is_pointer_v<type>, type*, type>;
+		public:
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<rootType>),
+				isReference = _BOOLC(std::is_reference_v<rootType>)
+			};
 		};
 
-
-		// comparer functor for any type T
-		template < class T >
-		struct NLess
-		{
-			const bool operator()(const T& _1st, const T& _2nd)
-			{
-				return (_1st < _2nd);
-			}
-		};
-
-
-		template < class T >
-		struct NGreat
-		{
-			const bool operator()(const T& _1st, const T& _2nd)
-			{
-				return (_1st > _2nd);
-			}
-		};
 
 
 		template <>
-		struct NLess<char>
-		{
-			const bool operator()(const char& _1st, const char& _2nd)
-			{
-				return (_1st < _2nd);
-			}
+		struct ptrTraits<std::nullptr_t> {
+			using type = nullType;
 		};
 
 
-		template <>
-		struct NGreat<char>
-		{
-			const bool operator()(const char& _1st, const char& _2nd)
-			{
-				return (_1st > _2nd);
-			}
-		};
-
-
-		// display the content of any STL-like container
-		template <class _STL, class v_type = typename _STL::value_type,
-			class _Iter = typename _STL::iterator, class _Pointer = _Iter, class _FnPrint >
-		static inline void STL_Print(const _Iter& _Begin, const _Iter& _End, const _FnPrint& _printFn)
-		{
-			const _Iter _ptr0 = _Begin, _ptr1 = _End;
-
-			if (_ptr0 < _Begin || _ptr1 > _End) return;
-			if (_ptr0 > _ptr1) return;
-
-			int _cnt = 0;
-			for (_Iter _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
-			{
-				_printFn((v_type)*_p);
-				++_cnt;
-				if (_cnt > 79) RET;
-			}
-		}
-
-
-		// reverses the contents of any STL-like container
-		template < class _Ty, class _STL = _Ty, class _FwdItr = typename _STL::iterator,
-			class _BackItr = typename _STL::reverse_iterator, class _iType = typename _FwdItr::value_type >
-		static inline void STL_Content_Reverse(const _Ty& _Conty)
-		{
-			const size_t max_elems = _Conty.size();
-			_iType* _pType = new _iType[max_elems];
-			size_t _x = 0;
-
-			for (_BackItr& rItr = (_BackItr&)_Conty.rbegin(); rItr != (_BackItr&)_Conty.rend(); rItr++)
-				if (_x < max_elems) _pType[_x++] = *rItr;
-
-			_x = 0;
-
-			for (_FwdItr& rFwd = (_FwdItr&)_Conty.begin(); rFwd != (_FwdItr&)_Conty.end(); rFwd++)
-				*rFwd = _pType[_x++];
-
-
-			delete[] _pType;
-			_pType = mix::nullType();
-		}
-
-		// prints out the content of any buffer
-		template <typename _T, class _FnPrint>
-		static inline void BUFF_Print(_T* _xBuffer, const std::size_t& _maxBuf, const _FnPrint& _printFn)
-		{
-
-			for (std::size_t _zi = 0; _zi < _maxBuf; _zi++)
-				_printFn(((_T*)_xBuffer)[_zi]);
-		}
-
-
-		// fast sort algorithm performs on data elements in the Vector
-		template < class _Iter, class _Other = typename _Iter::value_type, class _Pred >
-		inline void fast_sort(const _Iter& _First, const _Iter& _End,
-			_Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
-		{
-			if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
-			if (_First > _End) return;
-
-			const std::ptrdiff_t _MaxSz = (_maxElems > 0) ? _maxElems : (_End - _First) - 1;
-
-			_Other _vTemp;
-
-			for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
-			{
-				for (_Iter j = _First; j < _End; j++)
-				{
-					while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
-					{
-						++j;
-					}
-
-					while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
-					{
-						_vTemp = *(j + 1);
-						*(j + 1) = *j;
-
-						*j = _vTemp;
-						++j;
-					}
-				}
-			}
-		}
-
-
-		// Use threading processes to sort each subdivided section of a data set.
-		template <class _Iter, class _Pred >
-		inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double& _dvRatio,
-			_Pred _fCmp, const ptrdiff_t _maxElem = 0)
-		{
-
-			if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
-			if (_Begin > _End) return;
-
-			const std::ptrdiff_t _maxSz = (_maxElem > 0) ? _maxElem : (_End - _Begin) - 1;
-
-			if (_maxSz < 10) {
-				fast_sort(_Begin, _End, _fCmp, _maxSz);
-				return;
-			}
-
-			const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
-			const std::ptrdiff_t _nDivs = (std::ptrdiff_t)(_maxSz / _dvSz) - 1;
-
-			_Iter _L = _Begin, _R = _L + (_dvSz - 1);
-
-			mix::ptr_type::U_ARRAY<std::thread> _uT = MK_U_ARRAY<std::thread>(_nDivs);
-
-			for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
-			{
-				_uT[_t] = std::thread{ [_L, _R, _dvSz, &_fCmp]() {
-					fast_sort(_L, _R, _fCmp, _dvSz);
-				  } };
-
-				_uT[_t].join();
-				_L = _R;
-				_R = _R + (_dvSz - 1);
-				if ((_End - _R) <= 1) goto cleanUp;
-			}
-
-		cleanUp:
-			fast_sort(_Begin, _End, _fCmp, _maxSz);
-			_uT.reset(nullptr);
-			_uT.release();
-		}
-
-		// NB: The content in the _STL should not be in an exact sorted order (unsorted) to produce the desired outcome.
-		template < class _T, class _STL, class _Greater, class _Equal >
-		auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Greater _fCmp) -> decltype(_T())
-			{
-				using _Iter = typename _STL::iterator;
-				_Equal _fCmpEqu = _Equal();
-				junk_store<_T> _is_pushed = { 0,false };
-				_T _vt = 0, _vT = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
-				iList2<_T> _internal_list;
-				const _Iter& _Begin = (_Iter&)Source_List.begin(), & _End = (_Iter&)Source_List.end();
-
-				Result_List = {}; _internal_list = {};
-
-				for (_Iter& _it = (_Iter&)_Begin; _it < (_Iter&)_End; _it++)
-				{
-					iter_diff_p = _End - _it;
-					_vt = *_it; _vT = (iter_diff_p > 1) ? *(_it + 1) : _vt;
-
-					_vMax = _fCmp(_vt, _vT) ? _vt :
-						_fCmpEqu(_vt, _vT) ? _vT : _vt;
-
-					if (_vMax == _is_pushed._value)
-					{
-						_is_pushed = { 0,false };
-						continue;
-					}
-
-					_is_pushed._value = _vMax;
-					_is_pushed._saved = true;
-					Result_List.push_back(_is_pushed._value);
-				}
-				/*
-					mix::generic::STL_Print<std::vector<val_type>>(_internal_vector.begin(), _internal_vector.end(), RPRINTC<val_type>);
-					RET;
-				*/
-				_internal_list = Result_List;
-				return _internal_list._max();
+		template < class P >
+		struct ptrTraits<P*> {
+			using type = typename P*;
+			using rootType = typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstant = _BOOLC(std::is_const_v<rootType>),
+				isArray = _BOOLC(std::is_array_v<type>)
 			};
+		};
 
+
+
+		template < class P, ptrdiff_t Nx >
+		struct ptrTraits<P[Nx]> {
+			using type = typename P[Nx];
+			using rootType = typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstant = _BOOLC(std::is_const_v<rootType>),
+				isArray = _BOOLC(std::is_array_v<type>), count = Nx,
+				size = (unsigned int)(Nx * sizeof(P))
+			};
+		};
+
+
+
+		template < class P >
+		struct ptrTraits<P[]> {
+			using type = typename P[];
+			using rootType = typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstant = _BOOLC(std::is_const_v<rootType>),
+				isArray = _BOOLC(std::is_array_v<type>)
+			};
+		};
+
+
+
+		template < class P >
+		struct ptrTraits<const P*> {
+			using type = const typename P*;
+			using rootType = const typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstant = _BOOLC(std::is_const_v<rootType>),
+				isArray = _BOOLC(std::is_array_v<type>)
+			};
+		};
+
+
+
+		template < class P >
+		struct ptrTraits<P* const> {
+			using type = typename P* const;
+			using rootType = typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type>)
+			};
+		};
+
+
+
+		template < class P >
+		struct ptrTraits<const P* const> {
+			using type = const typename P* const;
+			using rootType = const typename P;
+			enum {
+				isPointer = _BOOLC(std::is_pointer_v<type>),
+				isConstant = _BOOLC(std::is_const_v<rootType>),
+				isConstantPointer = true, isArray = _BOOLC(std::is_array_v<type>)
+			};
+		};
+
+
+
+
+		template < class ret, class entity >
+		struct ptrTraits< ret(_cdecl entity::*)() > {
+			using type = ret(_cdecl entity::*)();
+			using resultType = typename ret;
+			using rootType = typename entity;
+			enum { isPointerToMember = _BOOLC(std::is_member_pointer_v<type>) };
+		};
+
+
+
+		template < class ret, class entity >
+		struct ptrTraits < ret(_cdecl entity::*)(...) > {
+			using type = ret(_cdecl entity::*)(...);
+			using resultType = typename ret;
+			using rootType = typename entity;
+			enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type>) };
+		};
+
+
+		template< class ret, class entity, class... argsT >
+		struct ptrTraits < ret(_cdecl entity::*)(argsT&&...) > {
+			using type = ret(_cdecl entity::*)(argsT&&...);
+			using resultType = typename ret;
+			using rootType = typename entity;
+			enum { isPointerToMember = _BOOLC(std::is_member_function_pointer_v<type>) };
+		};
+
+
+
+		template < class ret >
+		struct ptrTraits< ret(_cdecl*)()> {
+			using type = ret(_cdecl*)();
+			using resultType = typename ret;
+			enum { isFunctionPointer = _BOOLC(true) };
+		};
+
+
+		template < class ret >
+		struct ptrTraits< ret(_cdecl*)(...) > {
+			using type = ret(_cdecl*)(...);
+			using resultType = typename ret;
+			enum { isFunctionPointer = _BOOLC(true) };
+		};
+
+
+
+		template < class ret, class... ArgsT >
+		struct ptrTraits< ret(_cdecl*)(ArgsT&&...) > {
+			using type = ret(_cdecl*)(ArgsT&&...);
+			using resultType = typename ret;
+			enum { isFunctionPointer = _BOOLC(true) };
+		};
+
+
+		template < class P >
+		struct _init_p {
+
+			using value_type = typename std::remove_pointer_t<P>;
+			using list_iterator = typename iList<value_type>::iterator;
+			using LIST = iList<value_type>;
+
+			static inline void initialize(P _p, LIST const& _ls) {
+				for (list_iterator _it = _ls.begin(); _it != _ls.end(); _it++)
+					*_p++ = *_it;
+			}
+
+		};
 
 
 		/*
-		 acts just like the std::priority_queue<_T, _STL, _Pred >
+		  this one is credited to: https://www.cppstories.com/2024/unroll-templates-lambdas-and-fold/
 		*/
-		template < class _T, class _STL = std::vector<_T>, class _Pred = std::less<typename _STL::value_type > >
-		struct STL_Priority_Queue
+		namespace auto_looper
 		{
-			using value_type = typename _STL::value_type;
-			using reference = typename _STL::value_type&;
-			using pointer = typename _STL::value_type*;
-			using const_pointer = typename _STL::iterator::pointer;
-			using Iter = typename _STL::iterator;
-
-			inline void push(value_type&& _item)
+			template <class Fn, std::size_t... I>
+			void loopsn(const Fn& _fn, const std::index_sequence<I...>&)
 			{
-				_Cont.push_back(_item);
-				push_heap(_Cont.begin(), _Cont.end(), _fCmp);
-			}
-			
-			inline const value_type& top() { return _Cont.front(); }
-
-			inline const value_type&& pop()
-			{
-				const size_t max_elems = _Cont.size();
-				value_type tmp_v = _Cont[max_elems - 1];
-				_Cont.pop_back();
-				return value_type(tmp_v);
+				(_fn(I), ...);
 			}
 
-			inline bool&& empty() const { return bool(_Cont.empty()); }
+			template <const size_t N, class Fn >
+			void forLoop(const Fn& _fnc)
+			{
+				loopsn(_fnc, std::make_index_sequence<N>());
+			}
 
-			inline size_t&& size() const { return _Cont.size(); }
+		}
+
+
+
+
+
+
+		constexpr const bool isRange(int8_t const& _C, std::initializer_list<int8_t const> const& _vals) {
+			bool isElem = false;
+
+			for (auto const& _c : _vals) {
+				if (_C == _c) {
+					isElem = true; break;
+				}
+
+			};
+			return isElem;
+		}
+
+
+
+
+		namespace ptr_type {
+
+			// Deleter Object for UNIQUE_ARRAY<Ty>
+			template < class Ty >
+			struct unique_array_del;
+
+
+			template < class Ty >
+			struct unique_array_del<Ty*>  // Ty = Ty*
+			{
+				bool operator()(Ty* _uty) {
+					static_assert(sizeof(_uty) > 0, "unknown parameter type for '_uty' ");
+					delete[] _uty;
+					return(nullptr == _uty);
+				}
+			};
+
+
+			//Deleter Object for SHARED_ARRAY<Ty>
+
+			template < class Ty >
+			struct shared_array_del {};
+
+			template < class Ty >
+			struct shared_array_del<Ty*> {
+				bool operator()(Ty* _uty) {
+					static_assert(sizeof(_uty) > 0, "invalid parameter type for '_uty' ");
+					delete[] _uty;
+					return(nullptr == _uty);
+				}
+			};
+
+
+
+
+			// a single unique pointer type
+			template < class Ty, class Del1X = std::default_delete<Ty> >
+			using uniqueP = std::unique_ptr<Ty, Del1X>;
+
+			// a single shared pointer type
+			template < class Ty >
+			using shareP = std::shared_ptr<Ty>;
+
+			// a shared pointer to array
+			template <class Ty >
+			using SHARED_ARRAY = std::shared_ptr<Ty[]>;
+
+			// a unique pointer to array
+			template <class Ty, class DelX = std::default_delete<Ty[]> >
+			using UNIQUE_ARRAY = std::unique_ptr<Ty[], decltype(DelX()) >;
+
+			template < class _Ty >
+			using S_ARRAY = std::shared_ptr<_Ty[]>;
+
+			template< class _Ty, class _Dx = std::default_delete<_Ty[]> >
+			using U_ARRAY = std::unique_ptr<_Ty[], decltype(_Dx()) >;
+
+			// wrapper of std::make_unique<Ty>
+			template < class _Ty, class... _Types >
+			constexpr mix::ptr_type::uniqueP<_Ty> _MAKE_U(_Types&&... aArgs) {
+				return std::make_unique<_Ty>(aArgs...);
+			}
+
+			// wrapper of std::make_shared<Ty>
+			template < class _Ty, class... _Types >
+			constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
+				return std::make_shared<_Ty>(aArgs...);
+			}
+
+
+
+		} // end of ptr_type namespace
+
+
+
+
+		namespace smart_ptr {
+
+			// a single unique factory
+
+			template < class Ty, class delTy = std::default_delete<Ty>, class... Types >
+			constexpr ptr_type::uniqueP<Ty, delTy> up_create(Types&&... _u) {
+				return std::make_unique<Ty>((_u)...);
+			}
+
+			// a single shared factory with default deleter
+			template < class Ty, class... Types >
+			constexpr const ptr_type::shareP<Ty> sp_create(Types&&... _a) {
+				return std::make_shared<Ty>((_a)...);
+			}
+
+			// overloaded of a single shared factory with user custom deleter
+			template < class Ty, class TyDel = std::default_delete<Ty>, class... Types >
+			constexpr const ptr_type::shareP<Ty> sp_create(int, Types&&... _a) {
+				return std::shared_ptr<Ty>(new Ty((_a)...), TyDel());
+			}
+
+			// unique array factory
+			template < class Ty, class DelX = std::default_delete<Ty[]>, std::size_t SZ = 1 >
+			class unique_array_ptr
+			{
+			public:
+				constexpr unique_array_ptr() : _msize(SZ), _mpUnique{ nullptr } {}
+
+				constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& create(std::size_t const SIZE = SZ) {
+					_msize = SIZE;
+					Ty* _ptr = new Ty[SIZE];
+					_mpUnique.reset(_ptr);
+					_ptr = nullptr;
+					return std::move(_mpUnique);
+				}
+
+				constexpr ptr_type::UNIQUE_ARRAY<Ty, DelX>&& initialize(std::initializer_list<Ty> const& ls)
+				{
+					std::size_t k = 0;
+					ptr_type::UNIQUE_ARRAY<Ty, DelX>&& unp = create(_msize);
+
+					for (auto const& v : ls) {
+						unp[k++] = v;
+						if (k > _msize) break;
+					}
+
+					return std::move(unp);
+				}
 
 			private:
-				_Pred _fCmp;
-				_STL _Cont;
+				std::size_t _msize;
+				ptr_type::UNIQUE_ARRAY<Ty, DelX> _mpUnique;
+			};
 
-			protected:
-				inline void push_heap(const Iter& _begin, const Iter& _end, _Pred _Comp)
+
+			// shared array factory
+			template <class Ty, class DelY = std::default_delete<Ty[]> >
+			struct Alloc_Share
+			{
+				constexpr Alloc_Share() : shr(nullptr) {};
+
+				constexpr Alloc_Share(std::size_t const SZ) : shr(new Ty[SZ](), DelY()) {}
+
+				constexpr Alloc_Share<Ty>&& shared_create(std::size_t const SZ) {
+					return std::forward<Alloc_Share<Ty>&&>(Alloc_Share<Ty>(SZ));
+				}
+
+
+				template < std::size_t SZ >
+				constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::size_t const init, ...)
 				{
-					ptrdiff_t x_diff_t = 0;
-					value_type x_tmp, x_right;
-					const size_t max_size = _end - _begin;
+					va_list vl;
+					va_start(vl, init);
 
-					for (size_t _sz = 0; _sz < max_size; _sz++)
+					for (std::size_t i = init; i < SZ; i++)
+						shr[i] = va_arg(vl, Ty);
+
+					va_end(vl);
+
+					return shr;
+				}
+
+				// overloaded ' Alloc_Share<Ty>::initialize() ' by std::initializer_list<Ty> parameter type.
+				constexpr const ptr_type::SHARED_ARRAY<Ty>& initialize(std::initializer_list<Ty> const& lst)
+				{
+					std::size_t i = 0;
+
+					for (auto const& v : lst)
+						shr[i++] = v;
+
+					return shr;
+				};
+
+				const ptr_type::SHARED_ARRAY<Ty>& get_shared() { return shr; }
+
+				const ptr_type::SHARED_ARRAY<Ty>& operator()() {
+					return get_shared();
+				}
+
+			private:
+				ptr_type::SHARED_ARRAY<Ty> shr;
+
+			};
+
+
+
+		} // end of smart_ptr namespace
+
+		// an iterator for the print function of any primitive types.
+		template < class P >
+		void FOR_EACH_PRINT(P& begin, P& end) {
+			for (; begin != end; begin++)
+				std::cout << *begin << ", ";
+
+		};
+
+		// an iterator for the print function of any Buckets' types.
+		template <>
+		void FOR_EACH_PRINT<mix::data::Bucket*>(mix::data::Bucket*& begin, mix::data::Bucket*& end) {
+			for (; begin != end; begin++)
+				std::cout << begin->data() << ", ";
+		}
+
+
+
+		// a printer function for any standard primitive types
+		template <class PTR >
+		constexpr void smart_print(PTR const& begin, PTR const& end)
+		{
+			FOR_EACH_PRINT(begin, end);
+		}
+
+
+		// an overloaded printer function for any Buckets' types
+		template <mix::data::Bucket*>
+		constexpr void smart_print(const mix::data::Bucket*& begin, const mix::data::Bucket*& end)
+		{
+			FOR_EACH_PRINT(begin, end);
+		}
+
+
+
+		namespace generic
+		{
+			// comparer functor for int
+			struct numLess
+			{
+				const bool operator()(const intmax_t& _1st, const intmax_t& _2nd)
+				{
+					return (_1st < _2nd);
+				}
+			};
+
+			struct numGreater
+			{
+				const bool operator() (const int64_t& _a, const int64_t& _b)
+				{
+					return (_a > _b);
+				}
+			};
+
+			struct numEqual
+			{
+				const bool operator() (const int64_t& _x, const int64_t& _y)
+				{
+					return (_x == _y);
+				}
+			};
+
+
+			// comparer functor for any type T
+			template < class T >
+			struct NLess
+			{
+				const bool operator()(const T& _1st, const T& _2nd)
+				{
+					return (_1st < _2nd);
+				}
+			};
+
+
+			template < class T >
+			struct NGreat
+			{
+				const bool operator()(const T& _1st, const T& _2nd)
+				{
+					return (_1st > _2nd);
+				}
+			};
+
+
+			template < class T >
+			struct NEqual
+			{
+				const bool operator() (const T& _t1, const T& _t2)
+				{
+					return (_t1 == _t2);
+				}
+			};
+
+
+			template <>
+			struct NLess<char>
+			{
+				const bool operator()(const char& _1st, const char& _2nd)
+				{
+					return (_1st < _2nd);
+				}
+			};
+
+
+			template <>
+			struct NGreat<char>
+			{
+				const bool operator()(const char& _1st, const char& _2nd)
+				{
+					return (_1st > _2nd);
+				}
+			};
+
+
+			template <>
+			struct NEqual<char>
+			{
+				const bool operator() (const char& _c1, const char& _c2)
+				{
+					return (_c1 == _c2);
+				}
+			};
+
+
+			// display the content of any STL-like container
+			template <class _STL, class v_type = typename _STL::value_type,
+				class _Iter = typename _STL::iterator, class _Pointer = _Iter, class _FnPrint >
+			static inline void STL_Print(const _Iter& _Begin, const _Iter& _End, const _FnPrint& _printFn)
+			{
+				const _Iter _ptr0 = _Begin, _ptr1 = _End;
+
+				if (_ptr0 < _Begin || _ptr1 > _End) return;
+				if (_ptr0 > _ptr1) return;
+
+				int _cnt = 0;
+				for (_Iter _p = _ptr0; _p < _ptr1; _p++, ++_cnt)
+				{
+					_printFn((v_type)*_p);
+					++_cnt;
+					if (_cnt > 79) RET;
+				}
+			}
+
+
+			// reverses the contents of any STL-like container
+			template < class _Ty, class _STL = _Ty, class _FwdItr = typename _STL::iterator,
+				class _BackItr = typename _STL::reverse_iterator, class _iType = typename _FwdItr::value_type >
+			static inline void STL_Content_Reverse(const _Ty& _Conty)
+			{
+				const size_t max_elems = _Conty.size();
+				_iType* _pType = new _iType[max_elems];
+				size_t _x = 0;
+
+				for (_BackItr& rItr = (_BackItr&)_Conty.rbegin(); rItr != (_BackItr&)_Conty.rend(); rItr++)
+					if (_x < max_elems) _pType[_x++] = *rItr;
+
+				_x = 0;
+
+				for (_FwdItr& rFwd = (_FwdItr&)_Conty.begin(); rFwd != (_FwdItr&)_Conty.end(); rFwd++)
+					*rFwd = _pType[_x++];
+
+
+				delete[] _pType;
+				_pType = mix::nullType();
+			}
+
+			// prints out the content of any buffer
+			template <typename _T, class _FnPrint>
+			static inline void BUFF_Print(_T* _xBuffer, const std::size_t& _maxBuf, const _FnPrint& _printFn)
+			{
+
+				for (std::size_t _zi = 0; _zi < _maxBuf; _zi++)
+					_printFn(((_T*)_xBuffer)[_zi]);
+			}
+
+
+			// fast sort algorithm performs on data elements in the Vector
+			template < class _Iter, class _Other = typename _Iter::value_type, class _Pred >
+			inline void fast_sort(const _Iter& _First, const _Iter& _End,
+				_Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
+			{
+				if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
+				if (_First > _End) return;
+
+				const std::ptrdiff_t _MaxSz = (_maxElems > 0) ? _maxElems : (_End - _First) - 1;
+
+				_Other _vTemp;
+
+				for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
+				{
+					for (_Iter j = _First; j < _End; j++)
 					{
-						for (Iter _t = (Iter)_begin; _t < (Iter)_end; _t++)
+						while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
 						{
-							x_diff_t = _end - _t;
-							x_right = (x_diff_t > 1) ? *(_t + 1) : *_t;
+							++j;
+						}
 
-							if (_Comp(*_t, x_right))
-							{
-								x_tmp = *_t;
-								*(_t + 1) = x_tmp;
-								*_t = x_right;
-							}
+						while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
+						{
+							_vTemp = *(j + 1);
+							*(j + 1) = *j;
+
+							*j = _vTemp;
+							++j;
 						}
 					}
 				}
-		};
+			}
+
+
+			// Use threading processes to sort each subdivided section of a data set.
+			template <class _Iter, class _Pred >
+			inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double& _dvRatio,
+				_Pred _fCmp, const ptrdiff_t _maxElem = 0)
+			{
+
+				if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
+				if (_Begin > _End) return;
+
+				const std::ptrdiff_t _maxSz = (_maxElem > 0) ? _maxElem : (_End - _Begin) - 1;
+
+				if (_maxSz < 10) {
+					fast_sort(_Begin, _End, _fCmp, _maxSz);
+					return;
+				}
+
+				const std::ptrdiff_t _dvSz = (std::ptrdiff_t)(_dvRatio * _maxSz);
+				const std::ptrdiff_t _nDivs = (std::ptrdiff_t)(_maxSz / _dvSz) - 1;
+
+				_Iter _L = _Begin, _R = _L + (_dvSz - 1);
+
+				mix::ptr_type::U_ARRAY<std::thread> _uT = MK_U_ARRAY<std::thread>(_nDivs);
+
+				for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
+				{
+					_uT[_t] = std::thread{ [_L, _R, _dvSz, &_fCmp]() {
+						fast_sort(_L, _R, _fCmp, _dvSz);
+					  } };
+
+					_uT[_t].join();
+					_L = _R;
+					_R = _R + (_dvSz - 1);
+					if ((_End - _R) <= 1) goto cleanUp;
+				}
+
+			cleanUp:
+				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				_uT.reset(nullptr);
+				_uT.release();
+			}
+
+
+			/*
+			 The elements in the '_Source_List' should maintain its random ordering position to produce the desired outcome.
+			*/
+			template < class _T, class _STL, class _Pred = std::less<_T> >
+			auto STL_Min_Value = [](_STL& _Result_List, const _STL& _Source_List, _Pred _fCmp = std::less<_T>() )
+				{
+					using _Iter = typename _STL::iterator;
+					junk_store<_T> _PUSHED = { 0, false };
+					_T _yt = 0, _yT = 0, _yMin = 0; ptrdiff_t iter_diff_yt = 0;
+					iList2<_T> _internal_;
+					const _Iter& _First = (_Iter&)_Source_List.begin(), &_Last = (_Iter&)_Source_List.end();
+
+					_Result_List = {}; _internal_ = {};
+
+					for (_Iter& _It = (_Iter&)_First; _It < (_Iter&)_Last; _It++)
+					{
+						iter_diff_yt = _Last - _It;
+						_yt = *_It; _yT = (iter_diff_yt > 1)? *(_It + 1) : _yt;
+						_yMin = std::min(_yt, _yT, _fCmp);
+
+						if (_yMin == _PUSHED._value)
+						{
+							_PUSHED = { 0, false };
+							continue;
+						}
+
+						_PUSHED._value = _yMin;
+						_PUSHED._saved = true;
+						_Result_List.push_back(_PUSHED._value);
+					}
+
+					_internal_ = _Result_List;
+					/*
+						mix::generic::STL_Print<std::vector<_T>>(_Result_List.begin(), _Result_List.end(), RPRINTC<_T>);
+						RET;
+					*/
+					return _internal_._min();
+				};
+
+
+
+			/*
+			 The elements in the 'Source_List' should maintain its random ordering position to produce the desired outcome.
+			*/
+			template < class _T, class _STL, class _Pred = std::less<_T>>
+			auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp = std::less<_T>())
+				{
+					using _Iter = typename _STL::iterator;
+					junk_store<_T> _is_pushed = { 0,false };
+					_T _vt = 0, _vT = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
+					iList2<_T> _internal_list;
+					const _Iter& _Begin = (_Iter&)Source_List.begin(), & _End = (_Iter&)Source_List.end();
+
+					Result_List = {}; _internal_list = {};
+
+					for (_Iter& _it = (_Iter&)_Begin; _it < (_Iter&)_End; _it++)
+					{
+						iter_diff_p = _End - _it;
+						_vt = *_it; _vT = (iter_diff_p > 1)? *(_it + 1) : _vt;
+
+						_vMax = std::max(_vt, _vT, _fCmp);
+
+						if (_vMax == _is_pushed._value)
+						{
+							_is_pushed = { 0,false };
+							continue;
+						}
+
+						_is_pushed._value = _vMax;
+						_is_pushed._saved = true;
+						Result_List.push_back(_is_pushed._value);
+					}
+					/*
+						mix::generic::STL_Print<std::vector<_T>>(Result_List.begin(), Result_List.end(), RPRINTC<_T>);
+						RET;
+					*/
+					_internal_list = Result_List;
+					return _internal_list._max();
+				};
+
+
+
+			/*
+			 acts just like the std::priority_queue<_T, _STL, _Pred >
+			*/
+			template < class _T, class _STL = std::vector<_T>, class _Pred = std::less<typename _STL::value_type > >
+			struct STL_Priority_Queue
+			{
+				using value_type = typename _STL::value_type;
+				using reference = typename _STL::value_type&;
+				using pointer = typename _STL::value_type*;
+				using const_pointer = typename _STL::iterator::pointer;
+				using Iter = typename _STL::iterator;
+
+				static_assert(std::is_same_v<_T, value_type>, "container adapter requires consistent types.");
+
+				STL_Priority_Queue() : _priority_id(nullptr), _priority_master(_priority_id), _fCmp{}, _Cont{}
+				{
+					make_heap(0);
+				};
+
+				inline void push(value_type&& _item)
+				{
+					manage_heap(value_type(_item));
+					push_heap();
+				}
+
+				inline const value_type& top() { return _Cont.front(); }
+
+				// pop off the last element that's mostly fit to the '_Pred' criteria.
+				inline const value_type&& pop()
+				{
+					const size_t max_elems = _Cont.size();
+					value_type tmp_v = _Cont[max_elems - 1];
+					_Cont.pop_back();
+					return value_type(tmp_v);
+				}
+
+				inline bool&& empty() const { return bool(_Cont.empty()); }
+
+				inline size_t&& size() const { return _Cont.size(); }
+
+				inline void dispose_off()
+				{
+					for (_priority_card* _pd = _priority_master; _pd != nullptr; _pd = _pd->_next)
+					{
+						_garbage_list.emplace_back(_pd);
+					}
+				}
+
+			private:
+				value_type _tmp;
+				_Pred _fCmp;
+				_STL _Cont;
+
+				struct _priority_card {
+					_priority_card() : _prev(nullptr), _next(nullptr), counter_(0), priority_level(0)
+					{
+
+					}
+
+					value_type data_value;
+					int counter_, priority_level;
+
+					_priority_card* _prev;
+					_priority_card* _next;
+				};
+
+				_priority_card* _priority_id;
+				_priority_card* const _priority_master;
+
+				inline void make_heap(value_type&& _x) // called when 'STL_Priority_Queue<_T, _STL, _Pred>' is firstly constructed.
+				{
+					if (nullptr == _priority_id)
+					{
+						_priority_id = new _priority_card();
+						_priority_id->counter_ = 0;
+						return;
+					}
+
+					_priority_id->_next = new _priority_card();
+					_priority_id->_next->data_value = _x;
+					_priority_id->_next->_prev = _priority_id;
+					_priority_id = _priority_id->_next;
+					_priority_id->counter_++;
+				}
+
+				inline void manage_heap(value_type&& _item_value)
+				{
+					_priority_card* _pc = nullptr;
+
+					if (!_priority_id->counter_)
+					{
+						_priority_id->data_value = _item_value;
+						_priority_id->counter_++;
+						return;
+					}
+
+					make_heap(value_type(_item_value)); // '_priority_id' updated to the recent linked-list.
+
+					for (_pc = _priority_master; _pc != nullptr && _fCmp(_pc->data_value, _item_value); _pc = _pc->_next);
+
+					for (; _pc != nullptr && !_fCmp(_pc->data_value, _item_value); _pc = _pc->_next)
+					{
+						_tmp = _pc->data_value;
+
+						if (nullptr != _pc->_next)
+						{
+							_item_value = _pc->_next->data_value;
+							_pc->_next->data_value = _tmp;
+							_pc->data_value = _item_value;
+							_pc = _pc->_next;
+							_item_value = (nullptr != _pc->_next) ? _pc->_next->data_value : _pc->data_value;
+						}
+					}
+				}
+
+			protected:
+				std::vector<std::unique_ptr<_priority_card>> _garbage_list;
+				inline void push_heap()
+				{
+					_Cont.push_back(_priority_id->data_value);
+				}
+			};
 
 			/*
 			 Perform binary search on the data elements in the vector, the user must specify
@@ -1205,9 +1367,11 @@ namespace mix {
 
 				return ((_Other)lookup_value == (_Other)vector_value);
 			}
-	
 		}; // End of generic namespace
 	};
+
+
+
 
 
 
