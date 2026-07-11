@@ -1,24 +1,19 @@
 #include "C:\PROJECTS\MIXUTIL\Libs\mixhuff.h"
-
-
+#include "C:\PROJECTS\MIXUTIL\Libs\mixhuff_impls.h"
 
 
 int main()
 {
+	std::vector<int> v = { 18,97,113,49,198,1 };
+	mix::generic::STL_Priority_Queue<int, std::vector<int>> vxq;
 
-	mix::generic::STL_Priority_Queue<int, std::vector<int>, std::greater<int>> mxq;
+	for (auto&& _i : v) vxq.push(int(_i));
 
-	mxq.push(30); mxq.push(25); mxq.push(26);
+	vxq.update_heap();
 
+	for (; !vxq.empty(); ) PRINT(vxq.pop());
 
-	mxq.update_heap();
-
-
-	for (; !mxq.empty(); ) PRINT(mxq.pop());
-
-	mxq.dispose_off();
-
-	
+	vxq.dispose_off();
 
 
 	return 0;
