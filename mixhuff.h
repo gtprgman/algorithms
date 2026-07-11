@@ -25,7 +25,7 @@ struct node {
 	node(unsigned char&&, int64_t&&); // for data & frequency
 
 	node(const node&); // overloaded copy
-	node(node&&);	// move
+	node(node&&) noexcept;	// move
 
 	const node& operator= (const node&);
 	node&& operator= (node&&) noexcept;
