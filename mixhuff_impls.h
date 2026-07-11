@@ -188,17 +188,14 @@ node::node(unsigned char&& _c, int64_t&& _fv) : _data(_c), _fdata(_fv)
 
 node::node(const node& rNod) {
 	if (this == &rNod) return;
-	this->_data = rNod._data;
-	this->_fdata = rNod._fdata;
+	*this = rNod;
 }
 
 
-node::node(node&& rvNod)
+node::node(node&& rvNod) noexcept
 {
 	if (this == &rvNod) return;
-	this->_data = rvNod._data;
-	this->_fdata = rvNod._fdata;
-	rvNod.~node();
+	*this = std::move(rvNod);
 };
 
 
@@ -209,7 +206,7 @@ const node& node::operator= (const node& rNod) {
 	this->_data = rNod._data;
 	this->_fdata = rNod._fdata;
 
-	return (*this);
+	return *this;
 }
 
 
@@ -1180,6 +1177,7 @@ EndPhase:
 	
 	return raw_size;
 }
+
 
 
 
