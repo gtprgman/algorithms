@@ -51,7 +51,7 @@ struct node {
 	// implicit conversion
 	operator int() const;
 
-	const int& operator()() const;
+	int&& operator()() const;
 	void Print() const;
 	
 private:
