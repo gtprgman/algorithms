@@ -1036,52 +1036,70 @@ struct type_aspect_if< Ty, true >
 
 
 			// fast sort algorithm performs on data elements in the Vector
-			template < class _Iter, class _Other = typename _Iter::value_type, class _Pred >
-			inline void fast_sort(const _Iter& _First, const _Iter& _End,
-				_Pred _fCmp, const std::ptrdiff_t _maxElems = 0)
+			template < class _Iter, class _Other = typename _Iter::value_type, class _Pred = std::less<_Other> >
+			inline void fast_sort(const _Iter& _First, const _Iter& _End, _Pred _fCmp = _Pred())
 			{
+				using Pointer = typename _Iter::value_type*;
+				using Const_Pointer = typename _Iter::pointer;
+
 				if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
 				if (_First > _End) return;
 
-				const std::ptrdiff_t _MaxSz = (_maxElems > 0) ? _maxElems : (_End - _First) - 1;
+				_Other _vTemp, _v1, _v2;
+				std::ptrdiff_t _Iter_Diff_t = 0;
+				Const_Pointer _Begin = _First._Ptr, _Last = _End._Ptr;
+				std::size_t max_size = _End - _First;
 
-				_Other _vTemp;
-
-				for (std::ptrdiff_t k = 0; k < _MaxSz; k++)
-				{
 					for (_Iter j = _First; j < _End; j++)
 					{
-						while ((_End - j) > 1 && _fCmp(*j, *(j + 1)))
-						{
-							++j;
-						}
+						_Iter_Diff_t = _End - j;
 
-						while ((_End - j) > 1 && !_fCmp(*j, *(j + 1)))
-						{
-							_vTemp = *(j + 1);
-							*(j + 1) = *j;
+						_v1 = *j;  
+						_v2 = (_Iter_Diff_t > 1)? *(j + 1):  *j;
+						_v1 = _fCmp(_v1, _v2)? _v1 : _v2;
 
-							*j = _vTemp;
-							++j;
+						if (_v1 != *j)
+						{
+							_vTemp = *j;
+							*(j + 1) = _vTemp;
+							*j = _v1;
 						}
 					}
-				}
+
+					for (std::size_t _i = 1; _i < max_size; _i++)
+					{
+						for (Pointer m = (_Last - _i); m >= _Begin; m--)
+						{
+							if ((m - 1) < _Begin) continue;
+
+							_v2 = *m;
+							_v1 = ((m - 1) >= _Begin) ? *(m - 1) : *m;
+							_v1 = _fCmp(_v1, _v2) ? _v1 : _v2;
+
+							_vTemp = ((m - 1) >= _Begin) ? *(m - 1) : *m;
+
+							if (_v1 != _vTemp)
+							{
+								*(m - 1) = _v1;
+								*m = _vTemp;
+							}
+						}
+					}
 			}
 
 
 			// Use threading processes to sort each subdivided section of a data set.
-			template <class _Iter, class _Pred >
-			inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double& _dvRatio,
-				_Pred _fCmp, const ptrdiff_t _maxElem = 0)
+			template <class _Iter, class _Other = typename _Iter::value_type, class _Pred = std::less< _Other >>
+			inline void t_sort(const _Iter& _Begin, const _Iter& _End, const double& _dvRatio, _Pred _fCmp = _Pred(),
+								const ptrdiff_t& _maxElem = 0)
 			{
-
 				if (_Begin._Ptr == nullptr || _End._Ptr == nullptr) return;
 				if (_Begin > _End) return;
 
-				const std::ptrdiff_t _maxSz = (_maxElem > 0) ? _maxElem : (_End - _Begin) - 1;
+				const std::ptrdiff_t _maxSz = (_maxElem > 0)? _maxElem : (_End - _Begin) - 1;
 
 				if (_maxSz < 10) {
-					fast_sort(_Begin, _End, _fCmp, _maxSz);
+					fast_sort(_Begin, _End, _fCmp);
 					return;
 				}
 
@@ -1094,8 +1112,8 @@ struct type_aspect_if< Ty, true >
 
 				for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
 				{
-					_uT[_t] = std::thread{ [_L, _R, _dvSz, &_fCmp]() {
-						fast_sort(_L, _R, _fCmp, _dvSz);
+					_uT[_t] = std::thread{ [_L, _R, &_dvSz, &_fCmp]() {
+						fast_sort(_L, _R, _fCmp);
 					  } };
 
 					_uT[_t].join();
@@ -1105,7 +1123,7 @@ struct type_aspect_if< Ty, true >
 				}
 
 			cleanUp:
-				fast_sort(_Begin, _End, _fCmp, _maxSz);
+				fast_sort(_Begin, _End, _fCmp);
 				_uT.reset(nullptr);
 				_uT.release();
 			}
@@ -1207,7 +1225,8 @@ struct type_aspect_if< Ty, true >
 
 				static_assert(std::is_same_v<_T, value_type>, "container adapter requires consistent types.");
 
-				STL_Priority_Queue() : _priority_id(nullptr), _priority_master(nullptr), _fCmp{ _Pred() }, _Cont{}
+				STL_Priority_Queue() : _priority_id(nullptr), _priority_master(nullptr), _priority_back(nullptr),
+					_fCmp{ _Pred() }, _Cont{}
 				{
 					make_heap(0 );
 				};
@@ -1240,7 +1259,7 @@ struct type_aspect_if< Ty, true >
 				inline void dispose_off()
 				{
 					for (_priority_card* _pd = _priority_master; _pd != nullptr; _pd = _pd->_next) {
-						_pd->data_value = 0;
+						_pd->data_value = value_type();
 						_garbage_list.emplace_back(_pd);
 					}
 
@@ -1265,7 +1284,7 @@ struct type_aspect_if< Ty, true >
 					_priority_card* _next;
 				};
 
-				_priority_card* _priority_id, *_priority_master;
+				_priority_card* _priority_id, *_priority_master, *_priority_back;
 
 				inline void make_heap(value_type&& _x) // called when 'STL_Priority_Queue<_T, _STL, _Pred>' is firstly constructed.
 				{
@@ -1301,6 +1320,7 @@ struct type_aspect_if< Ty, true >
 					// manage priority in heap spaces
 					for (_priority_card* _pc = _priority_master; _pc != nullptr; _pc = _pc->_next)
 					{
+						_priority_back = _pc; // save the pointer to the last heap block.
 						if (nullptr == _pc->_next) continue;
 
 						_tmp1 = value_type(_pc->data_value);
@@ -1323,13 +1343,7 @@ struct type_aspect_if< Ty, true >
 				{
 					_priority_card* _pdi = _priority_master, *_pbck = nullptr;
 
-					// loops until it reaches the end block of heap.
-					for (; nullptr != _pdi; _pdi = _pdi->_next)
-					{
-						if (nullptr == _pdi->_next) break;
-					}
-
-					_pbck = _pdi;
+					_pbck = _priority_back; _pdi = _pbck;
 
 					//  go back 1 step to stop at the end block.
 					if (nullptr == _pdi) {
