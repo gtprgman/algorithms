@@ -91,6 +91,10 @@ struct _Canonical
 		return this->_xData;
 	}
 
+	const bool operator != (const _Canonical& _otherCan)
+	{
+		return (this->_bitLen != _otherCan._bitLen);
+	}
 };
 
 
@@ -1756,6 +1760,11 @@ struct BPAIR
 	const bool operator == (const BPAIR& _otherBP)
 	{
 		return (this->_val == _otherBP._val);
+	}
+
+	const bool operator != (const BPAIR& _otherBP)
+	{
+		return (this->_val != _otherBP._val);
 	}
 
 	T1 _data; // byte
