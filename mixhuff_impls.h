@@ -266,8 +266,8 @@ node&& node::Release() const {
 }
 
 
-const int& node::operator()()  const{
-	return (int)this->_data;
+int&& node::operator()()  const{
+	return int(this->_data);
 }
 
 
@@ -503,7 +503,7 @@ inline const bool _TREE::create_encoding(const size_t& _From,
 		}
 
 		_vPair.push_back(BPAIR<UC>{ UC(_e.dataValue()), intmax_t(_prevX) });
-		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), mix::generic::NLess<intmax_t>());
+		mix::generic::fast_sort(_vPair.begin(), _vPair.end(), mix::generic::numLess());
 		//std::stable_sort(_vPair.begin(), _vPair.end());
 		_bEncodeable = true;
 	}
@@ -770,7 +770,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	RET;
 
 	PRINT("\n Re-Ordering nodes elements ... "); 
-	mix::generic::t_sort(PNodes.begin(), PNodes.end(), 0.25, std::less<node>());
+	mix::generic::t_sort(PNodes.begin(), PNodes.end(), 0.25, fq_less());
 	filter_pq_nodes(_pq,PNodes);	PNodes.clear();
 	
 	//mix::generic::STL_Print<std::vector<node>>(_pq.begin(), _pq.end(), RPRINTC<char>); RET;
@@ -834,7 +834,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	
 	PRINT("\n Sorting encoding data elements .. ");
-		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::NLess<char>());
+		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::numLess());
 		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::numLess());
 	RPRINT(" finished done. \n");
 
@@ -885,7 +885,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	cbi = {};
 
 	PRINT("\n Sorting nodes elements ..");
-	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::NLess<char>());
+	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::numLess());
 	RPRINT(" finished done. \n");
 
 	if (_cCode == 'D') {
