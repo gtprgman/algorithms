@@ -1035,56 +1035,63 @@ struct type_aspect_if< Ty, true >
 			}
 
 
+			// acts just like the 'std::make_heap()'
+			template < class _Iter, class _Pred = std::less< typename _Iter::value_type > >
+			inline void mix_heap(const _Iter& _Begin, const _Iter& _End, _Pred _fCmp = _Pred())
+			{
+					using value_type = typename _Iter::value_type;
+					ptrdiff_t iter_diff_t = 0;
+					const ptrdiff_t max_size = _End - _Begin;
+
+					if (!(max_size > 0))
+					{
+						std::cerr << "Invalid Access to Container's Iterator." << "\n\n";
+						return;
+					}
+
+					value_type _tmp1, _tmp2, _tmpX;
+					
+					for (_Iter _primeIt = _Begin; _primeIt < _End; _primeIt++)
+								for (_Iter _it = _primeIt; _it < _End; _it++)
+								{
+										iter_diff_t = (_End - _it);
+										_tmp1 = *_it;
+										_tmp2 = (iter_diff_t > 1)? *(_it + 1) : *_it;
+						
+										_tmp1 = _fCmp(_tmp1, _tmp2)? _tmp1 : _tmp2;
+						
+										_tmpX = *_it;
+
+										if (_tmp1 != _tmpX)
+										{
+											*_it = _tmp1;
+											*(_it + 1) = _tmpX;
+										}
+								}
+
+					for (_Iter _backIt = (_End - 1); _backIt > _Begin; _backIt--)
+							for (_Iter _back = _backIt; _back > _Begin; _back--)
+							{
+									_tmp2 = *_back;
+									_tmp1 = ((_back - 1) >= _Begin)? *(_back - 1) : *_back; 
+									_tmpX = _tmp1;
+
+									_tmp1 = _fCmp(_tmp1, _tmp2)? _tmp1 : _tmp2;
+
+									if (_tmp1 != _tmpX)
+									{
+										*(_back - 1) = _tmp1;
+										*_back = _tmpX;
+									}
+							}
+			}
+
+
 			// fast sort algorithm performs on data elements in the Vector
 			template < class _Iter, class _Other = typename _Iter::value_type, class _Pred = std::less<_Other> >
 			inline void fast_sort(const _Iter& _First, const _Iter& _End, _Pred _fCmp = _Pred())
 			{
-				using Pointer = typename _Iter::value_type*;
-				using Const_Pointer = typename _Iter::pointer;
-
-				if (_First._Ptr == nullptr || _End._Ptr == nullptr) return;
-				if (_First > _End) return;
-
-				_Other _vTemp, _v1, _v2;
-				std::ptrdiff_t _Iter_Diff_t = 0;
-				Const_Pointer _Begin = _First._Ptr, _Last = _End._Ptr;
-				std::size_t max_size = _End - _First;
-
-					for (_Iter j = _First; j < _End; j++)
-					{
-						_Iter_Diff_t = _End - j;
-
-						_v1 = *j;  
-						_v2 = (_Iter_Diff_t > 1)? *(j + 1):  *j;
-						_v1 = _fCmp(_v1, _v2)? _v1 : _v2;
-
-						if (_v1 != *j)
-						{
-							_vTemp = *j;
-							*(j + 1) = _vTemp;
-							*j = _v1;
-						}
-					}
-
-					for (std::size_t _i = 1; _i < max_size; _i++)
-					{
-						for (Pointer m = (_Last - _i); m >= _Begin; m--)
-						{
-							if ((m - 1) < _Begin) continue;
-
-							_v2 = *m;
-							_v1 = ((m - 1) >= _Begin) ? *(m - 1) : *m;
-							_v1 = _fCmp(_v1, _v2) ? _v1 : _v2;
-
-							_vTemp = ((m - 1) >= _Begin) ? *(m - 1) : *m;
-
-							if (_v1 != _vTemp)
-							{
-								*(m - 1) = _v1;
-								*m = _vTemp;
-							}
-						}
-					}
+				mix::generic::mix_heap(_First, _End, _fCmp);
 			}
 
 
@@ -1113,7 +1120,7 @@ struct type_aspect_if< Ty, true >
 				for (std::ptrdiff_t _t = 0; _t < _nDivs; _t++)
 				{
 					_uT[_t] = std::thread{ [_L, _R, &_dvSz, &_fCmp]() {
-						fast_sort(_L, _R, _fCmp);
+						mix::generic::mix_heap(_L, _R, _fCmp);
 					  } };
 
 					_uT[_t].join();
@@ -1123,7 +1130,7 @@ struct type_aspect_if< Ty, true >
 				}
 
 			cleanUp:
-				fast_sort(_Begin, _End, _fCmp);
+				mix::generic::mix_heap(_Begin, _End, _fCmp);
 				_uT.reset(nullptr);
 				_uT.release();
 			}
@@ -1441,10 +1448,4 @@ struct type_aspect_if< Ty, true >
 			}
 		}; // End of generic namespace
 	};
-
-
-
-
-
-
 
