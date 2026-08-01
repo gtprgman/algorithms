@@ -30,10 +30,12 @@ hash_main.cpp : a test unit for mixhash.h.
 
 mixbit.h :  a library for bit operations and manipulations utility.
 bitops.cpp : a unit test for mixbith.h
-
-2026/JULY/06 : New Uploaded: 'Demo_STL_Priority_Queue_1.c'
-
 'fTest9.c' : This project shows the short form Demo of mixhuff_impls.h
+
+2026/JULY/06 : New Upload: 'Demo_STL_Priority_Queue_1.c'
+
+2026/AUG/01 : New Upload: 'POINTER_TO_NEXT_HEAP_2.c'
+              Demonstrating heaps as a chain of blocks that can be managed using only simple raw pointer.
 
 
 
