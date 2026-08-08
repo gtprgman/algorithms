@@ -3,18 +3,20 @@
 
 
 int main()
-{
-	std::vector<int> v = { 18,97,113,49,198,1 };
-	mix::generic::STL_Priority_Queue<int, std::vector<int>> vxq;
+{	
+	std::string _Text = "Ada Ate Apple";
+	std::vector<node> v_nodes;
+	mix::generic::STL_Priority_Queue<int, std::vector<int>> vpq;
 
-	for (auto&& _i : v) vxq.push(int(_i));
+	for (auto&& _s : _Text) v_nodes.push_back(_s);
 
-	vxq.update_heap();
+	for (node _n : v_nodes) vpq.push(node(_n) );
 
-	for (; !vxq.empty(); ) PRINT(vxq.pop());
+	vpq.update_queue();
 
-	vxq.dispose_off();
+	for (; !vpq.empty(); ) RPRINTC(vpq.pop());
 
+	v_nodes.clear();
 
 	return 0;
 }
