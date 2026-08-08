@@ -1232,19 +1232,17 @@ struct type_aspect_if< Ty, true >
 
 				static_assert(std::is_same_v<_T, value_type>, "container adapter requires consistent types.");
 
-				STL_Priority_Queue() : _priority_id(nullptr), _priority_master(nullptr), _priority_back(nullptr),
-					_fCmp{ _Pred() }, _Cont{}
+				STL_Priority_Queue() : _ptr{ &m_buffer[0] }, _fCmp{_Pred()}, _Cont{}, _Counter{0}
 				{
-					make_heap(0 );
 				};
 
 				inline void push(value_type&& _item)
 				{
-					manage_heap(value_type(_item ) );
+					manage_queue(value_type(_item ) );
 				}
 
-				// confirm the aggregations pushed on the heap
-				inline void update_heap()
+				// confirm the aggregations pushed on the queue
+				inline void update_queue()
 				{
 					push_confirm();
 				}
@@ -1263,133 +1261,61 @@ struct type_aspect_if< Ty, true >
 
 				inline size_t&& size() const { return _Cont.size(); }
 
-				inline void dispose_off()
-				{
-					for (_priority_card* _pd = _priority_master; _pd != nullptr; _pd = _pd->_next) {
-						_pd->data_value = value_type();
-						_garbage_list.emplace_back(_pd);
-					}
-
-					for (_priority_card* _pdc : _garbage_list) delete _pdc;
-				}
-
+				
 			private:
-				value_type _tmp1, _tmp2;
+				value_type _tmp1, _tmp2, _tmpX;
+				value_type m_buffer[10];
+
 				_Pred _fCmp;
 				_STL _Cont;
+				pointer _ptr;
+				int _Counter;
+				
 
-				struct _priority_card {
-					_priority_card() : _prev(nullptr), _next(nullptr), counter_(0), priority_level(0)
-					{
-						data_value = value_type();
-					}
-
-					value_type data_value;
-					int counter_, priority_level;
-
-					_priority_card* _prev;
-					_priority_card* _next;
-				};
-
-				_priority_card* _priority_id, *_priority_master, *_priority_back;
-
-				inline void make_heap(value_type&& _x) // called when 'STL_Priority_Queue<_T, _STL, _Pred>' is firstly constructed.
+				inline void manage_queue(value_type&& _item_value)
 				{
-					if (nullptr == _priority_id)
+					int _index = 0;
+
+					if (!_Counter)
 					{
-						_priority_id = new _priority_card();
-						_priority_id->counter_ = 0;
-						_priority_master = _priority_id;
+						_ptr[_Counter] = _item_value;
+						++_Counter;
 						return;
 					}
 
-					_priority_id->_next = new _priority_card();
-					_priority_id->_next->data_value = value_type(_x);
-					_priority_id->_next->_prev = _priority_id;
-					_priority_id = _priority_id->_next;
-					_priority_id->counter_ = _priority_id->_prev->counter_ + 1;
-				}
+					_index = (_Counter > 0 && _Counter <= 9)? _Counter : -1;
 
-				inline void manage_heap(value_type&& _item_value)
-				{
-					value_type _reverse;
-					_priority_card* _pc = nullptr;
-
-					if (!_priority_id->counter_)
+					if (_index < 0)
 					{
-						_priority_id->data_value = value_type(_item_value);
-						_priority_id->counter_++;
+						push_confirm();
 						return;
 					}
+					else _ptr[_Counter] = _item_value;
 
-					make_heap(value_type(_item_value) ); // '_priority_id' updated to the recent linked-list.
-					
-					// manage priority in heap spaces
-					for (_priority_card* _pc = _priority_master; _pc != nullptr; _pc = _pc->_next)
+					for (int _Cnt = _Counter; _Cnt >= 0; _Cnt--)
 					{
-						_priority_back = _pc; // save the pointer to the last heap block.
-						if (nullptr == _pc->_next) continue;
+						_tmp2 = _ptr[_Cnt];
+						_tmp1 = ((_Cnt - 1) >= 0)? _ptr[_Cnt - 1] : _tmp2;
+						_tmpX = _tmp1;
+						_tmp1 = _fCmp(_tmp1, _tmp2)? _tmp1 : _tmp2;
 
-						_tmp1 = value_type(_pc->data_value);
-						_tmp2 = (nullptr != _pc->_next)? value_type(_pc->_next->data_value) : value_type(_tmp1);
-						_tmp1 = _fCmp(_tmp1, _tmp2)? value_type(_tmp1) : value_type(_tmp2);
-
-						if (_tmp1 != _pc->data_value )
+						if (_tmp1 != _tmpX)
 						{
-							_reverse = (nullptr != _pc->_next)? value_type(_pc->data_value) : (value_type)0;
-							if (_reverse) _pc->_next->data_value = value_type(_reverse);
-							_pc->data_value = value_type(_tmp1);
+							_ptr[_Cnt - 1] = _tmp1;
+							_ptr[_Cnt] = _tmpX;
 						}
 					}
+					++_Counter;
 				}
 
 			protected:
-				std::vector<_priority_card*> _garbage_list;
 
 				inline void push_confirm()
 				{
-					_priority_card* _pdi = _priority_master, *_pbck = nullptr;
-
-					_pbck = _priority_back; _pdi = _pbck;
-
-					//  go back 1 step to stop at the end block.
-					if (nullptr == _pdi) {
-						_pdi = _pdi->_prev; _pbck = _pdi;
-					}
-
-					// manages priority heap from back to front end.
-					loop_back(_pdi, _priority_master);
-
-					_pdi = _priority_master;
-
-					while (nullptr != _pdi)
-					{
-						_Cont.push_back(_pdi->data_value);
-						_pdi = _pdi->_next;
-					}
-				}
-
-
-				inline void loop_back(_priority_card* const _prEnd, _priority_card* const _prBegin)
-				{
-					value_type _xTemp = value_type(0), _yTemp(0);
-
-					for (_priority_card* _pr = _prEnd; nullptr != _pr; _pr = _pr->_prev)
-					{
-						_tmp2 = value_type(_pr->data_value);
-						_tmp1 = (nullptr != _pr->_prev)? value_type(_pr->_prev->data_value) : value_type(_pr->data_value);
-						_tmp1 = _fCmp(_tmp1, _tmp2)? value_type(_tmp1) : value_type(_tmp2);
-
-						_xTemp = (nullptr != _pr->_prev)? value_type(_pr->_prev->data_value) : value_type(_pr->data_value);
-
-						if (_tmp1 != _xTemp )
-						{
-							_pr->data_value = value_type(_xTemp);
-							_pr->_prev->data_value = value_type(_tmp1);
-						}
-
-							if (nullptr == _pr->_prev)	break;
-					}
+					const int _Max = _Counter - 1;
+					for (int _i = 0; _i <= _Max; _i++) _Cont.push_back(m_buffer[_i]);
+					mix::generic::mix_heap(_Cont.begin(), _Cont.end(), _fCmp);
+					_Counter = 0;
 				}
 			};
 
