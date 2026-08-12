@@ -6,17 +6,22 @@ int main()
 {	
 	std::string _Text = "Ada Ate Apple";
 	std::vector<node> v_nodes;
-	mix::generic::STL_Priority_Queue<int, std::vector<int>> vpq;
+	mix::generic::STL_Priority_Queue<node, std::vector<node>> pqn;
 
-	for (auto&& _s : _Text) v_nodes.push_back(_s);
+	for (auto&& _t : _Text) v_nodes.push_back(_t);
+	for (auto&& _e : v_nodes) pqn.push(node(_e) ); 
 
-	for (node _n : v_nodes) vpq.push(node(_n) );
+	pqn.update_queue();
 
-	vpq.update_queue();
+	for (; !pqn.empty();)
+	{
+		RPRINTC(pqn.top());
+		pqn.pop();
+	}
 
-	for (; !vpq.empty(); ) RPRINTC(vpq.pop());
 
-	v_nodes.clear();
+	v_nodes = {};
 
 	return 0;
 }
+
