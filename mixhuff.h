@@ -28,7 +28,7 @@ struct node {
 	node(node&&) noexcept;	// move
 
 	const node& operator= (const node&);
-	node&& operator= (node&&) noexcept;
+	const node& operator= (node&&) noexcept;
 	~node();
 
 	void setData(unsigned char&&);
@@ -94,8 +94,6 @@ private:
 std::vector<BPAIR<unsigned char>> _TREE::_vPair = {};
 
 
-
-
 // Extracts nodes information from the vector
 inline static void NPRINT(const std::vector<node>& _vn)
 {
@@ -105,7 +103,6 @@ inline static void NPRINT(const std::vector<node>& _vn)
 		RET;
 	}
 }
-
 
 
 struct fq_less
@@ -132,12 +129,4 @@ struct fq_equal
 		return (A.FrequencyData() == B.FrequencyData());
 	}
 };
-
-
-
-
-
-	
-
-
 
