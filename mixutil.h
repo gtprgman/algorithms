@@ -1232,13 +1232,13 @@ struct type_aspect_if< Ty, true >
 
 				static_assert(std::is_same_v<_T, value_type>, "container adapter requires consistent types.");
 
-				STL_Priority_Queue() : _ptr{ &m_buffer[0] }, _fCmp{_Pred()}, _Cont{}, _Counter{0}
+				STL_Priority_Queue() : _ptr{ &m_buffer[0] }, _fCmp{ _Pred() }, _Cont{}, _Counter{ 0 }
 				{
 				};
 
 				inline void push(value_type&& _item)
 				{
-					manage_queue(value_type(_item ) );
+					manage_queue( value_type(_item) );
 				}
 
 				// confirm the aggregations pushed on the queue
@@ -1247,15 +1247,14 @@ struct type_aspect_if< Ty, true >
 					push_confirm();
 				}
 
-				inline value_type&& top() { return _Cont.front(); }
 
-				// pop off the last element that's mostly fit to the '_Pred' criteria.
-				inline value_type&& pop()
+				inline const value_type& top() const
 				{
-					value_type tmp_v = _Cont.back();
-					_Cont.pop_back();
-					return value_type(tmp_v);
+					return _Cont.back();
 				}
+
+				// pops off the last element in the queue
+				inline void pop() { _Cont.pop_back(); }
 
 				inline bool&& empty() const { return _Cont.empty(); }
 
@@ -1264,10 +1263,13 @@ struct type_aspect_if< Ty, true >
 				
 			private:
 				value_type _tmp1, _tmp2, _tmpX;
-				value_type m_buffer[10];
+				value_type m_buffer[10] = { value_type(0), value_type(0), value_type(0), value_type(0), value_type(0),
+											value_type(0), value_type(0), value_type(0), value_type(0), value_type(0)};
 
 				_Pred _fCmp;
 				_STL _Cont;
+
+				
 				pointer _ptr;
 				int _Counter;
 				
@@ -1290,7 +1292,8 @@ struct type_aspect_if< Ty, true >
 						push_confirm();
 						return;
 					}
-					else _ptr[_Counter] = _item_value;
+					
+					_ptr[_Counter] = _item_value;
 
 					for (int _Cnt = _Counter; _Cnt >= 0; _Cnt--)
 					{
@@ -1374,4 +1377,5 @@ struct type_aspect_if< Ty, true >
 			}
 		}; // End of generic namespace
 	};
+
 
