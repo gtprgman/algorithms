@@ -187,6 +187,7 @@ node::node(unsigned char&& _c, int64_t&& _fv) : _data(_c), _fdata(_fv)
 
 
 node::node(const node& rNod) {
+	//PRINT("overloaded copy ctor called..");
 	if (this == &rNod) return;
 	*this = rNod;
 }
@@ -194,13 +195,15 @@ node::node(const node& rNod) {
 
 node::node(node&& rvNod) noexcept
 {
+	//PRINT("move ctor called..");
 	if (this == &rvNod) return;
-	*this = std::move(rvNod);
+	*this = node(rvNod);
 };
 
 
 
 const node& node::operator= (const node& rNod) {
+	//PRINT("copy assignment called ..");
 	if (this == &rNod) return (*this);
 
 	this->_data = rNod._data;
@@ -210,8 +213,9 @@ const node& node::operator= (const node& rNod) {
 }
 
 
-node&& node::operator= (node&& rvNod) noexcept {
-	if (this == &rvNod) return std::move(*this);
+const node& node::operator= (node&& rvNod) noexcept {
+	//PRINT("move assignment called..");
+	if (this == &rvNod) return *this;
 
 	this->_data = rvNod._data;
 	this->_fdata = rvNod._fdata;
@@ -221,7 +225,7 @@ node&& node::operator= (node&& rvNod) noexcept {
 
 	rvNod.~node();
 
-	return std::move(*this);
+	return *this;
 }
 
 
@@ -1177,7 +1181,5 @@ EndPhase:
 	
 	return raw_size;
 }
-
-
 
 
