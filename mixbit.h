@@ -249,7 +249,7 @@ static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
 // packing a bit series from one vector into another result vector
-static std::string&& cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
+static const char* cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
 
 // saves a packed canonical bit to a one specified file
 static const size_t save_cni_bit(std::FILE*&, const std::string&);
@@ -1008,33 +1008,35 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline std::string&& cni_bits_pack(std::vector<intmax_t>& _Result, const std::vector<intmax_t>& _canVec)
+static inline const char* cni_bits_pack(std::vector<intmax_t>& _Result, const std::vector<intmax_t>& _canVec)
 {
 	int bit_val = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
 	const std::vector<intmax_t>::iterator& _Begin = _CodInts.begin(), &_EndIter = _CodInts.end();
 	static std::string bits_pack;
+	std::string_view svw;
 
 	bits_pack = "\0"; _Result = {};
 
 	for (std::vector<intmax_t>::iterator _canIt = _Begin; _canIt < _EndIter; _canIt++)
 	{
-		bits_pack = concat_str(bits_pack.data(), bit_str(*_canIt).c_str());
+		bits_pack = concat_str((char*)bits_pack.c_str(), bit_str(*_canIt).c_str());
 	}
 
-	std::string::iterator _st; ptrdiff_t _st_diff_t = 0;
-	const std::string::iterator& _msb = bits_pack.begin(), &_lsb = bits_pack.end();
-
-	for (_st = _msb; _st < _lsb; _st += (_st_diff_t >= BYTE)? BYTE : 0)
+	ptrdiff_t _st_diff_t = 0;
+	const std::string::iterator& max_t = bits_pack.end();
+	
+	for (std::string::iterator _st = bits_pack.begin(); _st < max_t; _st += (_st_diff_t >= 8)? 8 : 0)
 	{
-		bit_val = (int)int_bit(lstr(_st._Ptr, ((_lsb - _st) >= BYTE)? BYTE : (_lsb - _st)).c_str());
+		bit_val = (int)int_bit(lstr(_st._Ptr, ((max_t - _st) >= 8)? 8 : max_t - _st) );
 		_Result.push_back(int(bit_val));
-		_st_diff_t = _lsb - _st;
+		_st_diff_t = max_t - _st;
 		
-		if (_st_diff_t < BYTE) break;
+		if (_st_diff_t < 8) break;
 	}
-
-	return std::move(bits_pack);
+	
+	svw = bits_pack;
+	return svw.data();
 }
 
 
@@ -1993,7 +1995,5 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	
 	return std::move(_ss);
 }
-
-
 
 
