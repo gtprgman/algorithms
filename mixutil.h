@@ -1236,6 +1236,22 @@ struct type_aspect_if< Ty, true >
 				{
 				};
 
+				STL_Priority_Queue(const STL_Priority_Queue& _spq)
+				{
+					if (this == &_spq) return;
+					*this = _spq;
+				}
+
+				const STL_Priority_Queue& operator= (const STL_Priority_Queue& _rSpq)
+				{
+					this->m_buffer = _rSpq.m_buffer;
+					this->_fCmp = _rSpq._fCmp;
+					this->_Cont = _rSpq._Cont;
+					this->_Counter = _rSpq._Counter;
+					
+					return *this;
+				}
+
 				inline void push(value_type&& _item)
 				{
 					manage_queue( value_type(_item) );
@@ -1377,5 +1393,6 @@ struct type_aspect_if< Ty, true >
 			}
 		}; // End of generic namespace
 	};
+
 
 
