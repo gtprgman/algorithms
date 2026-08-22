@@ -5,8 +5,10 @@
 	#define MX_HUFF_IMPLS
 	#include "C:\PROJECTS\MIXUTIL\Libs\mixhuff.h"
 
-	/* Filters priority queue nodes and compute the frequency of each node */
-	inline static void filter_pq_nodes(std::vector<node>&, std::priority_queue<node>&);
+	/* Filters priority queue nodes and compute the frequency of each node 
+	   the nodes in the vector must be in an exact sorted order before apply
+	   this function. */
+	inline static void filter_pq_nodes(std::vector<node>&, std::vector<node>&);
 #endif
 
 
@@ -121,6 +123,7 @@ static auto hex_to_ints_vector = [](std::vector<intmax_t>& v_target, std::string
 auto SaveTo = [](std::string&& _File_, std::vector<intmax_t>& _Source, std::string&& w_mode)->decltype(size_t())
 	{
 		int data_unit = 0;
+		size_t nByteSaved = 0;
 		std::FILE* _ff = std::fopen(_File_.c_str(), w_mode.c_str());
 		if (!_ff)
 		{
@@ -134,11 +137,12 @@ auto SaveTo = [](std::string&& _File_, std::vector<intmax_t>& _Source, std::stri
 		{
 			data_unit = (int)_Source[_m];
 			std::fputc(data_unit, _ff);
+			++nByteSaved;
 		}
 
 		std::fflush(_ff);
 		if (_ff) std::fclose(_ff);
-		return buf_size;
+		return nByteSaved;
 	};
 
 
@@ -414,7 +418,6 @@ static inline void filter_pq_nodes(std::vector<node>& _target, std::vector<node>
 	std::size_t _Cnt = 0;
 	node _nod = 0;
 	intmax_t _fqr = 0;
-
 
 	for (std::vector<node>::iterator _nt = _Pqueue.begin(); _nt < _Pqueue.end(); _nt++)
 	{
@@ -753,8 +756,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	std::vector<_Canonical> CniBits = {};
 	std::vector<_Canonical>::iterator CBiT = {};
-
 	std::string xs_bit = "\0";
+	mix::generic::STL_Priority_Queue<node,std::vector<node>, fq_less> _PQN;
 
 	const double comp_ratio = (cmp_rate)? cmp_rate : COMP_RATE;
 
@@ -763,7 +766,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	PRINT("\n acquiring data ..");
 	for (size_t t = 0; t < T_SIZE; t++)
 	{
-		PNodes.push_back(node(int(_Src[t])));
+		PNodes.push_back(node( int(_Src[t]) ) );
 	}
 
 	if (_cCode == 'D') {
@@ -773,28 +776,28 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	RET;
 
-	PRINT("\n Re-Ordering nodes elements ... "); 
-	mix::generic::t_sort(PNodes.begin(), PNodes.end(), 0.25, fq_less());
-	filter_pq_nodes(_pq,PNodes);	PNodes.clear();
-	
-	//mix::generic::STL_Print<std::vector<node>>(_pq.begin(), _pq.end(), RPRINTC<char>); RET;
+	PRINT("\n Sorting nodes elements ... "); 
+		mix::generic::t_sort(PNodes.begin(), PNodes.end(), 0.25);
+	PRINT(" finished done. ");
 
-	//mix::generic::STL_Priority_Queue<node, std::vector<node>, std::less<node>>(PNodes, _pq, std::less<node>());
-	// PNodes is now a frequency filtered nodes vector
-	
-	_pq.clear();
-	RPRINT("finished done.\n");
+	PRINT("\n Re-Ordering nodes elements.. ");
+		filter_pq_nodes(_pq, PNodes);	PNodes = {};
+	PRINT(" finished done. ");
+	// _pq is now a frequency filtered nodes vector
 
-	if (_cCode == 'D')
+	for (auto&& _nq : _pq) _PQN.push(node(_nq)); _PQN.update_queue();
+
+	for (; !_PQN.empty(); )
 	{
-		PRINT("\nFiltered Nodes Data..");
-		for (const auto& _e : PNodes) RPRINTC(_e.dataValue());
-		RET;
+		PNodes.push_back(_PQN.top());
+		_PQN.pop();
 	}
 
+	_pq = {};
+
 	if (_cCode == 'D')
 	{
-		PRINT("\nFrequency nodes data..");
+		PRINT("\nFrequency Filtered Nodes Data..");
 		for (const auto& _e : PNodes)
 		{
 			RPRINT(_e.dataValue()); RPRINT("=>"); RPRINT(_e.FrequencyData()); RET;
@@ -804,7 +807,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	PRINT("\n generating tree .. ");
 	_TREE::plot_tree(PNodes, comp_ratio);
-	RPRINT(" finished done. \n");
+	PRINT(" finished done. ");
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
 
@@ -838,9 +841,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	}
 	
 	PRINT("\n Sorting encoding data elements .. ");
-		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::numLess());
-		mix::generic::fast_sort(Cni_Info0.begin(), Cni_Info0.end(), mix::generic::numLess());
-	RPRINT(" finished done. \n");
+		mix::generic::mix_heap(Cni_Info0.begin(), Cni_Info0.end(),mix::generic::numLess());
+	RPRINT(" finished done. ");
 
 	if (_cCode == 'D')
 	{
@@ -857,12 +859,12 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	vectorClean(Cni_Info1);
 
 	PRINT("\n Obtaining Code Words .. ");
-	_Gen_Canonical_Info(Cni_Info1, Cni_Info0); // obtaining codewords based on bit length info ..
-	RPRINT(" finished done. \n ");
+		_Gen_Canonical_Info(Cni_Info1, Cni_Info0); // obtaining codewords based on bit length info ..
+	RPRINT(" finished done.  ");
 
 	PRINT("\n Enforcing the uniqueness among code words .. ");
-	cni_enforce_unique(Cni_Info1); // codewords data updated
-	RPRINT(" finished done. \n");
+		cni_enforce_unique(Cni_Info1); // codewords data updated
+	RPRINT(" finished done. ");
 
 	if (_cCode == 'D') {
 		PRINT("\nCanonical Huffman Encoding Information Generated ! [ Cni_Info1 ] " );
@@ -880,8 +882,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	for (const _Canonical& cni : Cni_Info1)
 	{
 		cbi._xData = cni._xData;
-		cbi._codeWord = (cni._codeWord)? cni._codeWord : 1;
-		cbi._bitLen = len_bit(intmax_t(cni._codeWord));
+		cbi._codeWord = (cni._codeWord >= 0)? cni._codeWord : 0;
+		cbi._bitLen = len_bit(intmax_t(cbi._codeWord));
 		CniBits.push_back(cbi);
 		cbi = {};
 	}
@@ -889,8 +891,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	cbi = {};
 
 	PRINT("\n Sorting nodes elements ..");
-	mix::generic::t_sort(CniBits.begin(), CniBits.end(), 0.25, mix::generic::numLess());
-	RPRINT(" finished done. \n");
+		mix::generic::mix_heap(CniBits.begin(), CniBits.end(), mix::generic::numLess());
+	RPRINT(" finished done. ");
 
 	if (_cCode == 'D') {
 		PRINT(" \n Finalized Sorted(char) Canonical Encoding Information Generated .. [ Cni_Info1 ] ");
@@ -918,7 +920,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		}
 	}
 
-	RPRINT(" finished done. \n");
+	RPRINT(" finished done. ");
 
 	if (_cCode == 'D') {
 		PRINT("\n Generated Code Symbols ..");
@@ -940,7 +942,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 
 static inline const bool Compress(const std::string& _destF, const std::string& _srcF, const double& compRate, 
-									unsigned char* _cBuff)
+									unsigned char* _cBuff, char&& _Debug_Mode)
 {
 	UC _xt = 0;
 	int bit_code = 0;
@@ -973,7 +975,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 	
 	if (_FO) std::fclose(_FO);
 
-	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _CanInfo, _pacRes,_pacInts, compRate);
+	_sqzNum = Gen_Encoding_Info(_srcData, _CodeMap, _CanSrc, _CanInfo, _pacRes,_pacInts, compRate, char(_Debug_Mode) );
 	// _srcData is fully filled with correct data
 	// _CodeMap is generated successfully
 	// _CanSrc is fetch back with the correct data values	
@@ -1006,7 +1008,7 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 		xChars.push_back(_xt);
 		_xt = 0; 
 
-		bit_code = (cn._codeWord)? (int)cn._codeWord : (int)1;
+		bit_code = (cn._codeWord >= 0)? (int)cn._codeWord : 0;
 		code_ints.push_back(int(bit_code) );
 		_xt = 0;
 	}
@@ -1073,8 +1075,7 @@ finishedDone:
 
 
 
-static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile, 
-											const double& cmp_rate)
+static inline const std::size_t UnCompress(const std::string& _packedFile, const std::string& _unPackedFile)
 {
 	Can_Bit _cbt;
 	size_t raw_size = 0, header_size = 0, info_sizes = 0;
