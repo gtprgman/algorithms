@@ -656,11 +656,6 @@ struct type_aspect_if< Ty, true >
 
 		}
 
-
-
-
-
-
 		constexpr const bool isRange(int8_t const& _C, std::initializer_list<int8_t const> const& _vals) {
 			bool isElem = false;
 
@@ -672,7 +667,6 @@ struct type_aspect_if< Ty, true >
 			};
 			return isElem;
 		}
-
 
 
 
@@ -744,18 +738,11 @@ struct type_aspect_if< Ty, true >
 			constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
 				return std::make_shared<_Ty>(aArgs...);
 			}
-
-
-
 		} // end of ptr_type namespace
 
 
-
-
 		namespace smart_ptr {
-
 			// a single unique factory
-
 			template < class Ty, class delTy = std::default_delete<Ty>, class... Types >
 			constexpr ptr_type::uniqueP<Ty, delTy> up_create(Types&&... _u) {
 				return std::make_unique<Ty>((_u)...);
@@ -1361,7 +1348,7 @@ struct type_aspect_if< Ty, true >
 				vector_value = *(L + M);
 
 				do {
-					if (_fCompare((_Other)lookup_value, (_Other)vector_value))
+					if (_fCompare((_Other)lookup_value, vector_value))
 					{
 						L = L1;
 						R = L + M;
