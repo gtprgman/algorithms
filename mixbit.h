@@ -104,7 +104,12 @@ struct Can_Bit : virtual public _Canonical
 {
 	Can_Bit() : _Canonical() {};
 
-	Can_Bit(char&& _Chr, int64_t&& _Code)
+	Can_Bit(const char& _a) : _Canonical() {
+		this->_xData = _a;
+		this->_codeWord = 0;
+	}
+
+	Can_Bit(const char& _Chr, const int64_t& _Code) : _Canonical()
 	{
 		this->_xData = _Chr;
 		this->_codeWord = _Code;
@@ -118,9 +123,31 @@ struct Can_Bit : virtual public _Canonical
 		return this->_codeWord;
 	}
 
+	const char& operator()() const { return this->_xData;  }
+
+	const bool operator != (const Can_Bit& _OtherCan)
+	{
+		return (this->_xData != _OtherCan._xData);
+	}
+
 };
 
 
+struct CanLess
+{
+	const bool operator()(const Can_Bit& Can1, const Can_Bit& Can2)
+	{
+		return (Can1._xData < Can2._xData);
+	}
+};
+
+struct CanGreater
+{
+	const bool operator()(const Can_Bit& Can_A, const Can_Bit& Can_B)
+	{
+		return (Can_A._xData > Can_B._xData);
+	}
+};
 
 #define SPACE (char)32
 #define halfSz(_Tot_) (_Tot_ / 2) - 1
