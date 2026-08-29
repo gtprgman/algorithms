@@ -34,7 +34,7 @@ typedef std::string&& (*Func)(const char*, const size_t&); // for used by 'lstr(
 /* DataSource Type : std::initializer_list<T>; Storage Type : Two std::vector<intmax_t>s
    NB: May only be applied on characters data: [a .. z | A .. Z ] */
 template < class T = unsigned char, class val_type = typename iList2<T>::value_type >
-auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& Bit_Length_Info, const iList2<T>& DataSrc)->decltype(void())
+auto DataParse = [](std::vector<intmax_t>& TransFormedX, const iList2<T>& DataSrc)->decltype(void())
 	{
 		intmax_t _dat = 0, data_len = 0, maxOne = DataSrc._max();
 		const val_type* _Begin = DataSrc.begin(), *_End = DataSrc.end();
@@ -42,10 +42,9 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 
 		_dat = halfMax; data_len = len_bit(intmax_t(_dat));
 
-		TransFormedX.clear(); Bit_Length_Info.clear();
+		TransFormedX.clear(); 
 
 		TransFormedX.push_back(intmax_t(_dat)); // saves the integer decoder
-		Bit_Length_Info.push_back(intmax_t(data_len));
 
 		for (val_type* _it = (val_type*)_Begin; _it < _End; _it++)
 		{
@@ -53,7 +52,6 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, std::vector<intmax_t>& 
 			data_len = len_bit(intmax_t(_dat));
 
 			TransFormedX.push_back(intmax_t(_dat));
-			Bit_Length_Info.push_back(intmax_t(data_len));
 		}
 	};
 
@@ -583,11 +581,11 @@ static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::
 {
 	intmax_t f_size = 0;
 	iList2<UC> header_info = _hDatInfo;
-	std::vector<intmax_t> header_data, header_bit_data;
-	std::vector<intmax_t>header_info_saved = {}, header_bit_info = {}, header_info_packed = {}, header_bit_packed = {};
-	std::string header_packed_hex = "\0", header_hex_bit = "\0";
 
-	DataParse<UC>(header_info_saved, header_bit_info, header_info);
+	std::vector<intmax_t>header_data = {}, header_info_saved = {}, header_info_packed = {};
+	std::string header_packed_hex = "\0";
+
+	DataParse<UC>(header_info_saved, header_info);
 
 	cni_bits_pack(header_info_packed, header_info_saved);
 
@@ -754,8 +752,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	Can_Bit cbi = {};
 
-	std::vector<_Canonical> CniBits = {};
-	std::vector<_Canonical>::iterator CBiT = {};
+	std::vector<Can_Bit> CniBits = {};
+	std::vector<Can_Bit>::iterator CBiT = {};
 	std::string xs_bit = "\0";
 	mix::generic::STL_Priority_Queue<node,std::vector<node>, fq_less> _PQN;
 
@@ -778,11 +776,11 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	PRINT("\n Sorting nodes elements ... "); 
 		mix::generic::t_sort(PNodes.begin(), PNodes.end(), 0.25);
-	PRINT(" finished done. ");
+	PRINT(" finished done. \n");
 
 	PRINT("\n Re-Ordering nodes elements.. ");
 		filter_pq_nodes(_pq, PNodes);	PNodes = {};
-	PRINT(" finished done. ");
+	PRINT(" finished done. \n");
 	// _pq is now a frequency filtered nodes vector
 
 	for (auto&& _nq : _pq) _PQN.push(node(_nq)); _PQN.update_queue();
@@ -807,7 +805,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	PRINT("\n generating tree .. ");
 	_TREE::plot_tree(PNodes, comp_ratio);
-	PRINT(" finished done. ");
+	PRINT(" finished done. \n");
 
 	CodInfo = _TREE::CodeMap(); // huffman encoding info generated
 
@@ -821,7 +819,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 		{
 			RPRINTC(bp._data); RPRINTC(bp._val); RET;
 		}
-	}
+	} 
 
 	for (const BPAIR<unsigned char>& bp : CodInfo)
 	{
@@ -842,7 +840,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	
 	PRINT("\n Sorting encoding data elements .. ");
 		mix::generic::mix_heap(Cni_Info0.begin(), Cni_Info0.end(),mix::generic::numLess());
-	RPRINT(" finished done. ");
+	RPRINT(" finished done. \n"); 
 
 	if (_cCode == 'D')
 	{
@@ -860,11 +858,11 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 
 	PRINT("\n Obtaining Code Words .. ");
 		_Gen_Canonical_Info(Cni_Info1, Cni_Info0); // obtaining codewords based on bit length info ..
-	RPRINT(" finished done.  ");
+	RPRINT(" finished done.  \n"); 
 
 	PRINT("\n Enforcing the uniqueness among code words .. ");
 		cni_enforce_unique(Cni_Info1); // codewords data updated
-	RPRINT(" finished done. ");
+	RPRINT(" finished done. \n");
 
 	if (_cCode == 'D') {
 		PRINT("\nCanonical Huffman Encoding Information Generated ! [ Cni_Info1 ] " );
@@ -891,8 +889,8 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	cbi = {};
 
 	PRINT("\n Sorting nodes elements ..");
-		mix::generic::mix_heap(CniBits.begin(), CniBits.end(), mix::generic::numLess());
-	RPRINT(" finished done. ");
+		mix::generic::mix_heap(CniBits.begin(), CniBits.end(), CanLess());
+	RPRINT(" finished done. \n");
 
 	if (_cCode == 'D') {
 		PRINT(" \n Finalized Sorted(char) Canonical Encoding Information Generated .. [ Cni_Info1 ] ");
@@ -910,17 +908,18 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	for (size_t fz = 0; fz < T_SIZE; fz++)
 	{
 		char _ci = _Src[fz];
-
+		
 		if (_ci > 0)
 		{
 			if (mix::generic::vector_search(CniBits.begin(), CniBits.end(), _ci, mix::generic::NLess<char>(), CBiT))
 			{
+				//RPRINT(CBiT->_xData); RPRINT(":"); RPRINT(CBiT->_codeWord); RET; 
 				PacInts.push_back(CBiT->_codeWord);
 			}
 		}
 	}
 
-	RPRINT(" finished done. ");
+	RPRINT(" finished done. \n");
 
 	if (_cCode == 'D') {
 		PRINT("\n Generated Code Symbols ..");
