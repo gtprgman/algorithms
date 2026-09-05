@@ -275,11 +275,11 @@ static void _Gen_Canonical_Info(std::vector<intmax_t>&, const std::vector<intmax
 // make sure every codeword integer is unique
 static void cni_enforce_unique(std::vector<_Canonical>&);
 
-// packing a bit series from one vector into another result vector
-static const char* cni_bits_pack(std::vector<intmax_t>&, const std::vector<intmax_t>&);
+// packing a bit series from one vector into a single int64_t number
+static const char* cni_bits_pack(std::int64_t&, const std::vector<intmax_t>&);
 
 // saves a packed canonical bit to a one specified file
-static const size_t save_cni_bit(std::FILE*&, const std::string&);
+static const size_t save_cni_bit(std::string&&, std::string&&, const std::string&);
 
 // reads a packed canonical bit from one file and parses it to a vector integer
 static const intmax_t read_cni_bit(std::FILE*&, std::vector<intmax_t>&);
@@ -1035,41 +1035,30 @@ static inline void cni_enforce_unique(std::vector<_Canonical>& cniDat)
 }
 
 
-static inline const char* cni_bits_pack(std::vector<intmax_t>& _Result, const std::vector<intmax_t>& _canVec)
+static inline const char* cni_bits_pack(std::int64_t& Packed_Int, const std::vector<intmax_t>& _canVec)
 {
-	int bit_val = 0;
 	std::vector<intmax_t>& _CodInts = (std::vector<intmax_t>&)_canVec;
 	const std::vector<intmax_t>::iterator& _Begin = _CodInts.begin(), &_EndIter = _CodInts.end();
 	static std::string bits_pack;
 	std::string_view svw;
 
-	bits_pack = "\0"; _Result = {};
+	bits_pack = "\0";
 
 	for (std::vector<intmax_t>::iterator _canIt = _Begin; _canIt < _EndIter; _canIt++)
-	{
-		bits_pack = concat_str((char*)bits_pack.c_str(), bit_str(*_canIt).c_str());
-	}
+		bits_pack = concat_str(bits_pack.data(), bit_str(*_canIt).c_str());
 
-	ptrdiff_t _st_diff_t = 0;
-	const std::string::iterator& max_t = bits_pack.end();
-	
-	for (std::string::iterator _st = bits_pack.begin(); _st < max_t; _st += (_st_diff_t >= 8)? 8 : 0)
-	{
-		bit_val = (int)int_bit(lstr(_st._Ptr, ((max_t - _st) >= 8)? 8 : max_t - _st) );
-		_Result.push_back(int(bit_val));
-		_st_diff_t = max_t - _st;
-		
-		if (_st_diff_t < 8) break;
-	}
-	
+	Packed_Int = int_bit(bits_pack.c_str());
+
 	svw = bits_pack;
 	return svw.data();
 }
 
 
-
-static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string& _hex_str)
+// auto file handle [' open / close ' ]
+static inline const size_t save_cni_bit(std::string&& f_name, std::string&& w_mode, const std::string& _hex_str)
 {
+	std::FILE* _fHandle = std::fopen(f_name.c_str(), w_mode.c_str());
+
 	if (!_fHandle) {
 		std::cerr << "\n Can't open file with the specified I/O handle. \n";
 		return 0;
@@ -1101,6 +1090,7 @@ static inline const size_t save_cni_bit(std::FILE*& _fHandle, const std::string&
 		if (_xLen == 1) break;
 	}
 
+	if (_fHandle) std::fclose(_fHandle);
 	return _bytesWritten;
 }
 
@@ -1658,7 +1648,6 @@ inline static std::string&& LRTrim(const char* _Sstr)
 
 	return std::move(_LRTrmStr);
 }
-
 
 
 
