@@ -31,7 +31,7 @@ static const size_t readPackInfo(const std::string&, std::vector<UC>&);
 typedef std::string&& (*Func)(const char*, const size_t&); // for used by 'lstr()' & 'rstr()'
 
 
-/* DataSource Type : std::initializer_list<T>; Storage Type : Two std::vector<intmax_t>s
+/* DataSource Type : std::initializer_list<T>; Storage Type : std::vector<intmax_t>
    NB: May only be applied on characters data: [a .. z | A .. Z ] */
 template < class T = unsigned char, class val_type = typename iList2<T>::value_type >
 auto DataParse = [](std::vector<intmax_t>& TransFormedX, const iList2<T>& DataSrc)->decltype(void())
@@ -40,7 +40,7 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, const iList2<T>& DataSr
 		const val_type* _Begin = DataSrc.begin(), *_End = DataSrc.end();
 		const intmax_t halfMax = maxOne / 2;
 
-		_dat = halfMax; data_len = len_bit(intmax_t(_dat));
+		_dat = halfMax;
 
 		TransFormedX.clear(); 
 
@@ -49,30 +49,30 @@ auto DataParse = [](std::vector<intmax_t>& TransFormedX, const iList2<T>& DataSr
 		for (val_type* _it = (val_type*)_Begin; _it < _End; _it++)
 		{
 			_dat = (*_it > halfMax)? *_it - halfMax : *_it;
-			data_len = len_bit(intmax_t(_dat));
-
 			TransFormedX.push_back(intmax_t(_dat));
 		}
 	};
 
 
-/* DataSource Type : std::vector<T>; Storage Type : Two std::vector<intmax_t>s
+/* DataSource Type : std::vector<T>; Storage Type : std::vector<intmax_t>
    NB: May only be applied on characters data: [a .. z | A .. Z ] */
 template < class T = intmax_t, class _Iter = typename std::vector<T>::iterator>
-auto DataReParse = [](std::vector<intmax_t>& DataX, std::vector<intmax_t>& BitXLen, const std::vector<T>& XSrc)->decltype(void()) {
+auto DataReParse = [](std::vector<intmax_t>& DataX, const std::vector<T>& XSrc)->decltype(void()) {
 
 	const _Iter& _Begin = (_Iter&)XSrc.begin() + 1, &_End = (_Iter&)XSrc.end();
-	intmax_t _dat = 0, bit_len = 0;
+	intmax_t _dat = 0;
 	const intmax_t halfedOne = XSrc[0];
-	DataX.clear(); BitXLen.clear();
+	DataX.clear();
 
 	for (_Iter _t = _Begin; _t < _End; _t++)
 	{
+		if (*_t == 32)
+		{
+			DataX.push_back(*_t);
+			continue;
+		}
 		_dat = (*_t <= halfedOne)? *_t + halfedOne : *_t;
-		bit_len = len_bit(intmax_t(_dat));
-
 		DataX.push_back(_dat);
-		BitXLen.push_back(intmax_t(bit_len));
 	}
 };
 
@@ -117,7 +117,7 @@ static auto hex_to_ints_vector = [](std::vector<intmax_t>& v_target, std::string
 	};
 
 
-// DataSource: std::vector<T>;
+// DataSource: std::vector<T>; auto file handle ['open/close']
 auto SaveTo = [](std::string&& _File_, std::vector<intmax_t>& _Source, std::string&& w_mode)->decltype(size_t())
 	{
 		int data_unit = 0;
@@ -145,7 +145,7 @@ auto SaveTo = [](std::string&& _File_, std::vector<intmax_t>& _Source, std::stri
 
 
 
-// Storage: std::vector<UC>;
+// Storage: std::vector<UC>; auto file handle ['open / close ']
 static auto ReadFrom = [](std::string&& _File, std::vector<UC>& v_data, std::string&& r_mode)->decltype(size_t())
 	{
 		int _c = 0; size_t read_size = 0;
@@ -577,36 +577,22 @@ inline void _TREE::enforce_unique(std::vector<BPAIR<unsigned char>>& _bPairs)
 
 
 
-static inline const intmax_t writePackInfo(const std::string& _SqzF, const std::vector<UC>& _hDatInfo)
+static inline const size_t writePackInfo(const std::string& _SqzF, const std::vector<UC>& _hDatInfo)
 {
-	intmax_t f_size = 0;
+	size_t f_size = 0; int64_t h_packed = 0;
 	iList2<UC> header_info = _hDatInfo;
-
-	std::vector<intmax_t>header_data = {}, header_info_saved = {}, header_info_packed = {};
+	std::vector<intmax_t> header_info_saved;
+	
 	std::string header_packed_hex = "\0";
 
 	DataParse<UC>(header_info_saved, header_info);
 
-	cni_bits_pack(header_info_packed, header_info_saved);
+	cni_bits_pack(h_packed, header_info_saved);
 
-/*
-	mix::generic::STL_Print<std::vector<intmax_t>>(header_info_packed.begin(), header_info_packed.end(), RPRINTC<intmax_t>); RET;
-*/
-	header_packed_hex = combine_bits_to_hex(header_info_packed);
+	header_packed_hex = To_HexF<int>::eval(h_packed);
 
-	/*
-		PRINT(header_packed_hex);
-		PRINT(header_hex_bit);
-		return 0;
-	*/
-
-	hex_to_bytes_vector(header_data, header_packed_hex.c_str());
-
-	f_size = SaveTo(_SqzF.c_str(), header_data, APPEND_MODE);
-
-	/*
-		mix::generic::STL_Print<std::vector<UC>>(header_data.begin(), header_data.end(), RPRINTC<int>); RET;
-	*/
+	PRINT(h_packed);
+	PRINT(header_packed_hex);
 
 	return f_size;
 }
@@ -929,7 +915,7 @@ static inline const int64_t Gen_Encoding_Info(std::vector<unsigned char>& _Src,
 	PacResults = {};
 
 	PRINT("\n packing bits .. ");
-	SqzInt = int_bit(cni_bits_pack(PacResults,PacInts));
+		cni_bits_pack(SqzInt,PacInts);
 	RPRINT(" finished done. \n");
 
 		if (_cCode == 'D') { RPRINTC("\n Packed Integer Symbols .. "); RPRINTC(SqzInt); } RET;
@@ -944,14 +930,14 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 									unsigned char* _cBuff, char&& _Debug_Mode)
 {
 	UC _xt = 0;
-	int bit_code = 0;
+	int64_t bit_len = 0;
 	bool _bDone = 0;
 	intmax_t _sqzNum = 0;
 
 	std::string _sqz_hex = "\0", _sqz_code_len = "\0";
 
 	std::vector<UC> _srcData = {}, xChars = {};
-	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, code_ints = {};
+	std::vector<intmax_t> _pacInts = {}, _pacRes = {}, code_len = {};
 
 	std::vector<BPAIR<unsigned char>> _CodeMap = {};
 	std::vector<_Canonical> _CanSrc = {}, _CanInfo = {};
@@ -1001,29 +987,20 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	*/
 
-	for (const auto& cn : _CanInfo)
+	for (const auto& cn : _CanSrc)
 	{
 		_xt = cn._xData;
 		xChars.push_back(_xt);
 		_xt = 0; 
 
-		bit_code = (cn._codeWord >= 0)? (int)cn._codeWord : 0;
-		code_ints.push_back(int(bit_code) );
+		bit_len = (cn._bitLen > 0)? cn._bitLen : 0;
+		code_len.push_back(int64_t(bit_len) );
 		_xt = 0;
 	}
 
-	code_ints.push_back(_DELIM);
+	code_len.push_back(_DELIM);
 
 	/*  Debug Actions .. [ CRUCIAL ! ] 
-
-		PRINT("Encoded Chars ..");
-		mix::generic::STL_Print<std::vector<UC>>(xChars.begin(), xChars.end(), RPRINTC<char>); RET2();
-
-		PRINT("Code Words .. ");
-		mix::generic::STL_Print<std::vector<intmax_t>>(_pacRes.begin(), _pacRes.end(), RPRINTC<intmax_t>); RET2();
-
-		PRINT("Packed Integers ..");
-		mix::generic::STL_Print<std::vector<intmax_t>>(_pacInts.begin(), _pacInts.end(), RPRINTC<intmax_t>); RET2();
 
 		goto finishedDone;
 	*/
@@ -1038,9 +1015,9 @@ static inline const bool Compress(const std::string& _destF, const std::string& 
 
 	// writePackInfo() has tested succeed..
 
-	if (!(F_SIZE = SaveTo(_destF.c_str(), code_ints, APPEND_MODE)))
+	if (!(F_SIZE = SaveTo(_destF.c_str(), code_len, APPEND_MODE)))
 	{
-		std::cerr << "\n Error saving code words ..";
+		std::cerr << "\n Error saving code length ..";
 		std::cerr << "\n Could not proceed ..";
 		goto finishedDone;
 	};
@@ -1062,7 +1039,7 @@ finishedDone:
 	vectorClean(_CanSrc);
 	vectorClean(xChars);
 	vectorClean(_pacRes);
-	vectorClean(code_ints);
+	vectorClean(code_len);
 	vectorClean(_CanInfo);
 
 	if (!_SystemFile.empty()) _SystemFile.clear();
@@ -1118,7 +1095,7 @@ static inline const std::size_t UnCompress(const std::string& _packedFile, const
 		goto EndPhase;
 	*/
 
-	DataReParse<UC>(Encoded_Chars, Encoded_Bit_Len, _alphaX);
+	DataReParse<UC>(Encoded_Chars, _alphaX);
 
 	 /* Debug Actions ..  [CRUCIAL !]  
 		mix::generic::STL_Print<std::vector<intmax_t>>(Encoded_Chars.begin(), Encoded_Chars.end(), RPRINTC<intmax_t>); RET2();
