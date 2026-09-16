@@ -263,10 +263,14 @@ private:
 };
 
 
+
+
 template < class Ty >
 struct UnRef {
 	using type = typename std::remove_reference_t<Ty>;
 };
+
+
 
 
 template < class Ty, Ty _val >
@@ -652,6 +656,11 @@ struct type_aspect_if< Ty, true >
 
 		}
 
+
+
+
+
+
 		constexpr const bool isRange(int8_t const& _C, std::initializer_list<int8_t const> const& _vals) {
 			bool isElem = false;
 
@@ -663,6 +672,7 @@ struct type_aspect_if< Ty, true >
 			};
 			return isElem;
 		}
+
 
 
 
@@ -734,11 +744,18 @@ struct type_aspect_if< Ty, true >
 			constexpr mix::ptr_type::shareP<_Ty> _MAKE_S(_Types&&... aArgs) {
 				return std::make_shared<_Ty>(aArgs...);
 			}
+
+
+
 		} // end of ptr_type namespace
 
 
+
+
 		namespace smart_ptr {
+
 			// a single unique factory
+
 			template < class Ty, class delTy = std::default_delete<Ty>, class... Types >
 			constexpr ptr_type::uniqueP<Ty, delTy> up_create(Types&&... _u) {
 				return std::make_unique<Ty>((_u)...);
@@ -1123,13 +1140,14 @@ struct type_aspect_if< Ty, true >
 			 The elements in the '_Source_List' should maintain its random ordering position to produce the desired outcome.
 			*/
 			template < class _T, class _STL, class _Pred = std::less<_T> >
-			auto STL_Min_Value = [](_STL& _Result_List, const _STL& _Source_List, _Pred _fCmp = std::less<_T>() )
+			auto STL_Min_Value = [](const _STL& _Source_List, _Pred _fCmp = std::less<_T>() )
 				{
 					using _Iter = typename _STL::iterator;
 					junk_store<_T> _PUSHED = { 0, false };
 					_T _yt = 0, _yT = 0, _yMin = 0; ptrdiff_t iter_diff_yt = 0;
 					iList2<_T> _internal_;
 					const _Iter& _First = (_Iter&)_Source_List.begin(), &_Last = (_Iter&)_Source_List.end();
+					_STL _Result_List;
 
 					_Result_List = {}; _internal_ = {};
 
@@ -1164,13 +1182,14 @@ struct type_aspect_if< Ty, true >
 			 The elements in the 'Source_List' should maintain its random ordering position to produce the desired outcome.
 			*/
 			template < class _T, class _STL, class _Pred = std::less<_T>>
-			auto STL_Max_Value = [](_STL& Result_List, const _STL& Source_List, _Pred _fCmp = std::less<_T>())
+			auto STL_Max_Value = [](const _STL& Source_List, _Pred _fCmp = std::less<_T>())
 				{
 					using _Iter = typename _STL::iterator;
 					junk_store<_T> _is_pushed = { 0,false };
 					_T _vt = 0, _vT = 0, _vMax = 0; ptrdiff_t iter_diff_p = 0;
 					iList2<_T> _internal_list;
-					const _Iter& _Begin = (_Iter&)Source_List.begin(), & _End = (_Iter&)Source_List.end();
+					const _Iter& _Begin = (_Iter&)Source_List.begin(), &_End = (_Iter&)Source_List.end();
+					_STL Result_List;
 
 					Result_List = {}; _internal_list = {};
 
@@ -1292,7 +1311,7 @@ struct type_aspect_if< Ty, true >
 						return;
 					}
 					
-					_ptr[_Counter] = _item_value;
+					_ptr[_index] = _item_value;
 
 					for (int _Cnt = _Counter; _Cnt >= 0; _Cnt--)
 					{
@@ -1349,11 +1368,11 @@ struct type_aspect_if< Ty, true >
 						L = L1;
 						R = L + M;
 					}
-					else if (!_fCompare((_Other)lookup_value, vector_value)) {
+					else if (!_fCompare((_Other)lookup_value, (_Other)vector_value)) {
 						L = L1 + M;
 						R = R1;
 					}
-					else if ((_Other)lookup_value == vector_value)
+					else if ((_Other)lookup_value == (_Other)vector_value)
 					{
 						break;
 					}
@@ -1370,12 +1389,16 @@ struct type_aspect_if< Ty, true >
 					if (L < _Begin || R  > _Last) break;
 					if (nSeek > _MaxSz) break;
 
-				} while (vector_value != (_Other)lookup_value);
+				} while ((_Other)vector_value != (_Other)lookup_value);
 
-				return ((_Other)lookup_value == vector_value);
+				return ((_Other)lookup_value == (_Other)vector_value);
 			}
 		}; // End of generic namespace
 	};
+
+
+
+
 
 
 
