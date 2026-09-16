@@ -184,9 +184,9 @@ constexpr int64_t&& count_bit_set(int64_t&& _x)
 
 
 
-constexpr const UINT oneAdder(const UINT _x)
+constexpr const size_t oneAdder(const size_t _x)
 {
-	return _x + (UINT)1;
+	return _x + (size_t)1;
 }
 
 
@@ -242,11 +242,11 @@ static std::string&& repl_char(char&&, const size_t&);
 
 // Invoker macro for 'num_of_bits<T>::eval()'
 template <typename _Ty = intmax_t >
-static intmax_t&& _Get_Num_of_Bits(_Ty&&);
+static int64_t&& _Get_Num_of_Bits(_Ty&&);
 
 // Invoker macro for 'num_of_dec<T>::eval()'
 template <typename _T>
-static intmax_t&& _Get_Num_of_Digits(_T&&);
+static int64_t&& _Get_Num_of_Digits(_T&&);
 
 // Invoker macro for 'to_binary<T>::eval()' 
 template < typename _Ty = intmax_t >
@@ -640,7 +640,7 @@ inline static const char* reverse_str(const char*);
 
 inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 {
-	static std::string _repStr = "\0";
+	static std::string _repStr;
 
 	_repStr = "\0";
 
@@ -651,7 +651,7 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 	for (size_t i = 0; i < _Count; i++) _repC[i] = char(_aChar);
 
 	
-	_repC[_Count] = 0;
+	_repC[_Count] = NULL;
 
 	_repStr = _repStr.assign(_repC);
 
@@ -776,7 +776,7 @@ struct bin_to_dec
 		}
 
 		b = (_strBits[0] == 49)? 1 : 0;
-		_Dec += b * (value_type)std::pow(2, _maxBit);
+		_Dec += b * (value_type)std::pow(2, k++);
 
 		return std::move(_Dec);
 	}
@@ -797,8 +797,8 @@ struct To_HexF {
 
 	static inline std::string&& eval(const val_type& val_i64)
 	{
-		_hxs = "\0";
 		_hxs.clear();
+		_hxs = "\0";
 		_hxs.assign( hex_str(val_i64) );
 		
 		return std::move(_hxs);
@@ -850,7 +850,7 @@ private:
 	
 		for (const val_type& _ix : _x16c)
 		{
-			_hxf = concat_str((char*)_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0')? inttostr(_ix).c_str() :
+			_hxf = concat_str(_hxf.data(), (HEX_CHR(int8_t(_ix)) == '0')? inttostr(_ix).c_str() :
 													new char[2] { HEX_CHR(int8_t(_ix)), '\0' });
 				       
 		}
@@ -889,7 +889,7 @@ static inline intmax_t&& _Get_Num_of_Bits(_Ty&& _ax)
 
 
 template <typename _T >
-static inline  intmax_t&& _Get_Num_of_Digits(_T&& _Fx)
+static inline  int64_t&& _Get_Num_of_Digits(_T&& _Fx)
 {
 	return std::forward<_T&&>( num_of_dec(_Fx) );
 }
@@ -1047,7 +1047,7 @@ static inline const char* cni_bits_pack(std::int64_t& Packed_Int, const std::vec
 	for (std::vector<intmax_t>::iterator _canIt = _Begin; _canIt < _EndIter; _canIt++)
 		bits_pack = concat_str(bits_pack.data(), bit_str(*_canIt).c_str());
 
-	Packed_Int = int_bit(bits_pack.c_str());
+	Packed_Int = std::abs(int_bit(bits_pack.c_str()) );
 
 	svw = bits_pack;
 	return svw.data();
@@ -1651,6 +1651,7 @@ inline static std::string&& LRTrim(const char* _Sstr)
 
 
 
+
 // bit status information
 template <typename BitSZ = unsigned int>
 struct bitInfo
@@ -1899,18 +1900,20 @@ template <typename _Ty>
 inline static _Ty&& num_of_dec(const _Ty& _v)
 {
 	using _Type = std::remove_reference_t<_Ty>;
-	static _Type _counter = 0 , _dec = 0;
+	static _Type _counter , _dec;
 
 	_counter = 0; _dec = 0;
 
-	if ((_Ty)_v <= 0) return std::move(_counter);
+	static_assert(std::is_integral_v<_Type>, "parameter '_Ty' is expected to be of integral type.");
+
+	if ((const _Type)_v <= 0) return std::move(_counter);
 
 	_dec = _v;
 
 	while (_dec > 0)
 	{
 		++_counter;
-		_dec = (_Ty)std::lldiv(_dec, 10).quot;
+		_dec = (_Type)std::lldiv(_dec, 10).quot;
 	}
 
 	return std::move(_counter);
@@ -1936,7 +1939,7 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 	if (_iNum >= 0)
 	{
 		_sf = std::strncpy(&_sf[1], &_sNum[1], _maxPos);
-		_sf[_maxPos] = 0;
+		_sf[_len] = 0;
 		--_maxPos;
 	}
 
@@ -1955,23 +1958,26 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 }
 
 
-inline static std::string&& inttostr(const intmax_t& nVal)
+inline static std::string&& inttostr(const int64_t& nVal)
 {
 	// max. spaces for negative integer
-	const intmax_t nDigits = oneAdder( (unsigned int)num_of_dec((intmax_t)std::abs(nVal))); 
+	const size_t nDigits = oneAdder(num_dec( int64_t(nVal)) );
 
 	// max. spaces for positive integer.
-	const intmax_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
+	const size_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
 
-	char _ch;  static std::string _ss = "\0";
-	intmax_t nDiv = std::abs(nVal), _mod = 0, cnt = 0,decDigs = 0;
+	char _ch;  static std::string _ss;
+	int64_t _mod = 0, cnt = 0, decDigs = 0;;
+	_lldiv_t _Max_Value = {};
+
+	_Max_Value.quot = (int64_t)std::abs(nVal);
 
 	std::string _tmpS = "\0";
 
 	_ss = "\0";
 
 	// if value is 0 (zero)
-	if (!nDiv) {
+	if (!_Max_Value.quot) {
 		_ss = " ";
 		std::memset(_ss.data(), 0, 1);
 		_ss[0] = 48;
@@ -1983,30 +1989,31 @@ inline static std::string&& inttostr(const intmax_t& nVal)
 	if (nVal < 0) {
 		_tmpS = repl_char(SPACE, nDigits);
 		_ss.assign(_tmpS);
-		std::memset(_ss.data(), 0, nDigits);
+		std::memset(_ss.data(), 0,nDigits);
 		_ss[0] = '-';
-		decDigs = nDigits;
-		cnt++;
+		decDigs = (int64_t)nDigits;
+		++cnt;
+		//PRINT("value < 0");
 	}
 	else
 	{
 		_tmpS = repl_char(SPACE, nDecs);
 		_ss.assign(_tmpS);
 		std::memset(_ss.data(), 0, nDecs);
-		decDigs = nDecs;
-		cnt++;
+		decDigs = (int64_t)nDecs;
+		++cnt;
 	}
 	
 
-	while (nDiv > 0)
+	while (_Max_Value.quot > 0)
 	{
-		_mod = nDiv % 10;
+		_mod = (int64_t)std::fmodl((long double)_Max_Value.quot, 10); 
 		_ch = '0' + (char)_mod;
 		_ss[decDigs - cnt] = _ch;
-		nDiv /= 10; 
-		cnt++;
+		_Max_Value = std::lldiv(_Max_Value.quot, 10);
+		++cnt;
 	}
-
+	
 	_ss[decDigs] = 0;
 	
 	return std::move(_ss);
