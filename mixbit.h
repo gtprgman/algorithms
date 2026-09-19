@@ -666,7 +666,9 @@ inline static std::string&& repl_char(char&& _aChar, const size_t& _Count)
 static inline std::string&& zero_bits(const size_t& n_Bits)
 {
 	intmax_t xZeros = n_Bits;
-	static std::string _ci = " ";
+	static std::string _ci;
+
+	_ci = "\0";
 
 	if (!xZeros || xZeros < 0 ) xZeros = 1; // minimum number of '0' should at least 1
 
@@ -730,7 +732,7 @@ struct to_binary
 
 		for (value_type i = 0; i < _bsz && _value > 0; i++)
 		{
-			_q = (value_type)std::fmodl( (long double)_value, (long double)2 );
+			_q = (value_type)std::fmodl( (long double)_value, 2 );
 			_bs[i] = (_q)? '1' : '0';
 			_value = (_value > 1)? std::lldiv(_value,2).quot : 0;
 		}
@@ -830,7 +832,7 @@ private:
 	static inline std::string&& hex_str(const val_type& _i64)
 	{
 		val_type _m64 = 0, _x64 = _i64;
-		static std::string _hxf = "\0";
+		static std::string _hxf;
 
 		_hxf.clear();
 		_hxf = "\0";
@@ -871,7 +873,7 @@ std::vector< typename To_HexF<T,_v,_Ty>::val_type > To_HexF<T, _v, _Ty>::_x16c =
 
 static inline std::string&& HxFs_To_Bin(std::string&& _xhFs)
 {
-	static std::string _hxsBin = "\0";
+	static std::string _hxsBin;
 	_hxsBin.clear();
 	_hxsBin = "\0";
 
@@ -899,7 +901,7 @@ template < typename _Ty >
 static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
 	using _Type = typename std::remove_reference_t<_Ty>;
-	static std::string _StrBin = "\0";
+	static std::string _StrBin;
 	const size_t bit_width = len_bit(_Type(_Dx)); 
 	const size_t exact_bit_length = proper_bits(_Type(_Dx));
 
@@ -1288,7 +1290,7 @@ private:
 
 inline static char&& to_char(const int& _c)
 {
-	static char _ch = 0;
+	static char _ch;
 	const int _nc = _c;
 
 	_ch = 0;
@@ -1368,7 +1370,7 @@ constexpr char&& downCase(int&& _cAlpha)
 static inline int&& strPos(const char* _aStr, const char* _cStr)
 {
 	const std::size_t _Sz1 = std::strlen(_aStr), _Sz2 = std::strlen(_cStr);
-	static int _Pos = 0;
+	static int _Pos;
 	bool _bFound = false;
 
 	_Pos = 0;
@@ -1391,7 +1393,7 @@ static inline int&& strPos(const char* _aStr, const char* _cStr)
 
 static inline int&& strNPos(const char* _StSrc, const int _chr)
 {
-	static int _iPos = 0;
+	static int _iPos;
 	const int _maxSz = (int)std::strlen(_StSrc);
 	bool _cFnd = false;
 
@@ -1412,7 +1414,7 @@ static inline int&& strNPos(const char* _StSrc, const int _chr)
 
 inline static std::string&& scanStr(const char* _Str0, const char* _searchStr)
 {
-	static std::string _SF = "\0";
+	static std::string _SF;
 	const size_t _SrcLen = std::strlen(_Str0), _SearchLen = std::strlen(_searchStr);
 
 	_SF = "\0";
@@ -1467,7 +1469,7 @@ inline static const char* reverse_str(const char* _str)
 // take the n number of characters from the left end of the string
 inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
 {
-	static std::string _str = "\0";
+	static std::string _str;
 	const size_t lenMax = std::strlen(_srcStr);
 
 	_str = "\0";
@@ -1484,7 +1486,7 @@ inline static std::string&& lstr(const char* _srcStr, const std::size_t& _nGrab)
 
 inline static std::string&& snapStr(const char* _srcStr, const size_t& _Start, const size_t& _End)
 {
-	static std::string _snpStr = "\0";
+	static std::string _snpStr;
 
 	_snpStr = "\0";
 
@@ -1512,7 +1514,7 @@ inline static std::string&& snapStr(const char* _srcStr, const size_t& _Start, c
 
 inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const size_t& _First, const size_t& _Count)
 {
-	static std::string _tpStr = "\0";
+	static std::string _tpStr;
 
 	_tpStr = "\0";
 
@@ -1537,8 +1539,8 @@ inline static std::string&& tapStr(const char* _pStr, const char& _tpChr, const 
 
 static inline std::string&& tapStrBy(const char* _aStr, const char* _aSubstitute, const int& _startPos)
 {
-	static std::string _tappedStr = "\0";
-	static std::string::iterator _Start, _End;
+	static std::string _tappedStr;
+	std::string::iterator _Start, _End;
 	const std::size_t _maxSz = std::strlen(_aStr),  _Len = std::strlen(_aSubstitute);
 	
 	_tappedStr = "\0"; 
@@ -1558,7 +1560,7 @@ static inline std::string&& tapStrBy(const char* _aStr, const char* _aSubstitute
 
 inline static std::string&& rtrimx(const char* _ssStr, const size_t& _Count, const char& _padC = ' ')
 {
-	static std::string _rtms = "\0";
+	static std::string _rtms;
 	char* _Start = nullptr;
 
 	_rtms = "\0";
@@ -1582,8 +1584,8 @@ inline static std::string&& rtrimx(const char* _ssStr, const size_t& _Count, con
 
 inline static std::string&& ltrimx(const char* _uStr, const size_t& _Count, const char& _padCh = ' ')
 {
-	static std::string _LStr = "\0";
-	static std::string::iterator _LiBegin, _LiEnd;
+	static std::string _LStr;
+	std::string::iterator _LiBegin, _LiEnd;
 
 	_LStr = "\0";
 
@@ -1602,7 +1604,7 @@ inline static std::string&& ltrimx(const char* _uStr, const size_t& _Count, cons
 // take the n number of characters from the right end of the string
 inline static std::string&& rstr(const char* _sStr, const std::size_t& _nChars)
 {
-	static std::string _rStr = "\0";
+	static std::string _rStr;
 	const size_t maxLen = std::strlen(_sStr);
 
 	_rStr = "\0";
@@ -1617,8 +1619,8 @@ inline static std::string&& rstr(const char* _sStr, const std::size_t& _nChars)
 
 inline static std::string&& LRTrim(const char* _Sstr)
 {
-	static std::string _LRTrmStr = "\0";
-	static std::string::iterator _LRI;
+	static std::string _LRTrmStr;
+	std::string::iterator _LRI;
 	const size_t _nMax = std::strlen(_Sstr);
 	size_t _i = 0, _iMax = 0;
 
@@ -1926,7 +1928,7 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 	char* _sf = new char[_len];
 	std::string _sfs = "\0";
 	intmax_t _bv = 0;
-	static intmax_t _result = 0;
+	static intmax_t _result;
 
 	_result = 0;
 
@@ -1961,13 +1963,13 @@ inline static int64_t&& strtoint(std::string&& _sNum)
 inline static std::string&& inttostr(const int64_t& nVal)
 {
 	// max. spaces for negative integer
-	const size_t nDigits = oneAdder(num_dec( int64_t(nVal)) );
+	const size_t nDigits = oneAdder(num_dec( std::abs(nVal)) );
 
 	// max. spaces for positive integer.
 	const size_t nDecs = (nDigits > 1)? (nDigits - 1) : nDigits; 
 
 	char _ch;  static std::string _ss;
-	int64_t _mod = 0, cnt = 0, decDigs = 0;;
+	int64_t _mod = 0, cnt = 0, decDigs = 0;
 	_lldiv_t _Max_Value = {};
 
 	_Max_Value.quot = (int64_t)std::abs(nVal);
@@ -1982,7 +1984,7 @@ inline static std::string&& inttostr(const int64_t& nVal)
 		std::memset(_ss.data(), 0, 1);
 		_ss[0] = 48;
 		_ss[1] = 0;
-		return std::move(_ss);
+		return std::move( _ss );
 	}
 
 	// if value is negative
@@ -1993,7 +1995,6 @@ inline static std::string&& inttostr(const int64_t& nVal)
 		_ss[0] = '-';
 		decDigs = (int64_t)nDigits;
 		++cnt;
-		//PRINT("value < 0");
 	}
 	else
 	{
@@ -2007,8 +2008,8 @@ inline static std::string&& inttostr(const int64_t& nVal)
 
 	while (_Max_Value.quot > 0)
 	{
-		_mod = (int64_t)std::fmodl((long double)_Max_Value.quot, 10); 
-		_ch = '0' + (char)_mod;
+		_mod = (int64_t)std::fmodl((long double)_Max_Value.quot, (long double)10); 
+		_ch = to_char('0' + (char)((int)_mod) );
 		_ss[decDigs - cnt] = _ch;
 		_Max_Value = std::lldiv(_Max_Value.quot, 10);
 		++cnt;
@@ -2016,7 +2017,7 @@ inline static std::string&& inttostr(const int64_t& nVal)
 	
 	_ss[decDigs] = 0;
 	
-	return std::move(_ss);
+	return std::move( _ss );
 }
 
 
