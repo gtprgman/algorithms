@@ -1368,11 +1368,11 @@ struct type_aspect_if< Ty, true >
 						L = L1;
 						R = L + M;
 					}
-					else if (!_fCompare((_Other)lookup_value, (_Other)vector_value)) {
+					else if (!_fCompare((_Other)lookup_value, vector_value)) {
 						L = L1 + M;
 						R = R1;
 					}
-					else if ((_Other)lookup_value == (_Other)vector_value)
+					else if ((_Other)lookup_value == vector_value)
 					{
 						break;
 					}
@@ -1389,16 +1389,12 @@ struct type_aspect_if< Ty, true >
 					if (L < _Begin || R  > _Last) break;
 					if (nSeek > _MaxSz) break;
 
-				} while ((_Other)vector_value != (_Other)lookup_value);
+				} while (vector_value != (_Other)lookup_value);
 
-				return ((_Other)lookup_value == (_Other)vector_value);
+				return ((_Other)lookup_value == vector_value);
 			}
 		}; // End of generic namespace
 	};
-
-
-
-
 
 
 
