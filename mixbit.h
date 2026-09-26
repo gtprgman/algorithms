@@ -221,6 +221,9 @@ static std::string&& zero_bits(const size_t&);
 // returns a char representation of an ascii integer
 inline static char&& to_char(const int&);
 
+// returns an ascii integer of a char
+inline static int&& to_ascii(char&&);
+
 // returns a boolean indicating whether a specified char is an alphanumeric or not
 inline static const bool is_alpha_num(const char&);
 
@@ -689,6 +692,7 @@ struct num_of_bits
 	{
 		static type&& cnt = 0;
 		type _val = _v;
+		std::string _bit_str = "\0";
 
 		cnt = 0;
 
@@ -699,8 +703,8 @@ struct num_of_bits
 
 		while (_val > 0)
 		{
-			_val = std::lldiv(_val, 2).quot;
 			++cnt;
+			_val >>= 1;
 		}
 
 		return std::move(cnt);
@@ -732,9 +736,9 @@ struct to_binary
 
 		for (value_type i = 0; i < _bsz && _value > 0; i++)
 		{
-			_q = (value_type)std::fmodl( (long double)_value, 2 );
+			_q = (value_type)_value % 2;
 			_bs[i] = (_q)? '1' : '0';
-			_value = (_value > 1)? std::lldiv(_value,2).quot : 0;
+			_value = (_value > 0)? _value >>= 1 : 0;
 		}
 
 		_value = 0;
@@ -842,7 +846,7 @@ private:
 
 		while (_x64 > 0)
 		{
-			_m64 =  (val_type)std::fmodl((long double)_x64, (long double)16);
+			_m64 =  (val_type)std::fmodl((long double)_x64, 16);
 			_x16c.push_back(_m64 );
 			_x64 = std::lldiv(_x64, 16).quot; 
 			_m64 = 0;
@@ -902,11 +906,9 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
 	using _Type = typename std::remove_reference_t<_Ty>;
 	static std::string _StrBin;
-	const size_t bit_width = len_bit(_Type(_Dx)); 
-	const size_t exact_bit_length = proper_bits(_Type(_Dx));
-
-	_StrBin = "\0";
+	
 	_StrBin.clear();
+	_StrBin = "\0";
 
 	if (_Dx <= 0)
 	{
@@ -914,21 +916,7 @@ static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 		return std::move(_StrBin);
 	}
 
-	auto xZeroes = [&bit_width, &_Dx, &exact_bit_length](size_t&& bit_len)
-		{
-			size_t Oxx = 0;
-			constexpr uint64_t FFh = 4;
-
-			Oxx = (FFh > bit_width)? FFh - bit_width :
-					(FFh < bit_width)? exact_bit_length - bit_width : 0;
-		
-			return Oxx;
-		};
-
-	const size_t n_Zeros = xZeroes(size_t(bit_width));
-	_StrBin = concat_str((char*)_StrBin.c_str(), to_binary<_Type>::eval(_Dx).c_str());
-	_StrBin = concat_str( (char*)repl_char('0', n_Zeros).c_str(), _StrBin.c_str() );
-			
+	_StrBin = concat_str((char*)"0", to_binary<_Type>::eval(_Dx).c_str());
 	return std::move(_StrBin);
 }
 
@@ -1306,6 +1294,11 @@ inline static char&& to_char(const int& _c)
 	return std::move(_ch);
 }
 
+
+inline static int&& to_ascii(char&& aChar)
+{
+	return  (int)aChar;
+}
 
 
 inline static const bool is_alpha_num(const char& _chx)
@@ -1970,16 +1963,16 @@ inline static std::string&& inttostr(const int64_t& nVal)
 
 	char _ch;  static std::string _ss;
 	int64_t _mod = 0, cnt = 0, decDigs = 0;
-	_lldiv_t _Max_Value = {};
+	int64_t _Max_Value = 0;
 
-	_Max_Value.quot = (int64_t)std::abs(nVal);
+	_Max_Value = std::abs(nVal);
 
 	std::string _tmpS = "\0";
 
 	_ss = "\0";
 
 	// if value is 0 (zero)
-	if (!_Max_Value.quot) {
+	if (!_Max_Value) {
 		_ss = " ";
 		std::memset(_ss.data(), 0, 1);
 		_ss[0] = 48;
@@ -2006,17 +1999,19 @@ inline static std::string&& inttostr(const int64_t& nVal)
 	}
 	
 
-	while (_Max_Value.quot > 0)
+	while (_Max_Value > 0)
 	{
-		_mod = (int64_t)std::fmodl((long double)_Max_Value.quot, (long double)10); 
+		_mod = (int64_t)_Max_Value % 10; 
 		_ch = to_char('0' + (char)((int)_mod) );
 		_ss[decDigs - cnt] = _ch;
-		_Max_Value = std::lldiv(_Max_Value.quot, 10);
+
+		_Max_Value = _Max_Value /= 10;
 		++cnt;
 	}
 	
 	_ss[decDigs] = 0;
 	
+
 	return std::move( _ss );
 }
 
