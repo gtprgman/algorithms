@@ -846,9 +846,9 @@ private:
 
 		while (_x64 > 0)
 		{
-			_m64 =  (val_type)std::fmodl((long double)_x64, 16);
+			_m64 =  (val_type)_x64 % 16;
 			_x16c.push_back(_m64 );
-			_x64 = std::lldiv(_x64, 16).quot; 
+			_x64 /= 16; 
 			_m64 = 0;
 		}
 
