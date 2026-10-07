@@ -37,6 +37,9 @@ bitops.cpp : a unit test for mixbith.h
 2026/AUG/01 : New Upload: 'POINTER_TO_NEXT_HEAP_2.c'
               Demonstrating heaps as a chain of blocks that can be managed using only simple raw pointer.
 
+2026/10/07 : New Upload: 'Demo cni_bits_pack()'
+             make clear what is and how is the use of 'cni_bits_pack()'.
+
 
 
 
