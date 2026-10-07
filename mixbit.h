@@ -722,28 +722,26 @@ struct to_binary
 
 	static inline std::string&& eval(const value_type& _dec)
 	{
+		int64_t _bit_len = 0;
 		value_type _q = 0;
-		value_type _bsz = num_of_bits<value_type>::eval(_dec);
+	
 		_value = _dec;
 
+		_bs = "\0";
+
 		if (!_value) {
-			_bs = "0";
-			return std::move(_bs);
+			return "\0";
 		}
 
-		if (_bsz > 0)
-			_bs = new char[_bsz]; 
-
-		for (value_type i = 0; i < _bsz && _value > 0; i++)
+		for (;_value > 0;)
 		{
-			_q = (value_type)_value % 2;
-			_bs[i] = (_q)? '1' : '0';
-			_value = (_value > 0)? _value >>= 1 : 0;
+			_q = (_value >= 2)? (value_type)_value % 2 : _value;
+			_value >>= 1;
+			_bs = concat_str(_bs.data(), ((_q)? "1" : "0"));
 		}
-
+		
 		_value = 0;
-		_bs[_bsz] = 0;
-		_bs = (char*)reverse_str(_bs.c_str());
+		_bs = reverse_str(_bs.data());
 		return std::move(_bs);
 	}
 
@@ -757,7 +755,7 @@ template <class T, bool _V, class _Ty>
 typename to_binary<T, _V, _Ty>::value_type to_binary<T, _V, _Ty>::_value = 0;
 
 template <class T, bool _V, class _Ty>
-std::string to_binary<T, _V, _Ty>::_bs = "\0";
+std::string to_binary<T, _V, _Ty>::_bs = "\0";;
 
 
 
@@ -905,18 +903,24 @@ template < typename _Ty >
 static inline std::string&& _Get_Binary_Str(_Ty&& _Dx)
 {
 	using _Type = typename std::remove_reference_t<_Ty>;
+
+	_Type _bit_len = (_Type)len_bit(_Type(_Dx) );
 	static std::string _StrBin;
 	
-	_StrBin.clear();
 	_StrBin = "\0";
 
 	if (_Dx <= 0)
 	{
-		_StrBin = "0";
+		_StrBin = "\0";
 		return std::move(_StrBin);
 	}
 
-	_StrBin = concat_str((char*)"0", to_binary<_Type>::eval(_Dx).c_str());
+	// concat the first '0xx..' in the bit series
+	_StrBin = concat_str(_StrBin.data(), (_bit_len <= 4)? repl_char('0', 4 - _bit_len).c_str() : "\0");
+
+	// then concat the remaining '1xx..' in the bit series
+	_StrBin = concat_str(_StrBin.data(), to_binary<_Type>::eval(_Dx).c_str());
+
 	return std::move(_StrBin);
 }
 
